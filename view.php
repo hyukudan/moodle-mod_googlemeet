@@ -69,11 +69,7 @@ if (has_capability('mod/googlemeet:editrecording', $context)) {
 $url = trim($googlemeet->url);
 $pattern = "/^https:\/\/meet.google.com\/[-a-zA-Z0-9@:%._\+~#=]{3}-[-a-zA-Z0-9@:%._\+~#=]{4}-[-a-zA-Z0-9@:%._\+~#=]{3}$/";
 if (!preg_match($pattern, $url)) {
-    googlemeet_print_header($googlemeet, $cm, $course);
-    googlemeet_print_heading($googlemeet, $cm, $course);
-    googlemeet_print_intro($googlemeet, $cm, $course);
-    notice(get_string('invalidstoredurl', 'googlemeet'), new moodle_url('/course/view.php', array('id' => $cm->course)));
-    die;
+    throw new moodle_exception('invalidstoredurl', 'googlemeet', new moodle_url('/course/view.php', ['id' => $cm->course]));
 }
 unset($url);
 

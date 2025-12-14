@@ -71,9 +71,11 @@ function googlemeet_print_intro($googlemeet, $cm, $course, $ignoresettings = fal
 
     $options = [];
     if (!empty($googlemeet->displayoptions)) {
-        // Try JSON first (Moodle 3.9+), fall back to unserialize for older data.
+        // Moodle 4.0+ uses JSON for displayoptions.
         $decoded = json_decode($googlemeet->displayoptions, true);
-        $options = ($decoded !== null) ? $decoded : (array) @unserialize($googlemeet->displayoptions);
+        if ($decoded !== null) {
+            $options = $decoded;
+        }
     }
     if ($ignoresettings || !empty($options['printintro'])) {
         if (trim(strip_tags($googlemeet->intro))) {
@@ -188,9 +190,8 @@ function googlemeet_set_events($googlemeet, $events) {
 
     googlemeet_delete_events($events[0]->googlemeetid);
 
-    $DB->insert_records('googlemeet_events', $events);
-
     foreach ($events as $event) {
+        $event->id = $DB->insert_record('googlemeet_events', $event);
         helper::create_calendar_event($googlemeet, $event);
     }
 }
@@ -582,7 +583,7 @@ function googlemeet_get_upcoming_events($googlemeetid) {
                 $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
             }
 
-            array_push($upcomingevents, $upcomingevent);
+            $upcomingevents[] = $upcomingevent;
         }
 
         // Get first event for backward compatibility.
