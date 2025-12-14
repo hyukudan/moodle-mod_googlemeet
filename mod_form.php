@@ -127,6 +127,15 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         ];
         $mform->addGroup($eventtime, 'eventtime', get_string('eventdate', 'googlemeet'), [''], false);
 
+        // Maximum upcoming events to display.
+        $maxevents = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $maxevents[$i] = $i;
+        }
+        $mform->addElement('select', 'maxupcomingevents', get_string('maxupcomingevents', 'googlemeet'), $maxevents);
+        $mform->setDefault('maxupcomingevents', 3);
+        $mform->addHelpButton('maxupcomingevents', 'maxupcomingevents', 'googlemeet');
+
         // For multiple dates.
         $mform->addElement('header', 'headeraddmultipleeventdates', get_string('recurrenceeventdate', 'googlemeet'));
         if (!empty($config->multieventdateexpanded) || !empty($this->current->addmultiply)) {

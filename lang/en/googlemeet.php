@@ -198,3 +198,7 @@ $string['cancelleddate'] = 'Date';
 $string['cancelledreason'] = 'Reason (optional)';
 $string['cancelledreason_placeholder'] = 'e.g., Teacher illness';
 $string['event_status_cancelled'] = 'Cancelled';
+
+// Max upcoming events.
+$string['maxupcomingevents'] = 'Maximum upcoming events';
+$string['maxupcomingevents_help'] = 'Select the maximum number of upcoming events to display on the activity page.';

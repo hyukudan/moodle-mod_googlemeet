@@ -528,8 +528,9 @@ function googlemeet_format_time_diff($seconds) {
  * upcoming googlemeet events.
  *
  * @param int $googlemeetid db record of user
+ * @param int $maxevents Maximum number of events to return (default 3)
  */
-function googlemeet_get_upcoming_events($googlemeetid) {
+function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
     global $DB, $USER;
 
     $now = time();
@@ -537,13 +538,16 @@ function googlemeet_get_upcoming_events($googlemeetid) {
     // Get cancelled dates for this instance.
     $cancelleddates = googlemeet_get_cancelled($googlemeetid);
 
+    // Ensure maxevents is within bounds.
+    $maxevents = max(1, min(10, (int)$maxevents));
+
     // Get events that are upcoming or currently in progress (started less than duration ago).
     $sql = "SELECT id, eventdate, duration
               FROM {googlemeet_events}
              WHERE googlemeetid = :googlemeetid
                AND (eventdate + duration) > :now
           ORDER BY eventdate ASC
-             LIMIT 5";
+             LIMIT " . $maxevents;
 
     $events = $DB->get_records_sql($sql, ['googlemeetid' => $googlemeetid, 'now' => $now]);
     $upcomingevents = [];

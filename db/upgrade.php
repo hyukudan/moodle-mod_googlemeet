@@ -100,5 +100,20 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121403, 'googlemeet');
     }
 
+    if ($oldversion < 2025121404) {
+
+        // Define field maxupcomingevents to be added to googlemeet.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('maxupcomingevents', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '3', 'eventid');
+
+        // Conditionally launch add field maxupcomingevents.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121404, 'googlemeet');
+    }
+
     return true;
 }
