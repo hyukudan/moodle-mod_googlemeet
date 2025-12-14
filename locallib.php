@@ -225,6 +225,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context) {
 
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
+        'hasrecordings' => !empty($recordings),
         'coursemoduleid' => $cm->id,
         'hascapability' => $hascapability
     ]);
