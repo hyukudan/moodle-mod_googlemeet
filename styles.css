@@ -310,7 +310,7 @@
 }
 
 .googlemeet-play-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 48px;
@@ -320,6 +320,8 @@
     color: #fff;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    line-height: 1;
+    padding: 0;
 }
 
 .googlemeet-play-btn:hover {
@@ -329,10 +331,23 @@
     text-decoration: none;
 }
 
-.googlemeet-play-btn .icon {
+.googlemeet-play-btn .icon,
+.googlemeet-play-btn img {
     width: 24px;
     height: 24px;
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    filter: brightness(0) invert(1);
+    vertical-align: middle;
+    display: block;
+}
+
+.googlemeet-play-btn span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .googlemeet-recording-info {
