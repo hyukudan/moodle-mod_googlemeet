@@ -534,6 +534,9 @@ function googlemeet_get_upcoming_events($googlemeetid) {
 
     $now = time();
 
+    // Get cancelled dates for this instance.
+    $cancelleddates = googlemeet_get_cancelled($googlemeetid);
+
     // Get events that are upcoming or currently in progress (started less than duration ago).
     $sql = "SELECT id, eventdate, duration
               FROM {googlemeet_events}
@@ -567,31 +570,46 @@ function googlemeet_get_upcoming_events($googlemeetid) {
             $upcomingevent->duration = $duration;
             $upcomingevent->durationformatted = googlemeet_format_time_diff($duration);
 
-            // Calculate status.
-            $timediff = $start - $now;
-
-            if ($now >= $start && $now < $end) {
-                // Event is currently in progress.
-                $upcomingevent->status = 'live';
-                $upcomingevent->islive = true;
+            // Check if this event is cancelled.
+            $cancelled = googlemeet_is_cancelled($start, $cancelleddates);
+            if ($cancelled !== false) {
+                $upcomingevent->status = 'cancelled';
+                $upcomingevent->islive = false;
                 $upcomingevent->issoon = false;
                 $upcomingevent->isscheduled = false;
-                $elapsed = $now - $start;
-                $upcomingevent->timeinfo = get_string('event_started_ago', 'googlemeet', googlemeet_format_time_diff($elapsed));
-            } else if ($timediff > 0 && $timediff <= 1800) {
-                // Event starts within 30 minutes.
-                $upcomingevent->status = 'soon';
-                $upcomingevent->islive = false;
-                $upcomingevent->issoon = true;
-                $upcomingevent->isscheduled = false;
-                $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
+                $upcomingevent->iscancelled = true;
+                $upcomingevent->cancelledreason = $cancelled->reason ?? '';
+                $upcomingevent->timeinfo = '';
             } else {
-                // Event is scheduled for later.
-                $upcomingevent->status = 'scheduled';
-                $upcomingevent->islive = false;
-                $upcomingevent->issoon = false;
-                $upcomingevent->isscheduled = true;
-                $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
+                $upcomingevent->iscancelled = false;
+                $upcomingevent->cancelledreason = '';
+
+                // Calculate status.
+                $timediff = $start - $now;
+
+                if ($now >= $start && $now < $end) {
+                    // Event is currently in progress.
+                    $upcomingevent->status = 'live';
+                    $upcomingevent->islive = true;
+                    $upcomingevent->issoon = false;
+                    $upcomingevent->isscheduled = false;
+                    $elapsed = $now - $start;
+                    $upcomingevent->timeinfo = get_string('event_started_ago', 'googlemeet', googlemeet_format_time_diff($elapsed));
+                } else if ($timediff > 0 && $timediff <= 1800) {
+                    // Event starts within 30 minutes.
+                    $upcomingevent->status = 'soon';
+                    $upcomingevent->islive = false;
+                    $upcomingevent->issoon = true;
+                    $upcomingevent->isscheduled = false;
+                    $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
+                } else {
+                    // Event is scheduled for later.
+                    $upcomingevent->status = 'scheduled';
+                    $upcomingevent->islive = false;
+                    $upcomingevent->issoon = false;
+                    $upcomingevent->isscheduled = true;
+                    $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
+                }
             }
 
             $upcomingevents[] = $upcomingevent;
@@ -606,7 +624,7 @@ function googlemeet_get_upcoming_events($googlemeetid) {
             'starttime' => $firstevent->starttime,
             'endtime' => $firstevent->endtime,
             'duration' => $firstevent->duration,
-            'hasliveevent' => $firstevent->islive,
+            'hasliveevent' => $firstevent->islive ?? false,
         ];
     }
 

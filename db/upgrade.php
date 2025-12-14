@@ -75,5 +75,30 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121402, 'googlemeet');
     }
 
+    if ($oldversion < 2025121403) {
+
+        // Define table googlemeet_cancelled to be created.
+        $table = new xmldb_table('googlemeet_cancelled');
+
+        // Adding fields to table googlemeet_cancelled.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('googlemeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('cancelleddate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('reason', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table googlemeet_cancelled.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('googlemeetidfk', XMLDB_KEY_FOREIGN, ['googlemeetid'], 'googlemeet', ['id']);
+
+        // Conditionally launch create table for googlemeet_cancelled.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121403, 'googlemeet');
+    }
+
     return true;
 }

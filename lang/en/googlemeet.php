@@ -188,3 +188,13 @@ $string['holidaystartdate'] = 'Start date';
 $string['holidayenddate'] = 'End date';
 $string['invalidholidayenddate'] = 'The end date of an exclusion period cannot be earlier than its start date';
 $string['noholidayperiods'] = 'No exclusion periods defined';
+
+// Cancelled dates.
+$string['cancelleddates'] = 'Cancelled sessions';
+$string['cancelleddates_help'] = 'Define individual dates when sessions are cancelled (e.g., sick day, public holiday). These sessions will appear with a "Cancelled" indicator rather than being hidden.';
+$string['addcancelleddate'] = 'Add cancelled date';
+$string['removecancelleddate'] = 'Remove';
+$string['cancelleddate'] = 'Date';
+$string['cancelledreason'] = 'Reason (optional)';
+$string['cancelledreason_placeholder'] = 'e.g., Teacher illness';
+$string['event_status_cancelled'] = 'Cancelled';

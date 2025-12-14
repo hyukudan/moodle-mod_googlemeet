@@ -85,6 +85,13 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timemodified'
         ]);
 
+        $cancelleddates = new backup_nested_element('cancelleddates');
+        $cancelleddate = new backup_nested_element('cancelleddate', ['id'], [
+            'cancelleddate',
+            'reason',
+            'timemodified'
+        ]);
+
         // Build the tree in the order needed for restore.
         $googlemeet->add_child($events);
         $events->add_child($event);
@@ -95,6 +102,9 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $googlemeet->add_child($holidays);
         $holidays->add_child($holiday);
 
+        $googlemeet->add_child($cancelleddates);
+        $cancelleddates->add_child($cancelleddate);
+
         // Define the source tables for the elements.
         $googlemeet->set_source_table('googlemeet', ['id' => backup::VAR_ACTIVITYID]);
 
@@ -103,6 +113,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $recording->set_source_table('googlemeet_recordings', ['googlemeetid' => backup::VAR_PARENTID]);
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
+
+        $cancelleddate->set_source_table('googlemeet_cancelled', ['googlemeetid' => backup::VAR_PARENTID]);
 
         // Define id annotations.
 

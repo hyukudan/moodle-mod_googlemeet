@@ -55,3 +55,13 @@ $string['holidaystartdate'] = 'Fecha de inicio';
 $string['holidayenddate'] = 'Fecha de fin';
 $string['invalidholidayenddate'] = 'La fecha de fin de un período de exclusión no puede ser anterior a su fecha de inicio';
 $string['noholidayperiods'] = 'No hay períodos de exclusión definidos';
+
+// Cancelled dates.
+$string['cancelleddates'] = 'Sesiones canceladas';
+$string['cancelleddates_help'] = 'Define fechas individuales cuando las sesiones están canceladas (ej. enfermedad, festivo). Estas sesiones aparecerán con un indicador "Cancelada" en lugar de ocultarse.';
+$string['addcancelleddate'] = 'Añadir fecha cancelada';
+$string['removecancelleddate'] = 'Eliminar';
+$string['cancelleddate'] = 'Fecha';
+$string['cancelledreason'] = 'Motivo (opcional)';
+$string['cancelledreason_placeholder'] = 'ej. Enfermedad del profesor';
+$string['event_status_cancelled'] = 'Cancelada';

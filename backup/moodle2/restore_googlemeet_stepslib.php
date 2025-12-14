@@ -48,6 +48,9 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $paths[] = new restore_path_element('googlemeet_holiday',
             '/activity/googlemeet/holidays/holiday');
 
+        $paths[] = new restore_path_element('googlemeet_cancelled',
+            '/activity/googlemeet/cancelleddates/cancelleddate');
+
         return $this->prepare_activity_structure($paths);
     }
 
@@ -134,6 +137,26 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
 
         $newitemid = $DB->insert_record('googlemeet_holidays', $data);
         $this->set_mapping('googlemeet_holiday', $oldid, $newitemid);
+    }
+
+    /**
+     * Process a cancelled date restore.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_cancelled($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        $data->googlemeetid = $this->get_new_parentid('googlemeet');
+        $data->cancelleddate = $this->apply_date_offset($data->cancelleddate);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('googlemeet_cancelled', $data);
+        $this->set_mapping('googlemeet_cancelled', $oldid, $newitemid);
     }
 
     /**
