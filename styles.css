@@ -168,6 +168,34 @@
     color: #1e8e3e;
 }
 
+.googlemeet-badge-cancelled {
+    background: #5f6368;
+    color: #fff;
+}
+
+/* Cancelled event card styling */
+.googlemeet-event-cancelled {
+    border-left-color: #5f6368;
+    background: linear-gradient(135deg, #fff 0%, #f5f5f5 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.googlemeet-event-cancelled-details {
+    opacity: 0.7;
+}
+
+.googlemeet-event-cancelled .googlemeet-event-date,
+.googlemeet-event-cancelled .googlemeet-event-time {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.googlemeet-cancelled-reason {
+    font-style: italic;
+    color: #666;
+}
+
 /* Pulse animation for live badge */
 .googlemeet-pulse {
     width: 8px;
