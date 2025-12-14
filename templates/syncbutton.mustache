@@ -15,7 +15,7 @@
   along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-  @template mod_googlemeet/recordingstable
+  @template mod_googlemeet/syncbutton
 
   Example context (json):
   {
@@ -23,43 +23,69 @@
     "creatoremail": "example@gmail.com",
     "redordingname": "Example",
     "login": "html",
-    "islogged": 1,
+    "islogged": true,
     "syncbutton": "html",
-    "isloggedcreatoremail": 1
+    "isloggedcreatoremail": true
   }
 }}
-<div id="recordings">
-  <div id="syncbutton">
+<div id="recordings" class="googlemeet-sync-container">
+  <div id="syncbutton" class="googlemeet-sync-panel">
     {{#islogged}}
-      <div>
-        {{# str }} lastsync, mod_googlemeet {{/ str }} <strong><span id="id_lastsync">{{lastsync}}</span></strong>
+      <div class="googlemeet-sync-main">
+        <div class="googlemeet-sync-status">
+          <span class="googlemeet-sync-label">{{# str }} lastsync, mod_googlemeet {{/ str }}</span>
+          <span class="googlemeet-sync-time" id="id_lastsync">{{lastsync}}</span>
+        </div>
+
+        {{#isloggedcreatoremail}}
+          <div class="googlemeet-sync-action">
+            {{{syncbutton}}}
+          </div>
+        {{/isloggedcreatoremail}}
+
+        {{^isloggedcreatoremail}}
+          <div class="alert alert-warning googlemeet-sync-warning">
+            {{# pix }} i/warning, core {{/ pix }}
+            <span>{{# str }} isnotcreatoremail, mod_googlemeet {{/ str }}</span>
+          </div>
+        {{/isloggedcreatoremail}}
       </div>
-      <div>
-        {{# str }} recordingswiththename, mod_googlemeet {{/ str }} <strong>{{redordingname}}</strong>
-      </div>
-      <div>
-        {{# str }} roomcreator, mod_googlemeet {{/ str }} <strong><span id="id_creatoremail">{{creatoremail}}</span></strong>
-      </div>
-      {{#isloggedcreatoremail}}
-        {{{syncbutton}}}
-      {{/isloggedcreatoremail}}
-      {{^isloggedcreatoremail}}
-        <div class="alert alert-danger alert-block mt-3">
-          {{# str }} isnotcreatoremail, mod_googlemeet {{/ str }}
-      </div>
-      {{/isloggedcreatoremail}}
+
+      <details class="googlemeet-sync-details">
+        <summary>{{# str }} sync_settings, mod_googlemeet {{/ str }}</summary>
+        <div class="googlemeet-sync-details-content">
+          <div class="googlemeet-sync-detail-item">
+            <span class="googlemeet-detail-label">{{# str }} roomcreator, mod_googlemeet {{/ str }}</span>
+            <span class="googlemeet-detail-value" id="id_creatoremail">{{creatoremail}}</span>
+          </div>
+          <div class="googlemeet-sync-detail-item">
+            <span class="googlemeet-detail-label">{{# str }} recordingswiththename, mod_googlemeet {{/ str }}</span>
+            <span class="googlemeet-detail-value">{{redordingname}}</span>
+          </div>
+          <div class="googlemeet-sync-account">
+            {{{login}}}
+          </div>
+        </div>
+      </details>
+
+      <details class="googlemeet-sync-help">
+        <summary>{{# str }} sync_help_title, mod_googlemeet {{/ str }}</summary>
+        <div class="googlemeet-sync-help-content">
+          {{# str }} sync_info, mod_googlemeet {{/ str }}
+        </div>
+      </details>
     {{/islogged}}
+
     {{^islogged}}
-      {{# str }} sync_notloggedin, mod_googlemeet {{/ str }}
-      {{{login}}}
+      <div class="googlemeet-sync-login">
+        <div class="googlemeet-sync-login-message">
+          {{# pix }} i/info, core {{/ pix }}
+          <span>{{# str }} sync_notloggedin, mod_googlemeet {{/ str }}</span>
+        </div>
+        <div class="googlemeet-sync-login-action">
+          {{{login}}}
+        </div>
+      </div>
     {{/islogged}}
-    <div class="mt-4">
-      {{# str }} sync_info, mod_googlemeet {{/ str }}
-    </div>
   </div>
-  {{#islogged}}
-    <div id="logininfo">
-      {{{login}}}
-    </div>
-  {{/islogged}}
 </div>

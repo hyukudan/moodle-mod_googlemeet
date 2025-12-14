@@ -138,6 +138,8 @@ $string['strftimedmy'] = '%a. %d %b. %Y';
 $string['strftimedmyhm'] = '%a. %d %b. %Y %H:%M';
 $string['strftimehm'] = '%H:%M';
 $string['syncwithgoogledrive'] = 'Sincronizar com o Google Drive';
+$string['sync_settings'] = 'Configurações de sincronização';
+$string['sync_help_title'] = 'Como funciona a sincronização';
 $string['sync_info'] = 'Aguarde ao menos 10 minutos para que o arquivo da gravação seja gerado e salvo em "Meu Drive > Meet Recordings" do organizador.
 <p></p>
 Para remover uma gravação primeiro exclua o arquivo da gravação do Google Drive e depois clique no botão sincronizar acima.
