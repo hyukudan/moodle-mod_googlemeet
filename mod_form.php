@@ -183,6 +183,48 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $mform->addGroup($eventenddategroup, 'eventenddategroup', get_string('repeatuntil', 'googlemeet'), [''], false);
         $mform->disabledIf('eventenddategroup', 'addmultiply', 'notchecked');
 
+        // Holiday/exclusion periods section.
+        $mform->addElement('header', 'headerholidayperiods', get_string('holidayperiods', 'googlemeet'));
+        $mform->addHelpButton('headerholidayperiods', 'holidayperiods', 'googlemeet');
+
+        // Define the elements for a single holiday period.
+        $holidayelements = [];
+        $holidayelements[] = $mform->createElement('text', 'holidayname', get_string('holidayname', 'googlemeet'),
+            ['size' => '30', 'placeholder' => get_string('holidayname_placeholder', 'googlemeet')]);
+        $holidayelements[] = $mform->createElement('date_selector', 'holidaystartdate',
+            get_string('holidaystartdate', 'googlemeet'));
+        $holidayelements[] = $mform->createElement('date_selector', 'holidayenddate',
+            get_string('holidayenddate', 'googlemeet'));
+
+        // Determine the number of existing holiday periods.
+        $repeatno = 0;
+        if (!empty($this->current->instance)) {
+            global $DB;
+            $repeatno = $DB->count_records('googlemeet_holidays', ['googlemeetid' => $this->current->instance]);
+        }
+
+        // Use repeat_elements for dynamic holiday periods.
+        $this->repeat_elements(
+            $holidayelements,
+            $repeatno,
+            [
+                'holidayname' => ['type' => PARAM_TEXT],
+            ],
+            'holiday_repeats',
+            'holiday_add_fields',
+            1,
+            get_string('addholidayperiod', 'googlemeet'),
+            true,
+            get_string('removeholidayperiod', 'googlemeet')
+        );
+
+        // Disable holiday fields if recurrence is not enabled.
+        for ($i = 0; $i < max($repeatno, 1); $i++) {
+            $mform->disabledIf("holidayname[$i]", 'addmultiply', 'notchecked');
+            $mform->disabledIf("holidaystartdate[$i]", 'addmultiply', 'notchecked');
+            $mform->disabledIf("holidayenddate[$i]", 'addmultiply', 'notchecked');
+        }
+
         $mform->addElement('header', 'headerroomurl', get_string('roomurl', 'googlemeet'));
         if (!empty($config->roomurlexpanded)) {
             $mform->setExpanded('headerroomurl');
@@ -249,6 +291,19 @@ class mod_googlemeet_mod_form extends moodleform_mod {
     public function data_preprocessing(&$defaultvalues) {
         if ($this->current->instance) {
             $defaultvalues['days'] = json_decode($defaultvalues['days'], true);
+
+            // Load holiday periods from database.
+            global $DB;
+            $holidays = $DB->get_records('googlemeet_holidays',
+                ['googlemeetid' => $this->current->instance], 'id ASC');
+
+            $i = 0;
+            foreach ($holidays as $holiday) {
+                $defaultvalues["holidayname[$i]"] = $holiday->name;
+                $defaultvalues["holidaystartdate[$i]"] = $holiday->startdate;
+                $defaultvalues["holidayenddate[$i]"] = $holiday->enddate;
+                $i++;
+            }
         }
     }
 
@@ -290,6 +345,20 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         if ($addmulti && ceil(($data['eventenddate'] - $data['eventdate']) / YEARSECS) > 1) {
             $errors['eventenddate'] = get_string('timeahead', 'googlemeet');
+        }
+
+        // Validate holiday periods.
+        if ($addmulti && !empty($data['holiday_repeats'])) {
+            for ($i = 0; $i < $data['holiday_repeats']; $i++) {
+                $startkey = "holidaystartdate[$i]";
+                $endkey = "holidayenddate[$i]";
+
+                if (isset($data[$startkey]) && isset($data[$endkey])) {
+                    if ($data[$endkey] < $data[$startkey]) {
+                        $errors[$endkey] = get_string('invalidholidayenddate', 'googlemeet');
+                    }
+                }
+            }
         }
 
         $startdate = $data['eventdate'] + $starttime;

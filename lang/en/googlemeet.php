@@ -176,3 +176,15 @@ $string['url_failed'] = 'A valid Google Meet URL is required';
 $string['url_help'] = 'E.g. https://meet.google.com/aaa-aaaa-aaa';
 $string['visible'] = 'Visible';
 $string['week'] = 'Week(s)';
+
+// Holiday/exclusion periods.
+$string['holidayperiods'] = 'Exclusion periods';
+$string['holidayperiods_help'] = 'Define periods during which no events will be scheduled (e.g., Christmas holidays, Easter break). Events that would fall within these periods will be skipped.';
+$string['addholidayperiod'] = 'Add exclusion period';
+$string['removeholidayperiod'] = 'Remove';
+$string['holidayname'] = 'Name (optional)';
+$string['holidayname_placeholder'] = 'e.g., Christmas holidays';
+$string['holidaystartdate'] = 'Start date';
+$string['holidayenddate'] = 'End date';
+$string['invalidholidayenddate'] = 'The end date of an exclusion period cannot be earlier than its start date';
+$string['noholidayperiods'] = 'No exclusion periods defined';

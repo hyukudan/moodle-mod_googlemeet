@@ -100,14 +100,20 @@ function googlemeet_construct_events_data_for_add($googlemeet) {
     $eventdate = $googlemeet->eventdate + $eventstarttime;
     $duration = $eventendtime - $eventstarttime;
 
-    $events = array();
+    // Get holiday/exclusion periods for this instance.
+    $holidays = googlemeet_get_holidays($googlemeet->id);
 
-    $event = new stdClass();
-    $event->googlemeetid = $googlemeet->id;
-    $event->eventdate = $eventdate;
-    $event->duration = $duration;
-    $event->timemodified = time();
-    $events[] = $event;
+    $events = [];
+
+    // Add the first event only if it's not during a holiday period.
+    if (!googlemeet_is_holiday($eventdate, $holidays)) {
+        $event = new stdClass();
+        $event->googlemeetid = $googlemeet->id;
+        $event->eventdate = $eventdate;
+        $event->duration = $duration;
+        $event->timemodified = time();
+        $events[] = $event;
+    }
 
     if (isset($googlemeet->addmultiply)) {
         $startdate = $eventdate + DAYSECS;
@@ -129,19 +135,24 @@ function googlemeet_construct_events_data_for_add($googlemeet) {
             if ($sdate < $startweek + WEEKSECS) {
                 $dayinfo = usergetdate($sdate);
                 if (isset($googlemeet->days) && property_exists((object)$googlemeet->days, $wdaydesc[$dayinfo['wday']])) {
-                    $event = new stdClass();
-                    $event->googlemeetid = $googlemeet->id;
-                    $event->eventdate = make_timestamp(
+                    $eventtime = make_timestamp(
                         $dayinfo['year'],
                         $dayinfo['mon'],
                         $dayinfo['mday'],
                         $googlemeet->starthour,
                         $googlemeet->startminute
                     );
-                    $event->duration = $duration;
-                    $event->timemodified = time();
 
-                    $events[] = $event;
+                    // Only add event if it's not during a holiday period.
+                    if (!googlemeet_is_holiday($eventtime, $holidays)) {
+                        $event = new stdClass();
+                        $event->googlemeetid = $googlemeet->id;
+                        $event->eventdate = $eventtime;
+                        $event->duration = $duration;
+                        $event->timemodified = time();
+
+                        $events[] = $event;
+                    }
                 }
                 $sdate += DAYSECS;
             } else {

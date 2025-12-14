@@ -8,6 +8,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 
 - **Create Google Meet rooms** directly from Moodle without leaving the platform
 - **Schedule sessions** with support for recurring events (daily, weekly)
+- **Exclusion periods** to skip sessions during holidays (Christmas, Easter, etc.)
 - **Upcoming events cards** showing session status (Live, Starting soon, Scheduled)
 - **Recording management** with card-based UI for easy access to meeting recordings
 - **Google Drive integration** to sync and display recordings automatically
@@ -54,6 +55,7 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 ## Changes in this fork
 
 - Modernized codebase for Moodle 4.0+ compatibility
+- **Added exclusion periods** for recurring events (skip holidays)
 - Removed deprecated Ionic 3 mobile support
 - Removed deprecated `core-course-module-description` component
 - Replaced deprecated `notice()` and `insert_records()` functions

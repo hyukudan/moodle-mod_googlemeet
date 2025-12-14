@@ -43,3 +43,15 @@ $string['recording_hidden'] = 'Oculto para estudiantes';
 
 $string['sync_settings'] = 'Configuración de sincronización';
 $string['sync_help_title'] = 'Cómo funciona la sincronización';
+
+// Holiday/exclusion periods.
+$string['holidayperiods'] = 'Períodos de exclusión';
+$string['holidayperiods_help'] = 'Define períodos durante los cuales no se programarán eventos (ej. vacaciones de Navidad, Semana Santa). Los eventos que caigan en estos períodos serán omitidos.';
+$string['addholidayperiod'] = 'Añadir período de exclusión';
+$string['removeholidayperiod'] = 'Eliminar';
+$string['holidayname'] = 'Nombre (opcional)';
+$string['holidayname_placeholder'] = 'ej. Vacaciones de Navidad';
+$string['holidaystartdate'] = 'Fecha de inicio';
+$string['holidayenddate'] = 'Fecha de fin';
+$string['invalidholidayenddate'] = 'La fecha de fin de un período de exclusión no puede ser anterior a su fecha de inicio';
+$string['noholidayperiods'] = 'No hay períodos de exclusión definidos';

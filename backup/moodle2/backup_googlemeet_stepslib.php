@@ -77,6 +77,14 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timemodified'
         ]);
 
+        $holidays = new backup_nested_element('holidays');
+        $holiday = new backup_nested_element('holiday', ['id'], [
+            'name',
+            'startdate',
+            'enddate',
+            'timemodified'
+        ]);
+
         // Build the tree in the order needed for restore.
         $googlemeet->add_child($events);
         $events->add_child($event);
@@ -84,12 +92,17 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $googlemeet->add_child($recordings);
         $recordings->add_child($recording);
 
+        $googlemeet->add_child($holidays);
+        $holidays->add_child($holiday);
+
         // Define the source tables for the elements.
         $googlemeet->set_source_table('googlemeet', ['id' => backup::VAR_ACTIVITYID]);
 
         $event->set_source_table('googlemeet_events', ['googlemeetid' => backup::VAR_PARENTID]);
 
         $recording->set_source_table('googlemeet_recordings', ['googlemeetid' => backup::VAR_PARENTID]);
+
+        $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
 
         // Define id annotations.
 
