@@ -477,6 +477,155 @@
     height: 48px;
 }
 
+/* ===========================================
+   Sync Panel (Simplified)
+   =========================================== */
+
+.googlemeet-sync-container {
+    margin-top: 24px;
+}
+
+.googlemeet-sync-panel {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    max-width: 500px;
+}
+
+.googlemeet-sync-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.googlemeet-sync-status {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.googlemeet-sync-label {
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.googlemeet-sync-time {
+    font-weight: 600;
+    color: #333;
+}
+
+.googlemeet-sync-action .btn {
+    white-space: nowrap;
+}
+
+.googlemeet-sync-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0;
+    font-size: 0.85rem;
+    width: 100%;
+}
+
+.googlemeet-sync-warning .icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Collapsible details sections */
+.googlemeet-sync-details,
+.googlemeet-sync-help {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+.googlemeet-sync-details summary,
+.googlemeet-sync-help summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #666;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.googlemeet-sync-details summary:hover,
+.googlemeet-sync-help summary:hover {
+    color: #333;
+}
+
+.googlemeet-sync-details-content,
+.googlemeet-sync-help-content {
+    padding-top: 12px;
+}
+
+.googlemeet-sync-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.googlemeet-detail-label {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.googlemeet-detail-value {
+    font-size: 0.9rem;
+    color: #333;
+    word-break: break-all;
+}
+
+.googlemeet-sync-account {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #ddd;
+}
+
+.googlemeet-sync-help-content {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.googlemeet-sync-help-content p {
+    margin-bottom: 8px;
+}
+
+.googlemeet-sync-help-content ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+/* Login state */
+.googlemeet-sync-login {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.googlemeet-sync-login-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #666;
+}
+
+.googlemeet-sync-login-message .icon {
+    width: 18px;
+    height: 18px;
+}
+
 #googlemeet_recordings_table {
     position: relative;
     max-width: 900px;
