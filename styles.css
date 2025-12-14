@@ -83,13 +83,170 @@
     margin-left: -200px;
 }
 
-#googlemeet_upcoming_events span + span {
-    white-space: nowrap;
-    border-left: 1px solid #999;
-    padding-left: 4px;
+/* ===========================================
+   Upcoming Events Cards
+   =========================================== */
+
+.googlemeet-events-container {
+    margin: 24px 0;
 }
 
-#googlemeet_upcoming_events,
+.googlemeet-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.googlemeet-events-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.googlemeet-event-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 220px;
+    max-width: 300px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #ccc;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.googlemeet-event-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Status-based border colors */
+.googlemeet-event-live {
+    border-left-color: #d93025;
+    background: linear-gradient(135deg, #fff 0%, #fef7f6 100%);
+}
+
+.googlemeet-event-soon {
+    border-left-color: #f9ab00;
+    background: linear-gradient(135deg, #fff 0%, #fef9e7 100%);
+}
+
+.googlemeet-event-scheduled {
+    border-left-color: #1e8e3e;
+    background: linear-gradient(135deg, #fff 0%, #f1f9f3 100%);
+}
+
+/* Status badges */
+.googlemeet-event-status {
+    margin-bottom: 12px;
+}
+
+.googlemeet-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.googlemeet-badge-live {
+    background: #d93025;
+    color: #fff;
+}
+
+.googlemeet-badge-soon {
+    background: #f9ab00;
+    color: #333;
+}
+
+.googlemeet-badge-scheduled {
+    background: #e8f5e9;
+    color: #1e8e3e;
+}
+
+/* Pulse animation for live badge */
+.googlemeet-pulse {
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: googlemeet-pulse-animation 1.5s infinite;
+}
+
+@keyframes googlemeet-pulse-animation {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+/* Event details */
+.googlemeet-event-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.googlemeet-event-datetime {
+    flex: 1;
+}
+
+.googlemeet-event-date {
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.googlemeet-event-time {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.googlemeet-event-countdown {
+    font-size: 0.8rem;
+    color: #666;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.googlemeet-event-live .googlemeet-event-countdown {
+    color: #d93025;
+    font-weight: 500;
+}
+
+.googlemeet-event-soon .googlemeet-event-countdown {
+    color: #b36b00;
+    font-weight: 500;
+}
+
+/* No events state */
+.googlemeet-no-events {
+    padding: 24px;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    color: #666;
+}
+
+.googlemeet-no-events p {
+    margin: 0;
+}
+
+/* Legacy support - keeping old ID for any existing custom CSS */
+#googlemeet_upcoming_events {
+    margin: 20px 0;
+}
+
 #googlemeet_recordings {
     margin: 20px 0;
 }
@@ -206,5 +363,15 @@
 @media only screen and (max-width: 767px) {
     #googlemeet_auth-info {
         justify-content: center;
+    }
+
+    /* Responsive events cards */
+    .googlemeet-events-list {
+        flex-direction: column;
+    }
+
+    .googlemeet-event-card {
+        max-width: 100%;
+        min-width: auto;
     }
 }
