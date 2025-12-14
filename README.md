@@ -2,6 +2,8 @@
 
 The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms directly from Moodle and share meeting recordings stored in Google Drive with students.
 
+> **Note:** This is a fork of [ronefel/moodle-mod_googlemeet](https://github.com/ronefel/moodle-mod_googlemeet) with modernizations and improvements for Moodle 4.x.
+
 ## Features
 
 - **Create Google Meet rooms** directly from Moodle without leaving the platform
@@ -12,11 +14,12 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Visibility controls** for teachers to show/hide recordings from students
 - **Student notifications** before scheduled sessions
 - **Calendar integration** with Moodle calendar events
+- **Mobile app support** for Moodle mobile app (Ionic 5+)
 
 ## Requirements
 
-- Moodle 4.0+
-- PHP 7.4+
+- Moodle 4.0 or higher
+- PHP 7.4 or higher
 
 ## Installation
 
@@ -48,13 +51,33 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 3. Click "Sync with Google Drive" to fetch recordings
 4. Use the visibility toggle to show/hide recordings from students
 
+## Changes in this fork
+
+- Modernized codebase for Moodle 4.0+ compatibility
+- Removed deprecated Ionic 3 mobile support
+- Removed deprecated `core-course-module-description` component
+- Replaced deprecated `notice()` and `insert_records()` functions
+- Removed insecure `unserialize()` usage
+- Removed legacy logging system (now uses events)
+- Updated minimum requirements to Moodle 4.0
+- Fixed play button styling in recordings
+
 ## Security
 
 If you discover any security related issues, please email [ronefel@hotmail.com](mailto:ronefel@hotmail.com) instead of using the issue tracker.
 
-## License
+## Credits
 
-2020 Rone Santos <ronefel@hotmail.com>
+**Original author:**
+- Rone Santos <ronefel@hotmail.com> - [ronefel/moodle-mod_googlemeet](https://github.com/ronefel/moodle-mod_googlemeet)
+
+**Fork maintainer:**
+- [hyukudan](https://github.com/hyukudan)
+
+**Development assistance:**
+- Code modernization and improvements completed with the assistance of [Claude](https://claude.ai) (Anthropic)
+
+## License
 
 The GNU GENERAL PUBLIC LICENSE. Please see [License File](LICENSE.md) for more information.
 
