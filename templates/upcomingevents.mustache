@@ -29,8 +29,10 @@
         "islive": false,
         "issoon": true,
         "isscheduled": false,
+        "iscancelled": false,
         "status": "soon",
-        "timeinfo": "Starts in 25 min"
+        "timeinfo": "Starts in 25 min",
+        "cancelledreason": ""
       }
     ],
     "hasliveevent": false
@@ -44,25 +46,32 @@
       {{#upcomingevents}}
         <div class="googlemeet-event-card googlemeet-event-{{status}}">
           <div class="googlemeet-event-status">
-            {{#islive}}
-              <span class="googlemeet-badge googlemeet-badge-live">
-                <span class="googlemeet-pulse"></span>
-                {{# str }} event_status_live, mod_googlemeet {{/ str }}
+            {{#iscancelled}}
+              <span class="googlemeet-badge googlemeet-badge-cancelled">
+                {{# str }} event_status_cancelled, mod_googlemeet {{/ str }}
               </span>
-            {{/islive}}
-            {{#issoon}}
-              <span class="googlemeet-badge googlemeet-badge-soon">
-                {{# str }} event_status_soon, mod_googlemeet {{/ str }}
-              </span>
-            {{/issoon}}
-            {{#isscheduled}}
-              <span class="googlemeet-badge googlemeet-badge-scheduled">
-                {{# str }} event_status_scheduled, mod_googlemeet {{/ str }}
-              </span>
-            {{/isscheduled}}
+            {{/iscancelled}}
+            {{^iscancelled}}
+              {{#islive}}
+                <span class="googlemeet-badge googlemeet-badge-live">
+                  <span class="googlemeet-pulse"></span>
+                  {{# str }} event_status_live, mod_googlemeet {{/ str }}
+                </span>
+              {{/islive}}
+              {{#issoon}}
+                <span class="googlemeet-badge googlemeet-badge-soon">
+                  {{# str }} event_status_soon, mod_googlemeet {{/ str }}
+                </span>
+              {{/issoon}}
+              {{#isscheduled}}
+                <span class="googlemeet-badge googlemeet-badge-scheduled">
+                  {{# str }} event_status_scheduled, mod_googlemeet {{/ str }}
+                </span>
+              {{/isscheduled}}
+            {{/iscancelled}}
           </div>
 
-          <div class="googlemeet-event-details">
+          <div class="googlemeet-event-details{{#iscancelled}} googlemeet-event-cancelled-details{{/iscancelled}}">
             <div class="googlemeet-event-datetime">
               <div class="googlemeet-event-date">
                 {{#today}}
@@ -78,7 +87,14 @@
             </div>
 
             <div class="googlemeet-event-countdown">
-              {{timeinfo}}
+              {{#iscancelled}}
+                {{#cancelledreason}}
+                  <span class="googlemeet-cancelled-reason">{{cancelledreason}}</span>
+                {{/cancelledreason}}
+              {{/iscancelled}}
+              {{^iscancelled}}
+                {{timeinfo}}
+              {{/iscancelled}}
             </div>
           </div>
         </div>

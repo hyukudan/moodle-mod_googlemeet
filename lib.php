@@ -105,6 +105,9 @@ function googlemeet_add_instance($googlemeet, $mform = null) {
     // Save holiday periods.
     googlemeet_save_holidays($googlemeet);
 
+    // Save cancelled dates.
+    googlemeet_save_cancelled($googlemeet);
+
     $events = googlemeet_construct_events_data_for_add($googlemeet);
 
     googlemeet_set_events($googlemeet, $events);
@@ -153,6 +156,9 @@ function googlemeet_update_instance($googlemeet, $mform = null) {
     // Save holiday periods.
     googlemeet_save_holidays($googlemeet);
 
+    // Save cancelled dates.
+    googlemeet_save_cancelled($googlemeet);
+
     if (isset($googlemeet->days)) {
         $googlemeet->days = json_decode($googlemeet->days);
     }
@@ -182,6 +188,7 @@ function googlemeet_delete_instance($id) {
 
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
+    $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $id]);
 
     $DB->delete_records('googlemeet', ['id' => $id]);
 
@@ -440,6 +447,78 @@ function googlemeet_is_holiday($timestamp, $holidays) {
 
         if ($datestart >= $holidaystart && $datestart <= $holidayend) {
             return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Save cancelled dates for a googlemeet instance.
+ *
+ * @param object $googlemeet The googlemeet instance data from the form.
+ * @return void
+ */
+function googlemeet_save_cancelled($googlemeet) {
+    global $DB;
+
+    // Delete all existing cancelled dates for this instance.
+    $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $googlemeet->id]);
+
+    // Only save cancelled dates if recurrence is enabled.
+    if (empty($googlemeet->addmultiply) || empty($googlemeet->cancelled_repeats)) {
+        return;
+    }
+
+    // Save new cancelled dates.
+    for ($i = 0; $i < $googlemeet->cancelled_repeats; $i++) {
+        $datekeyarr = "cancelleddate";
+        $reasonkeyarr = "cancelledreason";
+
+        // Get data from the repeat elements (they come as arrays).
+        $cancelleddate = $googlemeet->{$datekeyarr}[$i] ?? null;
+        $reason = $googlemeet->{$reasonkeyarr}[$i] ?? '';
+
+        // Only save if date is set.
+        if ($cancelleddate) {
+            $cancelled = new stdClass();
+            $cancelled->googlemeetid = $googlemeet->id;
+            $cancelled->cancelleddate = $cancelleddate;
+            $cancelled->reason = $reason;
+            $cancelled->timemodified = time();
+
+            $DB->insert_record('googlemeet_cancelled', $cancelled);
+        }
+    }
+}
+
+/**
+ * Get cancelled dates for a googlemeet instance.
+ *
+ * @param int $googlemeetid The googlemeet instance ID.
+ * @return array Array of cancelled date objects.
+ */
+function googlemeet_get_cancelled($googlemeetid) {
+    global $DB;
+    return $DB->get_records('googlemeet_cancelled', ['googlemeetid' => $googlemeetid], 'cancelleddate ASC');
+}
+
+/**
+ * Check if a given date is in the cancelled list.
+ *
+ * @param int $timestamp The timestamp to check.
+ * @param array $cancelleddates Array of cancelled date objects.
+ * @return object|false The cancelled date object if found, false otherwise.
+ */
+function googlemeet_is_cancelled($timestamp, $cancelleddates) {
+    // Get start of day for the timestamp.
+    $datestart = strtotime('midnight', $timestamp);
+
+    foreach ($cancelleddates as $cancelled) {
+        $cancelledstart = strtotime('midnight', $cancelled->cancelleddate);
+
+        if ($datestart === $cancelledstart) {
+            return $cancelled;
         }
     }
 
