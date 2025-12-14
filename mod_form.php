@@ -202,14 +202,14 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             $mform->addElement('text', 'creatoremail', get_string('creatoremail', 'googlemeet'),
                 ['size' => '50', 'readonly' => true]
             );
-            $mform->setType('creatoremail', PARAM_RAW);
+            $mform->setType('creatoremail', PARAM_EMAIL);
         } else {
             $mform->addElement('text', 'url', get_string('roomurl', 'googlemeet'), ['size' => '50']);
             $mform->setType('url', PARAM_URL);
             $mform->addHelpButton('url', 'url', 'googlemeet');
 
             $mform->addElement('text', 'creatoremail', get_string('creatoremail', 'googlemeet'), ['size' => '50']);
-            $mform->setType('creatoremail', PARAM_RAW);
+            $mform->setType('creatoremail', PARAM_EMAIL);
             $mform->addHelpButton('creatoremail', 'creatoremail', 'googlemeet');
         }
 
