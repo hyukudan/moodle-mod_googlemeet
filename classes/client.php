@@ -146,6 +146,7 @@ class client {
 
         $logouturl = new moodle_url($PAGE->url);
         $logouturl->param('logout', true);
+        $logouturl->param('sesskey', sesskey());
 
         $img = html_writer::img('data:image/jpeg;base64,'.$userpicture, '');
         $out = html_writer::start_div('', ['id' => 'googlemeet_auth-info']);
