@@ -69,7 +69,12 @@ function googlemeet_print_heading($googlemeet, $cm, $course, $notused = false) {
 function googlemeet_print_intro($googlemeet, $cm, $course, $ignoresettings = false) {
     global $OUTPUT;
 
-    $options = empty($googlemeet->displayoptions) ? array() : unserialize($googlemeet->displayoptions);
+    $options = [];
+    if (!empty($googlemeet->displayoptions)) {
+        // Try JSON first (Moodle 3.9+), fall back to unserialize for older data.
+        $decoded = json_decode($googlemeet->displayoptions, true);
+        $options = ($decoded !== null) ? $decoded : (array) @unserialize($googlemeet->displayoptions);
+    }
     if ($ignoresettings || !empty($options['printintro'])) {
         if (trim(strip_tags($googlemeet->intro))) {
             echo $OUTPUT->box_start('mod_introbox', 'googlemeetintro');
