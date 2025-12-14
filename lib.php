@@ -102,6 +102,9 @@ function googlemeet_add_instance($googlemeet, $mform = null) {
         $googlemeet->days = json_decode($googlemeet->days, true);
     }
 
+    // Save holiday periods.
+    googlemeet_save_holidays($googlemeet);
+
     $events = googlemeet_construct_events_data_for_add($googlemeet);
 
     googlemeet_set_events($googlemeet, $events);
@@ -147,6 +150,9 @@ function googlemeet_update_instance($googlemeet, $mform = null) {
 
     $googlemeetupdated = $DB->update_record('googlemeet', $googlemeet);
 
+    // Save holiday periods.
+    googlemeet_save_holidays($googlemeet);
+
     if (isset($googlemeet->days)) {
         $googlemeet->days = json_decode($googlemeet->days);
     }
@@ -175,8 +181,9 @@ function googlemeet_delete_instance($id) {
     googlemeet_delete_events($id);
 
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
+    $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
 
-    $DB->delete_records('googlemeet', array('id' => $id));
+    $DB->delete_records('googlemeet', ['id' => $id]);
 
     return true;
 }
@@ -361,4 +368,80 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     return googlemeet_list_recordings(['googlemeetid' => $googlemeetid]);
+}
+
+/**
+ * Save holiday/exclusion periods for a googlemeet instance.
+ *
+ * @param object $googlemeet The googlemeet instance data from the form.
+ * @return void
+ */
+function googlemeet_save_holidays($googlemeet) {
+    global $DB;
+
+    // Delete all existing holiday periods for this instance.
+    $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $googlemeet->id]);
+
+    // Only save holidays if recurrence is enabled.
+    if (empty($googlemeet->addmultiply) || empty($googlemeet->holiday_repeats)) {
+        return;
+    }
+
+    // Save new holiday periods.
+    for ($i = 0; $i < $googlemeet->holiday_repeats; $i++) {
+        $startkeyarr = "holidaystartdate";
+        $endkeyarr = "holidayenddate";
+        $namekeyarr = "holidayname";
+
+        // Get data from the repeat elements (they come as arrays).
+        $startdate = $googlemeet->{$startkeyarr}[$i] ?? null;
+        $enddate = $googlemeet->{$endkeyarr}[$i] ?? null;
+        $name = $googlemeet->{$namekeyarr}[$i] ?? '';
+
+        // Only save if both dates are set and valid.
+        if ($startdate && $enddate && $enddate >= $startdate) {
+            $holiday = new stdClass();
+            $holiday->googlemeetid = $googlemeet->id;
+            $holiday->name = $name;
+            $holiday->startdate = $startdate;
+            $holiday->enddate = $enddate;
+            $holiday->timemodified = time();
+
+            $DB->insert_record('googlemeet_holidays', $holiday);
+        }
+    }
+}
+
+/**
+ * Get holiday/exclusion periods for a googlemeet instance.
+ *
+ * @param int $googlemeetid The googlemeet instance ID.
+ * @return array Array of holiday period objects.
+ */
+function googlemeet_get_holidays($googlemeetid) {
+    global $DB;
+    return $DB->get_records('googlemeet_holidays', ['googlemeetid' => $googlemeetid], 'startdate ASC');
+}
+
+/**
+ * Check if a given date falls within any holiday period.
+ *
+ * @param int $timestamp The timestamp to check.
+ * @param array $holidays Array of holiday period objects.
+ * @return bool True if the date is within a holiday period.
+ */
+function googlemeet_is_holiday($timestamp, $holidays) {
+    // Get start of day for the timestamp.
+    $datestart = strtotime('midnight', $timestamp);
+
+    foreach ($holidays as $holiday) {
+        $holidaystart = strtotime('midnight', $holiday->startdate);
+        $holidayend = strtotime('midnight', $holiday->enddate);
+
+        if ($datestart >= $holidaystart && $datestart <= $holidayend) {
+            return true;
+        }
+    }
+
+    return false;
 }

@@ -45,6 +45,9 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $paths[] = new restore_path_element('googlemeet_recording',
             '/activity/googlemeet/recordings/recording');
 
+        $paths[] = new restore_path_element('googlemeet_holiday',
+            '/activity/googlemeet/holidays/holiday');
+
         return $this->prepare_activity_structure($paths);
     }
 
@@ -110,6 +113,27 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
 
         $newitemid = $DB->insert_record('googlemeet_recordings', $data);
         $this->set_mapping('googlemeet_recording', $oldid, $newitemid);
+    }
+
+    /**
+     * Process a holiday restore.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_holiday($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        $data->googlemeetid = $this->get_new_parentid('googlemeet');
+        $data->startdate = $this->apply_date_offset($data->startdate);
+        $data->enddate = $this->apply_date_offset($data->enddate);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('googlemeet_holidays', $data);
+        $this->set_mapping('googlemeet_holiday', $oldid, $newitemid);
     }
 
     /**
