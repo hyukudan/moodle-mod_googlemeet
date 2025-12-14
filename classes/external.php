@@ -108,9 +108,9 @@ class mod_googlemeet_external extends external_api {
 
         foreach ($files as $file) {
             if (in_array($file['recordingId'], $recordingids, true)) {
-                array_push($updaterecordings, $file);
+                $updaterecordings[] = $file;
             } else {
-                array_push($insertrecordings, $file);
+                $insertrecordings[] = $file;
             }
         }
 
@@ -145,8 +145,6 @@ class mod_googlemeet_external extends external_api {
         }
 
         if ($insertrecordings) {
-            $recordings = [];
-
             foreach ($insertrecordings as $insertrecording) {
                 $recording = new stdClass();
                 $recording->googlemeetid = $googlemeetid;
@@ -157,10 +155,8 @@ class mod_googlemeet_external extends external_api {
                 $recording->webviewlink = $insertrecording['webViewLink'];
                 $recording->timemodified = time();
 
-                array_push($recordings, $recording);
+                $DB->insert_record('googlemeet_recordings', $recording);
             }
-
-            $DB->insert_records('googlemeet_recordings', $recordings);
 
             $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
             $googlemeetrecord->lastsync = time();

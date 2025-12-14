@@ -28,18 +28,30 @@ require_once(__DIR__.'/lib.php');
 
 $id = required_param('id', PARAM_INT);
 
-$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
+$course = $DB->get_record('course', ['id' => $id], '*', MUST_EXIST);
 require_course_login($course);
 
 $coursecontext = context_course::instance($course->id);
 
-$event = \mod_googlemeet\event\course_module_instance_list_viewed::create(array(
+$event = \mod_googlemeet\event\course_module_instance_list_viewed::create([
     'context' => context_course::instance($course->id)
-));
+]);
 $event->add_record_snapshot('course', $course);
 $event->trigger();
 
-$PAGE->set_url('/mod/googlemeet/index.php', array('id' => $id));
+// Check for instances before outputting anything.
+$googlemeets = get_all_instances_in_course('googlemeet', $course);
+
+if (empty($googlemeets)) {
+    redirect(
+        new moodle_url('/course/view.php', ['id' => $course->id]),
+        get_string('nonewmodules', 'mod_googlemeet'),
+        null,
+        \core\output\notification::NOTIFY_INFO
+    );
+}
+
+$PAGE->set_url('/mod/googlemeet/index.php', ['id' => $id]);
 $PAGE->set_title(format_string($course->fullname));
 $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($coursecontext);
@@ -49,12 +61,6 @@ echo $OUTPUT->header();
 $modulenameplural = get_string('modulenameplural', 'mod_googlemeet');
 echo $OUTPUT->heading($modulenameplural);
 
-$googlemeets = get_all_instances_in_course('googlemeet', $course);
-
-if (empty($googlemeets)) {
-    notice(get_string('nonewmodules', 'mod_googlemeet'), new moodle_url('/course/view.php', array('id' => $course->id)));
-}
-
 $usesections = course_format_uses_sections($course->format);
 
 $table = new html_table();
@@ -62,30 +68,29 @@ $table->attributes['class'] = 'generaltable mod_index';
 
 if ($usesections) {
     $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head = array($strsectionname, get_string('name'));
-    $table->align = array('center', 'left');
+    $table->head = [$strsectionname, get_string('name')];
+    $table->align = ['center', 'left'];
 } else {
-    $table->head = array(get_string('name'));
-    $table->align = array('left', 'left', 'left');
+    $table->head = [get_string('name')];
+    $table->align = ['left', 'left', 'left'];
 }
 
-$currentsection = '';
 foreach ($googlemeets as $googlemeet) {
     if (!$googlemeet->visible) {
         $link = html_writer::link(
-            new moodle_url('/mod/googlemeet/view.php', array('id' => $googlemeet->coursemodule)),
+            new moodle_url('/mod/googlemeet/view.php', ['id' => $googlemeet->coursemodule]),
             format_string($googlemeet->name, true),
-            array('class' => 'dimmed'));
+            ['class' => 'dimmed']);
     } else {
         $link = html_writer::link(
-            new moodle_url('/mod/googlemeet/view.php', array('id' => $googlemeet->coursemodule)),
+            new moodle_url('/mod/googlemeet/view.php', ['id' => $googlemeet->coursemodule]),
             format_string($googlemeet->name, true));
     }
 
     if ($usesections) {
-        $table->data[] = array($googlemeet->section, $link);
+        $table->data[] = [$googlemeet->section, $link];
     } else {
-        $table->data[] = array($link);
+        $table->data[] = [$link];
     }
 }
 
