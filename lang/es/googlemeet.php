@@ -65,3 +65,7 @@ $string['cancelleddate'] = 'Fecha';
 $string['cancelledreason'] = 'Motivo (opcional)';
 $string['cancelledreason_placeholder'] = 'ej. Enfermedad del profesor';
 $string['event_status_cancelled'] = 'Cancelada';
+
+// Max upcoming events.
+$string['maxupcomingevents'] = 'Máximo de próximos eventos';
+$string['maxupcomingevents_help'] = 'Selecciona el número máximo de próximos eventos a mostrar en la página de la actividad.';
