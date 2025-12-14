@@ -309,6 +309,10 @@ function googlemeet_has_recording($googlemeetid) {
 function googlemeet_get_users_to_notify($eventid) {
     global $DB;
 
+    // Get the student role ID dynamically instead of hardcoding.
+    $studentrole = $DB->get_record('role', ['shortname' => 'student'], 'id');
+    $studentroleid = $studentrole ? $studentrole->id : 5;
+
     $sql = "SELECT DISTINCT
                    u.*
               FROM {googlemeet_events} me
@@ -323,15 +327,15 @@ function googlemeet_get_users_to_notify($eventid) {
         INNER JOIN {context} ctx
                 ON ctx.instanceid = c.id
         INNER JOIN {role_assignments} ra
-                ON (ra.contextid = ctx.id AND ra.roleid = 5)
+                ON (ra.contextid = ctx.id AND ra.roleid = :roleid)
         INNER JOIN {user} u
                 ON u.id = ra.userid
-             WHERE me.id = {$eventid}
+             WHERE me.id = :eventid
                AND (SELECT count(*) = 0
                       FROM {googlemeet_notify_done} nd
                      WHERE nd.eventid = me.id AND nd.userid = u.id)";
 
-    return $DB->get_records_sql($sql);
+    return $DB->get_records_sql($sql, ['eventid' => $eventid, 'roleid' => $studentroleid]);
 }
 
 /**
@@ -361,10 +365,10 @@ function googlemeet_get_future_events() {
                 ON (c.id = cm.course AND c.visible = 1)
         INNER JOIN {modules} md
                 ON (md.id = cm.module AND md.name = 'googlemeet')
-             WHERE {$now} BETWEEN me.eventdate - m.minutesbefore * 60 AND me.eventdate
+             WHERE :now BETWEEN me.eventdate - m.minutesbefore * 60 AND me.eventdate
                AND m.notify = 1";
 
-    return $DB->get_records_sql($sql);
+    return $DB->get_records_sql($sql, ['now' => $now]);
 }
 
 /**
@@ -430,9 +434,9 @@ function googlemeet_remove_notify_done_from_old_events() {
 
     $sql = "SELECT id
               FROM {googlemeet_events}
-             WHERE eventdate < {$now}";
+             WHERE eventdate < :now";
 
-    $oldevents = $DB->get_records_sql($sql);
+    $oldevents = $DB->get_records_sql($sql, ['now' => $now]);
 
     foreach ($oldevents as $oldevent) {
         $DB->delete_records('googlemeet_notify_done', ['eventid' => $oldevent->id]);
