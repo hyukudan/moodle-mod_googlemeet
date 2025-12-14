@@ -31,6 +31,7 @@
         "createdtimeformatted": "Sunday, 23 April 2023, 1:47 PM"
       }
     ],
+    "hasrecordings": true,
     "coursemoduleid": 1919,
     "hascapability": 1
   }
@@ -38,9 +39,9 @@
 <div id="googlemeet_recordings_table" class="googlemeet-recordings-container">
   <h4 class="googlemeet-section-title">{{# str }} recordings, mod_googlemeet {{/ str }}</h4>
 
-  {{#recordings}}
-    <div class="googlemeet-recordings-list">
-      {{#recordings}}
+  {{#hasrecordings}}
+  <div class="googlemeet-recordings-list">
+    {{#recordings}}
         <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}}" data-recordingid="{{id}}">
           {{^visible}}
             <div class="googlemeet-recording-hidden-badge">
@@ -84,18 +85,18 @@
             {{/hascapability}}
           </div>
         </div>
-      {{/recordings}}
-    </div>
-  {{/recordings}}
+    {{/recordings}}
+  </div>
+  {{/hasrecordings}}
 
-  {{^recordings}}
+  {{^hasrecordings}}
     <div class="googlemeet-no-recordings">
       <div class="googlemeet-no-recordings-icon">
         {{# pix }} i/empty, core {{/ pix }}
       </div>
       <p>{{# str }} thereisnorecordingtoshow, mod_googlemeet {{/ str }}</p>
     </div>
-  {{/recordings}}
+  {{/hasrecordings}}
 
   <div id="googlemeet_syncimg" class="googlemeet-loading-overlay">
     {{# pix }} i/processing64, googlemeet, {{# str }} loading, mod_googlemeet {{/ str }} {{/ pix }}
