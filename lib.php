@@ -261,8 +261,7 @@ function googlemeet_list_recordings($params) {
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
         $recording->createdtimeformatted = userdate($recording->createdtime);
-
-        array_push($formattedrecordings, $recording);
+        $formattedrecordings[] = $recording;
     }
 
     return $formattedrecordings;
@@ -304,9 +303,9 @@ function sync_recordings($googlemeetid, $files) {
     foreach ($files as $file) {
         if (!isset($file->unprocessed)) {
             if (in_array($file->recordingId, $recordingids, true)) {
-                array_push($updaterecordings, $file);
+                $updaterecordings[] = $file;
             } else {
-                array_push($insertrecordings, $file);
+                $insertrecordings[] = $file;
             }
         }
     }
@@ -342,8 +341,6 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     if ($insertrecordings) {
-        $recordings = [];
-
         foreach ($insertrecordings as $insertrecording) {
             $recording = new stdClass();
             $recording->googlemeetid = $googlemeetid;
@@ -354,10 +351,8 @@ function sync_recordings($googlemeetid, $files) {
             $recording->webviewlink = $insertrecording->webViewLink;
             $recording->timemodified = time();
 
-            array_push($recordings, $recording);
+            $DB->insert_record('googlemeet_recordings', $recording);
         }
-
-        $DB->insert_records('googlemeet_recordings', $recordings);
 
         $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
         $googlemeetrecord->lastsync = time();
