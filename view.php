@@ -31,13 +31,14 @@ require_once(__DIR__ . '/locallib.php');
 $config = get_config('googlemeet');
 
 $id = optional_param('id', 0, PARAM_INT);
+$g = optional_param('g', 0, PARAM_INT);
 
 if ($id) {
     $cm = get_coursemodule_from_id('googlemeet', $id, 0, false, MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $googlemeet = $DB->get_record('googlemeet', array('id' => $cm->instance), '*', MUST_EXIST);
 } else if ($g) {
-    $googlemeet = $DB->get_record('googlemeet', array('id' => $n), '*', MUST_EXIST);
+    $googlemeet = $DB->get_record('googlemeet', array('id' => $g), '*', MUST_EXIST);
     $course = $DB->get_record('course', array('id' => $googlemeet->course), '*', MUST_EXIST);
     $cm = get_coursemodule_from_instance('googlemeet', $googlemeet->id, $course->id, false, MUST_EXIST);
 } else {
@@ -54,11 +55,11 @@ $PAGE->set_context($context);
 if (has_capability('mod/googlemeet:editrecording', $context)) {
     $client = new client();
     $logout = optional_param('logout', 0, PARAM_BOOL);
-    if ($logout) {
+    if ($logout && confirm_sesskey()) {
         $client->logout();
     }
     $sync = optional_param('sync', 0, PARAM_BOOL);
-    if ($sync) {
+    if ($sync && confirm_sesskey()) {
         $client->syncrecordings($googlemeet);
     }
 }
