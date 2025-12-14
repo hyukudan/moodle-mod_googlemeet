@@ -138,6 +138,8 @@ $string['strftimedmy'] = '%a. %d %b. %Y';
 $string['strftimedmyhm'] = '%a. %d %b. %Y %H:%M';
 $string['strftimehm'] = '%H:%M';
 $string['syncwithgoogledrive'] = 'Sync with Google Drive';
+$string['sync_settings'] = 'Sync settings';
+$string['sync_help_title'] = 'How sync works';
 $string['sync_info'] = 'Wait at least 10 minutes for the recording file to be generated and saved in "My Drive > Meet Recordings" of the organizer.
 <p></p>
 To remove a recording first delete the recording file from Google Drive and after click the sync button above.
