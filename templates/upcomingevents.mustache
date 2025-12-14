@@ -15,48 +15,80 @@
   along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 }}
 {{!
-  @template mod_googlemeet/recordingstable
+  @template mod_googlemeet/upcomingevents
 
   Example context (json):
   {
-    "hasupcomingevents": 1,
+    "hasupcomingevents": true,
     "upcomingevents": [
       {
-        "today": false,
-        "startdate": "Tue. 17 Nov."
+        "today": true,
+        "startdate": "Tue. 17 Nov. 2024",
+        "starttime": "09:00",
+        "endtime": "10:00",
+        "islive": false,
+        "issoon": true,
+        "isscheduled": false,
+        "status": "soon",
+        "timeinfo": "Starts in 25 min"
       }
     ],
-    "starttime": "09:00",
-    "endtime": "10:00",
-    "duration": 3600
+    "hasliveevent": false
   }
 }}
-{{#hasupcomingevents}}
-<div id="googlemeet_upcoming_events">
-  <h4>{{# str }} upcomingevents, mod_googlemeet {{/ str }}</h4>
-  <div>
-    {{#upcomingevents}}
-      <span>
-        {{#today}}
-          {{#str}} today, googlemeet {{/str}},
-        {{/today}}
-        {{startdate}}
-      </span>
-    {{/upcomingevents}}
-    {{#duration}}
-      <span>
-        {{#str}} from, googlemeet {{/str}}
-        {{starttime}}
-        {{#str}} to, googlemeet {{/str}}
-        {{endtime}}
-      </span>
-    {{/duration}}
-    {{^duration}}
-        <span>
-        {{#str}} at, googlemeet {{/str}}
-        {{starttime}}
-      </span>
-    {{/duration}}
-  </div>
+<div id="googlemeet_upcoming_events" class="googlemeet-events-container">
+  <h4 class="googlemeet-section-title">{{# str }} upcomingevents, mod_googlemeet {{/ str }}</h4>
+
+  {{#hasupcomingevents}}
+    <div class="googlemeet-events-list">
+      {{#upcomingevents}}
+        <div class="googlemeet-event-card googlemeet-event-{{status}}">
+          <div class="googlemeet-event-status">
+            {{#islive}}
+              <span class="googlemeet-badge googlemeet-badge-live">
+                <span class="googlemeet-pulse"></span>
+                {{# str }} event_status_live, mod_googlemeet {{/ str }}
+              </span>
+            {{/islive}}
+            {{#issoon}}
+              <span class="googlemeet-badge googlemeet-badge-soon">
+                {{# str }} event_status_soon, mod_googlemeet {{/ str }}
+              </span>
+            {{/issoon}}
+            {{#isscheduled}}
+              <span class="googlemeet-badge googlemeet-badge-scheduled">
+                {{# str }} event_status_scheduled, mod_googlemeet {{/ str }}
+              </span>
+            {{/isscheduled}}
+          </div>
+
+          <div class="googlemeet-event-details">
+            <div class="googlemeet-event-datetime">
+              <div class="googlemeet-event-date">
+                {{#today}}
+                  <strong>{{# str }} today, mod_googlemeet {{/ str }}</strong>
+                {{/today}}
+                {{^today}}
+                  {{startdate}}
+                {{/today}}
+              </div>
+              <div class="googlemeet-event-time">
+                {{starttime}} - {{endtime}}
+              </div>
+            </div>
+
+            <div class="googlemeet-event-countdown">
+              {{timeinfo}}
+            </div>
+          </div>
+        </div>
+      {{/upcomingevents}}
+    </div>
+  {{/hasupcomingevents}}
+
+  {{^hasupcomingevents}}
+    <div class="googlemeet-no-events">
+      <p>{{# str }} event_no_upcoming, mod_googlemeet {{/ str }}</p>
+    </div>
+  {{/hasupcomingevents}}
 </div>
-{{/hasupcomingevents}}
