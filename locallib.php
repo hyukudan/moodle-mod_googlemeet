@@ -233,13 +233,14 @@ function googlemeet_print_recordings($googlemeet, $cm, $context) {
 
     $html = '<div id="googlemeet_recordings" class="googlemeet_recordings">';
 
-    $recordings = googlemeet_list_recordings($params);
-
     // Check if AI features are enabled.
     $aienabled = (bool) get_config('googlemeet', 'enableai');
     $apikey = get_config('googlemeet', 'geminiapikey');
     $aienabled = $aienabled && !empty($apikey);
     $cangenerateai = $aienabled && has_capability('mod/googlemeet:generateai', $context);
+
+    // Include AI data when fetching recordings if AI is enabled.
+    $recordings = googlemeet_list_recordings($params, $aienabled);
 
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
