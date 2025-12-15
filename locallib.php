@@ -235,11 +235,19 @@ function googlemeet_print_recordings($googlemeet, $cm, $context) {
 
     $recordings = googlemeet_list_recordings($params);
 
+    // Check if AI features are enabled.
+    $aienabled = (bool) get_config('googlemeet', 'enableai');
+    $apikey = get_config('googlemeet', 'geminiapikey');
+    $aienabled = $aienabled && !empty($apikey);
+    $cangenerateai = $aienabled && has_capability('mod/googlemeet:generateai', $context);
+
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
         'hasrecordings' => !empty($recordings),
         'coursemoduleid' => $cm->id,
-        'hascapability' => $hascapability
+        'hascapability' => $hascapability,
+        'aienabled' => $aienabled,
+        'cangenerateai' => $cangenerateai
     ]);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
