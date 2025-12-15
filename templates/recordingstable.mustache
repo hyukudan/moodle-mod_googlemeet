@@ -489,9 +489,12 @@ require([
             displayAiAnalysis(recordingid, response, card, content);
           } else if (response.status === 'failed') {
             showAiError(recordingid, response.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
+          } else if (response.status === 'processing') {
+            // Analysis is being processed in background
+            showProcessingStatus(recordingid, content, generateBtn);
           } else {
-            // Status is processing or pending - show message
-            showAiError(recordingid, 'Status: ' + response.status + '. Please try again in a moment.');
+            // Status is pending - show message
+            showAiError(recordingid, '{{# str }} ai_status_pending, mod_googlemeet {{/ str }}');
           }
         }).fail(function(ex) {
           clearInterval(progressInterval);
@@ -659,7 +662,80 @@ require([
         content.find('.googlemeet-ai-nodata').hide();
         content.find('.googlemeet-ai-loading').hide();
         content.find('.googlemeet-ai-result').hide();
+        content.find('.googlemeet-ai-processing').hide();
         content.find('.googlemeet-ai-error').show().find('.alert').text(message);
+      }
+
+      function showProcessingStatus(recordingid, content, generateBtn) {
+        content.find('.googlemeet-ai-nodata').hide();
+        content.find('.googlemeet-ai-loading').hide();
+        content.find('.googlemeet-ai-result').hide();
+        content.find('.googlemeet-ai-error').hide();
+
+        // Create or show processing message
+        var processingEl = content.find('.googlemeet-ai-processing');
+        if (!processingEl.length) {
+          processingEl = $('<div class="googlemeet-ai-processing alert alert-info">' +
+            '<div class="d-flex align-items-center">' +
+              '<div class="spinner-border spinner-border-sm mr-2" role="status"></div>' +
+              '<div>' +
+                '<strong>{{# str }} ai_processing_background, mod_googlemeet {{/ str }}</strong><br>' +
+                '<small>{{# str }} ai_processing_background_hint, mod_googlemeet {{/ str }}</small>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn btn-sm btn-outline-primary mt-2 googlemeet-ai-refresh-btn" data-id="' + recordingid + '">' +
+              '{{# str }} ai_check_status, mod_googlemeet {{/ str }}' +
+            '</button>' +
+          '</div>');
+          content.append(processingEl);
+
+          // Bind refresh button
+          processingEl.find('.googlemeet-ai-refresh-btn').on('click', function() {
+            checkAnalysisStatus(recordingid);
+          });
+        }
+        processingEl.show();
+
+        generateBtn.prop('disabled', true).text('{{# str }} ai_status_processing, mod_googlemeet {{/ str }}');
+
+        // Start auto-refresh every 10 seconds
+        var refreshInterval = setInterval(function() {
+          checkAnalysisStatus(recordingid, function(status) {
+            if (status !== 'processing') {
+              clearInterval(refreshInterval);
+            }
+          });
+        }, 10000);
+      }
+
+      function checkAnalysisStatus(recordingid, callback) {
+        Ajax.call([{
+          methodname: 'mod_googlemeet_get_ai_analysis',
+          args: {
+            recordingid: recordingid,
+            coursemoduleid: {{ coursemoduleid }}
+          }
+        }])[0].then(function(response) {
+          var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
+          var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
+          var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
+
+          if (response.found && response.status === 'completed') {
+            content.find('.googlemeet-ai-processing').hide();
+            generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
+            displayAiAnalysis(recordingid, response, card, content);
+          } else if (response.found && response.status === 'failed') {
+            content.find('.googlemeet-ai-processing').hide();
+            generateBtn.prop('disabled', false).text('{{# str }} ai_generate, mod_googlemeet {{/ str }}');
+            showAiError(recordingid, response.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
+          }
+          // Still processing - keep waiting
+
+          if (callback) callback(response.status);
+        }).fail(function(ex) {
+          console.error('Failed to check status:', ex);
+          if (callback) callback('error');
+        });
       }
 
       function formatText(text) {
