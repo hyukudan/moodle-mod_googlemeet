@@ -234,13 +234,6 @@ class process_video_analysis extends adhoc_task {
         // Clean up old temp files first (older than 1 hour).
         $this->cleanup_old_temp_files($tempdir, 3600);
 
-        // Check available disk space (require at least 3GB free).
-        $freespace = disk_free_space($tempdir);
-        if ($freespace !== false && $freespace < 3221225472) { // 3GB in bytes.
-            throw new \moodle_exception('ai_error', 'googlemeet', '',
-                'Insufficient disk space for video download. Need at least 3GB free.');
-        }
-
         // Generate temp filename.
         $ext = pathinfo($filename, PATHINFO_EXTENSION) ?: 'mp4';
         $tempfile = $tempdir . '/' . uniqid('video_') . '.' . $ext;
@@ -251,7 +244,42 @@ class process_video_analysis extends adhoc_task {
 
         mtrace("Attempting download from: {$downloadurl}");
 
+        // First, try to get file size with a HEAD request.
         $curl = new \curl();
+        $curl->setopt([
+            'CURLOPT_NOBODY' => true,
+            'CURLOPT_FOLLOWLOCATION' => true,
+            'CURLOPT_MAXREDIRS' => 5,
+            'CURLOPT_TIMEOUT' => 30,
+        ]);
+        $curl->head($downloadurl);
+        $info = $curl->get_info();
+        $expectedsize = isset($info['download_content_length']) ? (int)$info['download_content_length'] : 0;
+
+        // Check disk space if we know the file size.
+        if ($expectedsize > 0) {
+            mtrace("Expected file size: {$expectedsize} bytes");
+
+            // Need file size + 10% buffer.
+            $requiredspace = (int)($expectedsize * 1.1);
+            $freespace = disk_free_space($tempdir);
+
+            if ($freespace !== false && $freespace < $requiredspace) {
+                $freemb = round($freespace / 1048576);
+                $needmb = round($requiredspace / 1048576);
+                throw new \moodle_exception('ai_error', 'googlemeet', '',
+                    "Insufficient disk space. Need {$needmb}MB but only {$freemb}MB available.");
+            }
+        } else {
+            // Unknown file size - check for minimum 500MB free as safety.
+            $freespace = disk_free_space($tempdir);
+            if ($freespace !== false && $freespace < 524288000) { // 500MB.
+                throw new \moodle_exception('ai_error', 'googlemeet', '',
+                    'Insufficient disk space. Need at least 500MB free for video download.');
+            }
+        }
+
+        $curl2 = new \curl();
         $options = [
             'CURLOPT_TIMEOUT' => 1800,        // 30 minutes for large files.
             'CURLOPT_CONNECTTIMEOUT' => 60,
@@ -260,12 +288,12 @@ class process_video_analysis extends adhoc_task {
         ];
 
         // First request to get the download.
-        $response = $curl->download_one($downloadurl, null, $options);
+        $response = $curl2->download_one($downloadurl, null, $options);
 
         // Check if we got a virus scan warning page (for large files).
         if ($response === true && file_exists($tempfile) === false) {
             // We need to handle the confirmation page.
-            $response = $curl->get($downloadurl);
+            $response = $curl2->get($downloadurl);
 
             // Look for the confirm token.
             if (preg_match('/confirm=([^&]+)/', $response, $matches)) {
