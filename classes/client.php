@@ -191,15 +191,15 @@ class client {
             $client = $this->get_user_oauth_client();
             $client->log_out();
             $js = <<<EOD
-                <html>
-                <head>
-                    <script type="text/javascript">
-                        window.location = '{$url}'.replaceAll('&amp;','&')
-                    </script>
-                </head>
-                <body></body>
-                </html>
-            EOD;
+<html>
+<head>
+    <script type="text/javascript">
+        window.location = '{$url}'.replaceAll('&amp;','&')
+    </script>
+</head>
+<body></body>
+</html>
+EOD;
             die($js);
         }
     }
@@ -354,6 +354,10 @@ class client {
 
             $recordings = $recordingresponse->files;
 
+            // Filter recordings more strictly to avoid duplicates across activities.
+            // The Drive API "contains" filter is broad, so we do additional validation here.
+            $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name);
+
             if ($recordings && count($recordings) > 0) {
                 for ($i = 0; $i < count($recordings); $i++) {
                     $recording = $recordings[$i];
@@ -401,17 +405,77 @@ class client {
 
             $url = new moodle_url($PAGE->url);
             $js = <<<EOD
-                <html>
-                <head>
-                    <script type="text/javascript">
-                        window.location = '{$url}'.replaceAll('&amp;','&')
-                    </script>
-                </head>
-                <body></body>
-                </html>
-            EOD;
+<html>
+<head>
+    <script type="text/javascript">
+        window.location = '{$url}'.replaceAll('&amp;','&')
+    </script>
+</head>
+<body></body>
+</html>
+EOD;
             die($js);
         }
+    }
+
+    /**
+     * Filter recordings to match only those belonging to this specific activity.
+     *
+     * The Drive API "contains" filter is broad and may return recordings from
+     * other activities with similar names. This method applies stricter filtering:
+     * 1. Recording name must start with the activity name (case-insensitive)
+     * 2. Or recording name must contain the exact meeting code
+     * 3. Recording must not already exist in another activity (avoid duplicates)
+     *
+     * @param array $recordings Array of recording objects from Drive API
+     * @param string $meetingcode The meeting code (e.g., "abc-defg-hij")
+     * @param string $activityname The activity name in Moodle
+     * @return array Filtered array of recordings
+     */
+    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname) {
+        global $DB;
+
+        if (empty($recordings)) {
+            return [];
+        }
+
+        $filtered = [];
+        $activitynamelower = core_text::strtolower(trim($activityname));
+
+        foreach ($recordings as $recording) {
+            $recordingname = $recording->name ?? '';
+            $recordingnamelower = core_text::strtolower($recordingname);
+
+            // Check if this recording already exists in ANY activity (global duplicate check).
+            $existingrecording = $DB->get_record('googlemeet_recordings', ['recordingid' => $recording->id]);
+            if ($existingrecording) {
+                // Skip this recording - it's already associated with another activity.
+                continue;
+            }
+
+            // Check 1: Recording name contains the exact meeting code.
+            if (!empty($meetingcode) && strpos($recordingnamelower, core_text::strtolower($meetingcode)) !== false) {
+                $filtered[] = $recording;
+                continue;
+            }
+
+            // Check 2: Recording name starts with the activity name.
+            // This handles filenames like "Activity Name (2024-01-15 10:00).mp4".
+            if (!empty($activitynamelower) && strpos($recordingnamelower, $activitynamelower) === 0) {
+                $filtered[] = $recording;
+                continue;
+            }
+
+            // Check 3: Recording name contains the full activity name followed by space or parenthesis.
+            // This handles cases where the name might have a prefix or different format.
+            $pattern = preg_quote($activitynamelower, '/');
+            if (preg_match('/\b' . $pattern . '\s*[\(\-]/i', $recordingnamelower)) {
+                $filtered[] = $recording;
+                continue;
+            }
+        }
+
+        return $filtered;
     }
 
     /**

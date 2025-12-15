@@ -193,5 +193,19 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121502, 'googlemeet');
     }
 
+    if ($oldversion < 2025121503) {
+
+        // Increase eventid field length from 100 to 255 chars.
+        // Google Calendar Event IDs can be up to 1024 chars.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('eventid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'timemodified');
+
+        // Change field precision.
+        $dbman->change_field_precision($table, $field);
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121503, 'googlemeet');
+    }
+
     return true;
 }

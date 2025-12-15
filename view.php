@@ -77,8 +77,9 @@ unset($url);
 googlemeet_view($googlemeet, $course, $cm, $context);
 
 googlemeet_print_header($googlemeet, $cm, $course);
-googlemeet_print_heading($googlemeet, $cm, $course, true);
-googlemeet_print_intro($googlemeet, $cm, $course, true);
+// Note: In Moodle 4.0+, the activity header automatically displays
+// the title and description, so we don't call googlemeet_print_heading
+// or googlemeet_print_intro to avoid duplication.
 
 echo html_writer::link($googlemeet->url,
     get_string('entertheroom', 'googlemeet'),
