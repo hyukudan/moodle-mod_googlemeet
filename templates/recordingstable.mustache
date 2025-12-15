@@ -446,12 +446,21 @@ require([
         var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
         var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
         var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
+        var loadingEl = content.find('.googlemeet-ai-loading');
 
         content.find('.googlemeet-ai-nodata').hide();
         content.find('.googlemeet-ai-result').hide();
         content.find('.googlemeet-ai-error').hide();
-        content.find('.googlemeet-ai-loading').show();
+        loadingEl.show();
         generateBtn.prop('disabled', true).text('{{# str }} ai_generating, mod_googlemeet {{/ str }}');
+
+        // Show progress indicator
+        var progressDots = 0;
+        var progressInterval = setInterval(function() {
+          progressDots = (progressDots + 1) % 4;
+          var dots = '.'.repeat(progressDots);
+          loadingEl.find('p').text('{{# str }} ai_generating, mod_googlemeet {{/ str }}' + dots);
+        }, 500);
 
         Ajax.call([{
           methodname: 'mod_googlemeet_generate_ai_analysis',
@@ -459,20 +468,25 @@ require([
             recordingid: recordingid,
             coursemoduleid: {{ coursemoduleid }},
             regenerate: regenerate
-          }
+          },
+          timeout: 150000 // 2.5 minutes timeout for AI processing
         }])[0].then(function(response) {
+          clearInterval(progressInterval);
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
 
           if (response.status === 'completed') {
             displayAiAnalysis(recordingid, response, card, content);
           } else if (response.status === 'failed') {
-            showAiError(recordingid, response.error);
+            showAiError(recordingid, response.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
           }
         }).fail(function(ex) {
+          clearInterval(progressInterval);
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_generate, mod_googlemeet {{/ str }}');
-          showAiError(recordingid, ex.message || 'An error occurred');
+          var errorMsg = ex.message || ex.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}';
+          console.error('AI Analysis error:', ex);
+          showAiError(recordingid, errorMsg);
         });
       }
 
