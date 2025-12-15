@@ -71,12 +71,12 @@ class ai_service {
     }
 
     /**
-     * Generate AI analysis for a recording.
+     * Start AI analysis for a recording (queues background task).
      *
      * @param int $recordingid The recording ID
      * @param bool $regenerate Whether to regenerate if analysis exists
-     * @return stdClass The analysis record
-     * @throws moodle_exception If generation fails
+     * @return stdClass The analysis record with status 'processing'
+     * @throws moodle_exception If queueing fails
      */
     public function generate_analysis(int $recordingid, bool $regenerate = false): stdClass {
         global $DB;
@@ -90,13 +90,81 @@ class ai_service {
         // Check if analysis already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
 
+        // If exists and completed and not regenerating, return it.
+        if ($existing && !$regenerate && $existing->status === 'completed') {
+            $existing->keypoints = json_decode($existing->keypoints) ?: [];
+            $existing->topics = json_decode($existing->topics) ?: [];
+            return $existing;
+        }
+
+        // If already processing, return current status.
+        if ($existing && $existing->status === 'processing' && !$regenerate) {
+            $existing->keypoints = [];
+            $existing->topics = [];
+            return $existing;
+        }
+
+        // Create or update the analysis record with processing status.
+        $analysis = new stdClass();
+        $analysis->recordingid = $recordingid;
+        $analysis->status = 'processing';
+        $analysis->error = null;
+        $analysis->timemodified = time();
+
+        if ($existing) {
+            $analysis->id = $existing->id;
+            $DB->update_record('googlemeet_ai_analysis', $analysis);
+        } else {
+            $analysis->timecreated = time();
+            $analysis->id = $DB->insert_record('googlemeet_ai_analysis', $analysis);
+        }
+
+        debugging("AI Service: Queueing background task for analysis {$analysis->id}", DEBUG_DEVELOPER);
+
+        // Queue the adhoc task to process in background.
+        $task = new \mod_googlemeet\task\process_video_analysis();
+        $task->set_custom_data([
+            'recordingid' => $recordingid,
+            'analysisid' => $analysis->id,
+        ]);
+        \core\task\manager::queue_adhoc_task($task, true); // true = check for duplicates.
+
+        debugging("AI Service: Background task queued successfully", DEBUG_DEVELOPER);
+
+        // Return the analysis with processing status.
+        $analysis->keypoints = [];
+        $analysis->topics = [];
+        $analysis->summary = '';
+        $analysis->transcript = '';
+
+        return $analysis;
+    }
+
+    /**
+     * Generate AI analysis synchronously (for simple text-based analysis).
+     * This is a fallback method that doesn't use the File API.
+     *
+     * @param int $recordingid The recording ID
+     * @param bool $regenerate Whether to regenerate if analysis exists
+     * @return stdClass The analysis record
+     * @throws moodle_exception If generation fails
+     */
+    public function generate_analysis_sync(int $recordingid, bool $regenerate = false): stdClass {
+        global $DB;
+
+        // Get the recording.
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+
+        // Check if analysis already exists.
+        $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
+
         if ($existing && !$regenerate) {
             $existing->keypoints = json_decode($existing->keypoints) ?: [];
             $existing->topics = json_decode($existing->topics) ?: [];
             return $existing;
         }
 
-        // Create or update the analysis record with pending status.
+        // Create or update the analysis record.
         $analysis = new stdClass();
         $analysis->recordingid = $recordingid;
         $analysis->status = 'processing';
@@ -111,14 +179,12 @@ class ai_service {
         }
 
         try {
-            // Call the Gemini API.
-            debugging("AI Service: Calling Gemini API...", DEBUG_DEVELOPER);
+            // Call the Gemini API (text-only, won't actually analyze video content).
             $result = $this->client->analyze_video(
                 $recording->webviewlink,
                 $recording->name,
                 $recording->duration
             );
-            debugging("AI Service: Received response from Gemini API", DEBUG_DEVELOPER);
 
             // Update the analysis with results.
             $analysis->summary = $result->summary;
@@ -140,8 +206,6 @@ class ai_service {
             return $analysis;
 
         } catch (\Exception $e) {
-            // Update with error status.
-            debugging("AI Service: Error - " . $e->getMessage(), DEBUG_DEVELOPER);
             $analysis->status = 'failed';
             $analysis->error = $e->getMessage();
             $analysis->timemodified = time();
