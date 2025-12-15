@@ -244,3 +244,7 @@ $string['ai_analysis_available'] = 'AI analysis available';
 $string['ai_keypoints_short'] = 'key points';
 $string['ai_transcript_loading'] = 'Loading transcript...';
 $string['ai_error_unknown'] = 'An unknown error occurred. Please try again.';
+$string['ai_processing_background'] = 'Analysis in progress';
+$string['ai_processing_background_hint'] = 'The video is being downloaded and analyzed. This may take several minutes for long videos. The page will automatically update when complete.';
+$string['ai_check_status'] = 'Check status';
+$string['ai_process_video_task'] = 'Process video AI analysis';
