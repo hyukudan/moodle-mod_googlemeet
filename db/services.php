@@ -57,4 +57,20 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'googlemeet:removerecording',
     ),
+    'mod_googlemeet_generate_ai_analysis' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'generate_ai_analysis',
+        'description' => 'Generate AI analysis for a recording',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'googlemeet:generateai',
+    ),
+    'mod_googlemeet_get_ai_analysis' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'get_ai_analysis',
+        'description' => 'Get AI analysis for a recording',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'googlemeet:view',
+    ),
 );

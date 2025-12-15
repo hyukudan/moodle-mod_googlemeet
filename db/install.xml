@@ -106,5 +106,28 @@
         <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
+    <TABLE NAME="googlemeet_ai_analysis" COMMENT="Stores AI-generated analysis for recordings.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="recordingid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="FK to googlemeet_recordings."/>
+        <FIELD NAME="summary" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="AI-generated summary of the video."/>
+        <FIELD NAME="keypoints" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of key points extracted from the video."/>
+        <FIELD NAME="transcript" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Full transcript of the video."/>
+        <FIELD NAME="topics" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of topics discussed in the video."/>
+        <FIELD NAME="language" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Detected language of the video content."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="Processing status: pending, processing, completed, failed."/>
+        <FIELD NAME="error" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Error message if processing failed."/>
+        <FIELD NAME="aimodel" TYPE="char" LENGTH="50" NOTNULL="false" SEQUENCE="false" COMMENT="AI model used for analysis."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="recordingidfk" TYPE="foreign-unique" FIELDS="recordingid" REFTABLE="googlemeet_recordings" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>
