@@ -69,3 +69,17 @@ $string['event_status_cancelled'] = 'Cancelada';
 // Max upcoming events.
 $string['maxupcomingevents'] = 'Máximo de próximos eventos';
 $string['maxupcomingevents_help'] = 'Selecciona el número máximo de próximos eventos a mostrar en la página de la actividad.';
+
+// Recordings settings.
+$string['recordingssettings'] = 'Configuración de visualización de grabaciones';
+$string['maxrecordings'] = 'Grabaciones por página';
+$string['maxrecordings_help'] = 'Selecciona el número máximo de grabaciones a mostrar por página. Las grabaciones adicionales serán accesibles mediante paginación.';
+$string['recordingsorder'] = 'Orden de grabaciones';
+$string['recordingsorder_help'] = 'Selecciona si mostrar primero las grabaciones más recientes o las más antiguas.';
+$string['recordingsorder_desc'] = 'Más recientes primero';
+$string['recordingsorder_asc'] = 'Más antiguas primero';
+$string['recordings_pagination_info'] = 'Mostrando {$a->start} a {$a->end} de {$a->total} grabaciones';
+$string['recordings_page_previous'] = 'Anterior';
+$string['recordings_page_next'] = 'Siguiente';
+$string['recordings_sort_by'] = 'Ordenar por';
+$string['recordings_showing'] = 'Mostrando';
