@@ -95,6 +95,10 @@ if (has_capability('mod/googlemeet:editrecording', $context)) {
 $maxevents = $googlemeet->maxupcomingevents ?? 3;
 echo $OUTPUT->render_from_template('mod_googlemeet/upcomingevents', googlemeet_get_upcoming_events($googlemeet->id, $maxevents));
 
-googlemeet_print_recordings($googlemeet, $cm, $context);
+// Get pagination and order parameters.
+$recordingspage = optional_param('rpage', 0, PARAM_INT);
+$recordingsorder = optional_param('rorder', null, PARAM_ALPHA);
+
+googlemeet_print_recordings($googlemeet, $cm, $context, $recordingspage, $recordingsorder);
 
 echo $OUTPUT->footer();

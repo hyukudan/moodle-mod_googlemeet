@@ -213,9 +213,11 @@ function googlemeet_set_events($googlemeet, $events) {
  * @param object $googlemeet
  * @param object $cm
  * @param object $context
+ * @param int $page Current page number (0-based).
+ * @param string|null $orderoverride Optional order override from URL parameter.
  * @return void
  */
-function googlemeet_print_recordings($googlemeet, $cm, $context) {
+function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null) {
     global $CFG, $PAGE, $OUTPUT;
 
     $config = get_config('googlemeet');
@@ -239,8 +241,49 @@ function googlemeet_print_recordings($googlemeet, $cm, $context) {
     $aienabled = $aienabled && !empty($apikey);
     $cangenerateai = $aienabled && has_capability('mod/googlemeet:generateai', $context);
 
+    // Get pagination settings.
+    $maxrecordings = isset($googlemeet->maxrecordings) ? (int) $googlemeet->maxrecordings : 5;
+    $maxrecordings = max(1, min(20, $maxrecordings));
+
+    // Get order - use override if provided, otherwise use instance setting.
+    $order = $orderoverride !== null ? $orderoverride : ($googlemeet->recordingsorder ?? 'DESC');
+    $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+
+    // Calculate offset.
+    $page = max(0, (int) $page);
+    $offset = $page * $maxrecordings;
+
+    // Get total count for pagination.
+    $totalrecordings = googlemeet_count_recordings($params);
+
+    // Calculate pagination info.
+    $totalpages = ceil($totalrecordings / $maxrecordings);
+    $page = min($page, max(0, $totalpages - 1)); // Ensure page is within bounds.
+    $offset = $page * $maxrecordings;
+
     // Include AI data when fetching recordings if AI is enabled.
-    $recordings = googlemeet_list_recordings($params, $aienabled);
+    $recordings = googlemeet_list_recordings($params, $aienabled, $order, $maxrecordings, $offset);
+
+    // Pagination data.
+    $haspagination = $totalpages > 1;
+    $hasprevious = $page > 0;
+    $hasnext = $page < ($totalpages - 1);
+
+    // Build page numbers for pagination.
+    $pages = [];
+    for ($i = 0; $i < $totalpages; $i++) {
+        $pages[] = [
+            'number' => $i + 1,
+            'page' => $i,
+            'active' => ($i === $page),
+            'currentorder' => $order,
+            'coursemoduleid' => $cm->id,
+        ];
+    }
+
+    // Calculate display range.
+    $start = $totalrecordings > 0 ? $offset + 1 : 0;
+    $end = min($offset + $maxrecordings, $totalrecordings);
 
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
@@ -248,7 +291,23 @@ function googlemeet_print_recordings($googlemeet, $cm, $context) {
         'coursemoduleid' => $cm->id,
         'hascapability' => $hascapability,
         'aienabled' => $aienabled,
-        'cangenerateai' => $cangenerateai
+        'cangenerateai' => $cangenerateai,
+        // Pagination data.
+        'haspagination' => $haspagination,
+        'hasprevious' => $hasprevious,
+        'hasnext' => $hasnext,
+        'currentpage' => $page,
+        'previouspage' => $page - 1,
+        'nextpage' => $page + 1,
+        'pages' => $pages,
+        'totalrecordings' => $totalrecordings,
+        'start' => $start,
+        'end' => $end,
+        'totalpages' => $totalpages,
+        // Order data.
+        'currentorder' => $order,
+        'isorderdesc' => ($order === 'DESC'),
+        'isorderasc' => ($order === 'ASC'),
     ]);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));

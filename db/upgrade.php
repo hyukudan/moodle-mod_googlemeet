@@ -170,5 +170,28 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121501, 'googlemeet');
     }
 
+    if ($oldversion < 2025121502) {
+
+        // Define field maxrecordings to be added to googlemeet.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('maxrecordings', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '5', 'maxupcomingevents');
+
+        // Conditionally launch add field maxrecordings.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field recordingsorder to be added to googlemeet.
+        $field2 = new xmldb_field('recordingsorder', XMLDB_TYPE_CHAR, '4', null, XMLDB_NOTNULL, null, 'DESC', 'maxrecordings');
+
+        // Conditionally launch add field recordingsorder.
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121502, 'googlemeet');
+    }
+
     return true;
 }

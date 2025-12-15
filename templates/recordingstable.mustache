@@ -39,9 +39,35 @@
   }
 }}
 <div id="googlemeet_recordings_table" class="googlemeet-recordings-container">
-  <h4 class="googlemeet-section-title">{{# str }} recordings, mod_googlemeet {{/ str }}</h4>
+  <div class="googlemeet-recordings-header d-flex justify-content-between align-items-center flex-wrap mb-3">
+    <h4 class="googlemeet-section-title mb-0">
+      {{# str }} recordings, mod_googlemeet {{/ str }}
+      {{#totalrecordings}}<span class="badge badge-secondary ml-2">{{totalrecordings}}</span>{{/totalrecordings}}
+    </h4>
+
+    {{#hasrecordings}}
+    <div class="googlemeet-recordings-controls d-flex align-items-center">
+      <label class="mr-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0"
+           class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
+          {{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}
+        </a>
+        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0"
+           class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
+          {{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}
+        </a>
+      </div>
+    </div>
+    {{/hasrecordings}}
+  </div>
 
   {{#hasrecordings}}
+  {{#haspagination}}
+  <div class="googlemeet-recordings-info small text-muted mb-2">
+    {{# str }} recordings_showing, mod_googlemeet {{/ str }} {{start}} - {{end}} / {{totalrecordings}}
+  </div>
+  {{/haspagination}}
   <div class="googlemeet-recordings-list">
     {{#recordings}}
         <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}} {{#hasai}}googlemeet-recording-has-ai{{/hasai}}" data-recordingid="{{id}}">
@@ -228,6 +254,49 @@
         </div>
     {{/recordings}}
   </div>
+
+  {{#haspagination}}
+  <nav aria-label="Recordings pagination" class="googlemeet-pagination mt-3">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+      {{#hasprevious}}
+      <li class="page-item">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{previouspage}}&rorder={{currentorder}}">
+          &laquo; {{# str }} recordings_page_previous, mod_googlemeet {{/ str }}
+        </a>
+      </li>
+      {{/hasprevious}}
+      {{^hasprevious}}
+      <li class="page-item disabled">
+        <span class="page-link">&laquo; {{# str }} recordings_page_previous, mod_googlemeet {{/ str }}</span>
+      </li>
+      {{/hasprevious}}
+
+      {{#pages}}
+      <li class="page-item {{#active}}active{{/active}}">
+        {{#active}}
+        <span class="page-link">{{number}}</span>
+        {{/active}}
+        {{^active}}
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{page}}&rorder={{currentorder}}">{{number}}</a>
+        {{/active}}
+      </li>
+      {{/pages}}
+
+      {{#hasnext}}
+      <li class="page-item">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{nextpage}}&rorder={{currentorder}}">
+          {{# str }} recordings_page_next, mod_googlemeet {{/ str }} &raquo;
+        </a>
+      </li>
+      {{/hasnext}}
+      {{^hasnext}}
+      <li class="page-item disabled">
+        <span class="page-link">{{# str }} recordings_page_next, mod_googlemeet {{/ str }} &raquo;</span>
+      </li>
+      {{/hasnext}}
+    </ul>
+  </nav>
+  {{/haspagination}}
   {{/hasrecordings}}
 
   {{^hasrecordings}}

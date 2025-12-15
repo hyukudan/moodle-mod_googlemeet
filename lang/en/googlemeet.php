@@ -203,6 +203,20 @@ $string['event_status_cancelled'] = 'Cancelled';
 $string['maxupcomingevents'] = 'Maximum upcoming events';
 $string['maxupcomingevents_help'] = 'Select the maximum number of upcoming events to display on the activity page.';
 
+// Recordings settings.
+$string['recordingssettings'] = 'Recordings display settings';
+$string['maxrecordings'] = 'Recordings per page';
+$string['maxrecordings_help'] = 'Select the maximum number of recordings to display per page. Additional recordings will be accessible via pagination.';
+$string['recordingsorder'] = 'Recordings order';
+$string['recordingsorder_help'] = 'Select whether to show newest or oldest recordings first.';
+$string['recordingsorder_desc'] = 'Newest first';
+$string['recordingsorder_asc'] = 'Oldest first';
+$string['recordings_pagination_info'] = 'Showing {$a->start} to {$a->end} of {$a->total} recordings';
+$string['recordings_page_previous'] = 'Previous';
+$string['recordings_page_next'] = 'Next';
+$string['recordings_sort_by'] = 'Sort by';
+$string['recordings_showing'] = 'Showing';
+
 // AI Features.
 $string['ai_settings'] = 'AI Features (Gemini)';
 $string['ai_settings_desc'] = 'Configure AI-powered features using Google Gemini to automatically generate summaries, key points, and transcripts from your meeting recordings.';
