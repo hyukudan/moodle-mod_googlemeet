@@ -90,4 +90,46 @@ if ($ADMIN->fulltree) {
         get_string('emailcontent_default', 'googlemeet'),
         PARAM_RAW
     ));
+
+    // AI Features section.
+    $settings->add(new admin_setting_heading(
+        'googlemeet/aiheading',
+        get_string('ai_settings', 'googlemeet'),
+        get_string('ai_settings_desc', 'googlemeet')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'googlemeet/enableai',
+        get_string('enableai', 'googlemeet'),
+        get_string('enableai_desc', 'googlemeet'),
+        0
+    ));
+
+    $settings->add(new admin_setting_configpasswordunmask(
+        'googlemeet/geminiapikey',
+        get_string('geminiapikey', 'googlemeet'),
+        get_string('geminiapikey_desc', 'googlemeet'),
+        ''
+    ));
+
+    $aimodels = [
+        'gemini-1.5-flash' => 'Gemini 1.5 Flash (Fast, free tier)',
+        'gemini-1.5-pro' => 'Gemini 1.5 Pro (More capable, limited free)',
+        'gemini-2.0-flash-exp' => 'Gemini 2.0 Flash (Experimental)',
+    ];
+
+    $settings->add(new admin_setting_configselect(
+        'googlemeet/aimodel',
+        get_string('aimodel', 'googlemeet'),
+        get_string('aimodel_desc', 'googlemeet'),
+        'gemini-1.5-flash',
+        $aimodels
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'googlemeet/ai_autogenerate',
+        get_string('ai_autogenerate', 'googlemeet'),
+        get_string('ai_autogenerate_desc', 'googlemeet'),
+        0
+    ));
 }

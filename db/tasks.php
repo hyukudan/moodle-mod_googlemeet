@@ -33,5 +33,14 @@ $tasks = [
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
+    ],
+    [
+        'classname' => 'mod_googlemeet\task\process_ai_analysis',
+        'blocking' => 0,
+        'minute' => '*/10',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
     ]
 ];

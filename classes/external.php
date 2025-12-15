@@ -378,4 +378,206 @@ class mod_googlemeet_external extends external_api {
     public static function delete_all_recordings_returns() {
         return new external_single_structure([]);
     }
+
+    /**
+     * Describes the parameters for generate_ai_analysis.
+     *
+     * @return external_function_parameters
+     */
+    public static function generate_ai_analysis_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+                'regenerate' => new external_value(PARAM_BOOL, 'Whether to regenerate existing analysis', VALUE_DEFAULT, false),
+            ]
+        );
+    }
+
+    /**
+     * Generate AI analysis for a recording.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @param bool $regenerate Whether to regenerate existing analysis
+     * @return array The analysis data
+     */
+    public static function generate_ai_analysis($recordingid, $coursemoduleid, $regenerate = false) {
+        global $DB;
+
+        // Parameter validation.
+        $params = self::validate_parameters(
+            self::generate_ai_analysis_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+                'regenerate' => $regenerate,
+            ]
+        );
+
+        $context = context_module::instance($coursemoduleid);
+        require_capability('mod/googlemeet:generateai', $context);
+
+        $aiservice = new \mod_googlemeet\ai_service();
+
+        if (!$aiservice->is_available()) {
+            throw new \moodle_exception('ai_not_configured', 'googlemeet');
+        }
+
+        try {
+            $analysis = $aiservice->generate_analysis($recordingid, $regenerate);
+
+            return [
+                'id' => $analysis->id,
+                'recordingid' => $analysis->recordingid,
+                'summary' => $analysis->summary ?? '',
+                'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
+                'topics' => is_array($analysis->topics) ? $analysis->topics : [],
+                'transcript' => $analysis->transcript ?? '',
+                'language' => $analysis->language ?? 'en',
+                'status' => $analysis->status,
+                'error' => $analysis->error ?? '',
+                'aimodel' => $analysis->aimodel ?? '',
+                'timecreated' => $analysis->timecreated,
+                'timemodified' => $analysis->timemodified,
+            ];
+        } catch (\Exception $e) {
+            throw new \moodle_exception('ai_error', 'googlemeet', '', $e->getMessage());
+        }
+    }
+
+    /**
+     * Describes the generate_ai_analysis return value.
+     *
+     * @return external_single_structure
+     */
+    public static function generate_ai_analysis_returns() {
+        return new external_single_structure(
+            [
+                'id' => new external_value(PARAM_INT, 'Analysis ID'),
+                'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+                'summary' => new external_value(PARAM_RAW, 'AI-generated summary'),
+                'keypoints' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Key point'),
+                    'List of key points'
+                ),
+                'topics' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Topic'),
+                    'List of topics'
+                ),
+                'transcript' => new external_value(PARAM_RAW, 'Transcript'),
+                'language' => new external_value(PARAM_TEXT, 'Detected language'),
+                'status' => new external_value(PARAM_TEXT, 'Processing status'),
+                'error' => new external_value(PARAM_RAW, 'Error message if failed'),
+                'aimodel' => new external_value(PARAM_TEXT, 'AI model used'),
+                'timecreated' => new external_value(PARAM_INT, 'Time created'),
+                'timemodified' => new external_value(PARAM_INT, 'Time modified'),
+            ]
+        );
+    }
+
+    /**
+     * Describes the parameters for get_ai_analysis.
+     *
+     * @return external_function_parameters
+     */
+    public static function get_ai_analysis_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+            ]
+        );
+    }
+
+    /**
+     * Get AI analysis for a recording.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @return array The analysis data or empty if not found
+     */
+    public static function get_ai_analysis($recordingid, $coursemoduleid) {
+        global $DB;
+
+        // Parameter validation.
+        $params = self::validate_parameters(
+            self::get_ai_analysis_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+            ]
+        );
+
+        $context = context_module::instance($coursemoduleid);
+        require_capability('mod/googlemeet:view', $context);
+
+        $aiservice = new \mod_googlemeet\ai_service();
+        $analysis = $aiservice->get_analysis($recordingid);
+
+        if (!$analysis) {
+            return [
+                'found' => false,
+                'id' => 0,
+                'recordingid' => $recordingid,
+                'summary' => '',
+                'keypoints' => [],
+                'topics' => [],
+                'transcript' => '',
+                'language' => '',
+                'status' => '',
+                'error' => '',
+                'aimodel' => '',
+                'timecreated' => 0,
+                'timemodified' => 0,
+            ];
+        }
+
+        return [
+            'found' => true,
+            'id' => $analysis->id,
+            'recordingid' => $analysis->recordingid,
+            'summary' => $analysis->summary ?? '',
+            'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
+            'topics' => is_array($analysis->topics) ? $analysis->topics : [],
+            'transcript' => $analysis->transcript ?? '',
+            'language' => $analysis->language ?? 'en',
+            'status' => $analysis->status,
+            'error' => $analysis->error ?? '',
+            'aimodel' => $analysis->aimodel ?? '',
+            'timecreated' => $analysis->timecreated,
+            'timemodified' => $analysis->timemodified,
+        ];
+    }
+
+    /**
+     * Describes the get_ai_analysis return value.
+     *
+     * @return external_single_structure
+     */
+    public static function get_ai_analysis_returns() {
+        return new external_single_structure(
+            [
+                'found' => new external_value(PARAM_BOOL, 'Whether analysis was found'),
+                'id' => new external_value(PARAM_INT, 'Analysis ID'),
+                'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+                'summary' => new external_value(PARAM_RAW, 'AI-generated summary'),
+                'keypoints' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Key point'),
+                    'List of key points'
+                ),
+                'topics' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Topic'),
+                    'List of topics'
+                ),
+                'transcript' => new external_value(PARAM_RAW, 'Transcript'),
+                'language' => new external_value(PARAM_TEXT, 'Detected language'),
+                'status' => new external_value(PARAM_TEXT, 'Processing status'),
+                'error' => new external_value(PARAM_RAW, 'Error message if failed'),
+                'aimodel' => new external_value(PARAM_TEXT, 'AI model used'),
+                'timecreated' => new external_value(PARAM_INT, 'Time created'),
+                'timemodified' => new external_value(PARAM_INT, 'Time modified'),
+            ]
+        );
+    }
 }
