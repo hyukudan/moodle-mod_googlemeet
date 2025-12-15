@@ -18,7 +18,8 @@ namespace mod_googlemeet;
 
 use stdClass;
 use moodle_exception;
-use curl;
+
+// Note: curl class is from Moodle core (lib/filelib.php) in the global namespace.
 
 /**
  * Gemini API Client for mod_googlemeet.
@@ -196,7 +197,7 @@ PROMPT;
             ]
         ];
 
-        $curl = new curl();
+        $curl = new \curl();
         $curl->setHeader(['Content-Type: application/json']);
 
         $response = $curl->post($url, json_encode($data));
