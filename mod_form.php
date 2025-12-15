@@ -136,6 +136,27 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $mform->setDefault('maxupcomingevents', 3);
         $mform->addHelpButton('maxupcomingevents', 'maxupcomingevents', 'googlemeet');
 
+        // Recordings display settings header.
+        $mform->addElement('header', 'headerrecordingssettings', get_string('recordingssettings', 'googlemeet'));
+
+        // Maximum recordings per page.
+        $maxrecordings = [];
+        for ($i = 1; $i <= 20; $i++) {
+            $maxrecordings[$i] = $i;
+        }
+        $mform->addElement('select', 'maxrecordings', get_string('maxrecordings', 'googlemeet'), $maxrecordings);
+        $mform->setDefault('maxrecordings', 5);
+        $mform->addHelpButton('maxrecordings', 'maxrecordings', 'googlemeet');
+
+        // Recordings order.
+        $orderoptions = [
+            'DESC' => get_string('recordingsorder_desc', 'googlemeet'),
+            'ASC' => get_string('recordingsorder_asc', 'googlemeet'),
+        ];
+        $mform->addElement('select', 'recordingsorder', get_string('recordingsorder', 'googlemeet'), $orderoptions);
+        $mform->setDefault('recordingsorder', 'DESC');
+        $mform->addHelpButton('recordingsorder', 'recordingsorder', 'googlemeet');
+
         // For multiple dates.
         $mform->addElement('header', 'headeraddmultipleeventdates', get_string('recurrenceeventdate', 'googlemeet'));
         if (!empty($config->multieventdateexpanded) || !empty($this->current->addmultiply)) {

@@ -260,16 +260,25 @@ function googlemeet_view($googlemeet, $course, $cm, $context) {
  * Returns a list of recordings from Google Meet
  *
  * @param array $params Array of parameters to a query.
+ * @param bool $includeai Include AI analysis data.
+ * @param string $order Sort order: 'DESC' for newest first, 'ASC' for oldest first.
+ * @param int $limit Maximum number of recordings to return (0 for all).
+ * @param int $offset Number of recordings to skip.
  * @return stdClass $formattedrecordings    List of recordings
  */
-function googlemeet_list_recordings($params, $includeai = false) {
+function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC', $limit = 0, $offset = 0) {
     global $DB;
+
+    // Validate order parameter.
+    $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
 
     $recordings = $DB->get_records(
         'googlemeet_recordings',
         $params,
-        'createdtime DESC',
-        'id,googlemeetid,name,createdtime,duration,webviewlink,visible'
+        'createdtime ' . $order,
+        'id,googlemeetid,name,createdtime,duration,webviewlink,visible',
+        $offset,
+        $limit
     );
 
     // Get all recording IDs for batch AI query.
@@ -321,6 +330,17 @@ function googlemeet_list_recordings($params, $includeai = false) {
     }
 
     return $formattedrecordings;
+}
+
+/**
+ * Counts the total number of recordings for a Google Meet instance.
+ *
+ * @param array $params Array of parameters to a query.
+ * @return int Total number of recordings.
+ */
+function googlemeet_count_recordings($params) {
+    global $DB;
+    return $DB->count_records('googlemeet_recordings', $params);
 }
 
 /**
