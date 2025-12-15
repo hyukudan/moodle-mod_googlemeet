@@ -150,5 +150,25 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121500, 'googlemeet');
     }
 
+    if ($oldversion < 2025121501) {
+        // Add transcript field to googlemeet_recordings table.
+        $table = new xmldb_table('googlemeet_recordings');
+        $field = new xmldb_field('transcripttext', XMLDB_TYPE_TEXT, null, null, null, null, null, 'webviewlink');
+
+        // Conditionally launch add field transcripttext.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add transcriptfileid field to store the Drive file ID of the transcript.
+        $field2 = new xmldb_field('transcriptfileid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'transcripttext');
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121501, 'googlemeet');
+    }
+
     return true;
 }
