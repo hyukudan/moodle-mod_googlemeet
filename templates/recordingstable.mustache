@@ -44,7 +44,7 @@
   {{#hasrecordings}}
   <div class="googlemeet-recordings-list">
     {{#recordings}}
-        <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}}" data-recordingid="{{id}}">
+        <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}} {{#hasai}}googlemeet-recording-has-ai{{/hasai}}" data-recordingid="{{id}}">
           {{^visible}}
             <div class="googlemeet-recording-hidden-badge">
               {{# str }} recording_hidden, mod_googlemeet {{/ str }}
@@ -61,6 +61,14 @@
             <div class="googlemeet-recording-info">
               <div class="googlemeet-recording-name">
                 <span class="recording-name-text">{{name}}</span>
+                {{#hasai}}
+                  <span class="googlemeet-ai-badge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
+                    </svg>
+                    AI
+                  </span>
+                {{/hasai}}
                 {{#hascapability}}
                   <a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">
                     {{# pix }} i/edit, core {{/ pix }}
@@ -70,6 +78,11 @@
               <div class="googlemeet-recording-meta">
                 <span class="googlemeet-recording-date">{{createdtimeformatted}}</span>
                 <span class="googlemeet-recording-duration">{{duration}}</span>
+                {{#hasai}}
+                  <span class="googlemeet-recording-ai-info">
+                    <span class="googlemeet-ai-keypoints-count">{{aikeypointscount}} {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>
+                  </span>
+                {{/hasai}}
               </div>
             </div>
 
@@ -85,58 +98,127 @@
                 </a>
               {{/hascapability}}
               {{#aienabled}}
-                <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn" data-id="{{id}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}">
-                  {{# pix }} i/report, core {{/ pix }}
+                <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
+                  </svg>
                 </a>
               {{/aienabled}}
             </div>
           </div>
 
+          {{! AI Preview Section - Shows summary and topics directly }}
+          {{#aienabled}}
+          {{#hasai}}
+          <div class="googlemeet-ai-preview" data-recordingid="{{id}}">
+            <div class="googlemeet-ai-preview-summary">
+              <span class="googlemeet-ai-preview-label">{{# str }} ai_summary, mod_googlemeet {{/ str }}:</span>
+              {{aisummarypreview}}
+            </div>
+            {{#aitopics.0}}
+            <div class="googlemeet-ai-preview-topics">
+              {{#aitopics}}
+                <span class="googlemeet-ai-topic-tag">{{.}}</span>
+              {{/aitopics}}
+            </div>
+            {{/aitopics.0}}
+          </div>
+          {{/hasai}}
+          {{/aienabled}}
+
+          {{! Expandable AI Panel }}
           {{#aienabled}}
           <div class="googlemeet-ai-panel" data-recordingid="{{id}}" style="display: none;">
             <div class="googlemeet-ai-header">
               <h5>{{# str }} ai_analysis, mod_googlemeet {{/ str }}</h5>
-              {{#cangenerateai}}
-              <button class="btn btn-sm btn-primary googlemeet-ai-generate-btn" data-id="{{id}}">
-                {{# str }} ai_generate, mod_googlemeet {{/ str }}
-              </button>
-              {{/cangenerateai}}
+              <div class="googlemeet-ai-header-actions">
+                {{#hasai}}
+                  <span class="googlemeet-ai-generated-date">{{# str }} ai_generated_on, mod_googlemeet {{/ str }} {{aidate}}</span>
+                {{/hasai}}
+                {{#cangenerateai}}
+                <button class="btn btn-sm btn-primary googlemeet-ai-generate-btn" data-id="{{id}}">
+                  {{#hasai}}{{# str }} ai_regenerate, mod_googlemeet {{/ str }}{{/hasai}}
+                  {{^hasai}}{{# str }} ai_generate, mod_googlemeet {{/ str }}{{/hasai}}
+                </button>
+                {{/cangenerateai}}
+              </div>
             </div>
-            <div class="googlemeet-ai-content" data-recordingid="{{id}}">
+            <div class="googlemeet-ai-content" data-recordingid="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}">
               <div class="googlemeet-ai-loading" style="display: none;">
-                {{# pix }} i/processing64, googlemeet {{/ pix }}
+                <div class="googlemeet-ai-loading-spinner"></div>
                 <p>{{# str }} ai_generating, mod_googlemeet {{/ str }}</p>
               </div>
+              {{^hasai}}
               <div class="googlemeet-ai-nodata">
+                <div class="googlemeet-ai-nodata-icon">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor" opacity="0.3"/>
+                  </svg>
+                </div>
                 <p>{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</p>
+                {{#cangenerateai}}
+                <p class="googlemeet-ai-nodata-hint">{{# str }} ai_noanalysis_hint, mod_googlemeet {{/ str }}</p>
+                {{/cangenerateai}}
               </div>
-              <div class="googlemeet-ai-result" style="display: none;">
+              {{/hasai}}
+              {{#hasai}}
+              <div class="googlemeet-ai-result">
                 <div class="googlemeet-ai-section googlemeet-ai-summary">
-                  <h6>{{# str }} ai_summary, mod_googlemeet {{/ str }}</h6>
-                  <div class="googlemeet-ai-summary-text"></div>
+                  <h6>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z" fill="currentColor"/>
+                    </svg>
+                    {{# str }} ai_summary, mod_googlemeet {{/ str }}
+                  </h6>
+                  <div class="googlemeet-ai-summary-text">{{aisummary}}</div>
                 </div>
                 <div class="googlemeet-ai-section googlemeet-ai-keypoints">
-                  <h6>{{# str }} ai_keypoints, mod_googlemeet {{/ str }}</h6>
-                  <ul class="googlemeet-ai-keypoints-list"></ul>
+                  <h6>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11 7H13V9H11V7ZM11 11H13V17H11V11ZM12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" fill="currentColor"/>
+                    </svg>
+                    {{# str }} ai_keypoints, mod_googlemeet {{/ str }}
+                    <span class="googlemeet-ai-count-badge">{{aikeypointscount}}</span>
+                  </h6>
+                  <ul class="googlemeet-ai-keypoints-list">
+                    {{#aikeypoints}}
+                      <li>{{.}}</li>
+                    {{/aikeypoints}}
+                  </ul>
                 </div>
                 <div class="googlemeet-ai-section googlemeet-ai-topics">
-                  <h6>{{# str }} ai_topics, mod_googlemeet {{/ str }}</h6>
-                  <div class="googlemeet-ai-topics-tags"></div>
+                  <h6>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7V17C3 18.1 3.9 18.99 5 18.99L16 19C16.67 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84Z" fill="currentColor"/>
+                    </svg>
+                    {{# str }} ai_topics, mod_googlemeet {{/ str }}
+                  </h6>
+                  <div class="googlemeet-ai-topics-tags">
+                    {{#aitopics}}
+                      <span class="googlemeet-ai-topic-badge">{{.}}</span>
+                    {{/aitopics}}
+                  </div>
                 </div>
                 <div class="googlemeet-ai-section googlemeet-ai-transcript">
                   <h6>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM6 9H18V11H6V9ZM14 14H6V12H14V14ZM18 8H6V6H18V8Z" fill="currentColor"/>
+                    </svg>
                     {{# str }} ai_transcript, mod_googlemeet {{/ str }}
                     <button class="btn btn-sm btn-link googlemeet-ai-copy-btn" data-id="{{id}}">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                      </svg>
                       {{# str }} ai_copy_transcript, mod_googlemeet {{/ str }}
                     </button>
                   </h6>
-                  <div class="googlemeet-ai-transcript-text"></div>
+                  <div class="googlemeet-ai-transcript-text" data-recordingid="{{id}}">{{# str }} ai_transcript_loading, mod_googlemeet {{/ str }}</div>
                 </div>
                 <div class="googlemeet-ai-meta">
-                  <span class="googlemeet-ai-model"></span>
-                  <span class="googlemeet-ai-date"></span>
+                  <span class="googlemeet-ai-model">{{# str }} ai_model, mod_googlemeet {{/ str }}: {{aimodel}}</span>
                 </div>
               </div>
+              {{/hasai}}
               <div class="googlemeet-ai-error" style="display: none;">
                 <div class="alert alert-danger"></div>
               </div>
@@ -290,44 +372,60 @@ require([
     {{/hascapability}}
 
     {{#aienabled}}
+      // Track loaded transcripts
+      var loadedTranscripts = {};
+
       // Toggle AI panel
       $('.googlemeet-ai-toggle-btn').on('click', function() {
         var recordingid = $(this).attr('data-id');
+        var hasai = $(this).attr('data-hasai') === '1';
         var panel = $('.googlemeet-ai-panel[data-recordingid="' + recordingid + '"]');
+        var card = $(this).closest('.googlemeet-recording-card');
 
         if (panel.is(':visible')) {
           panel.slideUp(200);
+          card.removeClass('googlemeet-ai-expanded');
         } else {
-          // Load existing analysis if available
-          loadAiAnalysis(recordingid);
+          // Load transcript on demand if we have AI data but haven't loaded transcript yet
+          if (hasai && !loadedTranscripts[recordingid]) {
+            loadTranscript(recordingid);
+          }
           panel.slideDown(200);
+          card.addClass('googlemeet-ai-expanded');
         }
+      });
+
+      // Click on preview also expands
+      $('.googlemeet-ai-preview').on('click', function() {
+        var recordingid = $(this).attr('data-recordingid');
+        $('.googlemeet-ai-toggle-btn[data-id="' + recordingid + '"]').trigger('click');
       });
 
       // Generate AI analysis
       $('.googlemeet-ai-generate-btn').on('click', function() {
         var recordingid = $(this).attr('data-id');
-        generateAiAnalysis(recordingid, false);
+        var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
+        var hasai = content.attr('data-hasai') === '1';
+        generateAiAnalysis(recordingid, hasai);
       });
 
       // Copy transcript
-      $('.googlemeet-ai-copy-btn').on('click', function() {
-        var recordingid = $(this).attr('data-id');
-        var transcriptText = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"] .googlemeet-ai-transcript-text').text();
+      $('.googlemeet-ai-copy-btn').on('click', function(e) {
+        e.stopPropagation();
+        var btn = $(this);
+        var recordingid = btn.attr('data-id');
+        var transcriptText = $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]').text();
 
         navigator.clipboard.writeText(transcriptText).then(function() {
-          var btn = $('.googlemeet-ai-copy-btn[data-id="' + recordingid + '"]');
-          var originalText = btn.text();
-          btn.text('{{# str }} ai_copied, mod_googlemeet {{/ str }}');
+          var originalHtml = btn.html();
+          btn.html('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg> {{# str }} ai_copied, mod_googlemeet {{/ str }}');
           setTimeout(function() {
-            btn.text(originalText);
+            btn.html(originalHtml);
           }, 2000);
         });
       });
 
-      function loadAiAnalysis(recordingid) {
-        var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
-
+      function loadTranscript(recordingid) {
         Ajax.call([{
           methodname: 'mod_googlemeet_get_ai_analysis',
           args: {
@@ -335,22 +433,19 @@ require([
             coursemoduleid: {{ coursemoduleid }}
           }
         }])[0].then(function(response) {
-          if (response.found && response.status === 'completed') {
-            displayAiAnalysis(recordingid, response);
-          } else if (response.found && response.status === 'processing') {
-            content.find('.googlemeet-ai-nodata').hide();
-            content.find('.googlemeet-ai-loading').show();
-          } else if (response.found && response.status === 'failed') {
-            showAiError(recordingid, response.error);
+          if (response.found && response.status === 'completed' && response.transcript) {
+            $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]').html(formatText(response.transcript));
+            loadedTranscripts[recordingid] = true;
           }
         }).fail(function(ex) {
-          console.error('Failed to load AI analysis:', ex);
+          console.error('Failed to load transcript:', ex);
         });
       }
 
       function generateAiAnalysis(recordingid, regenerate) {
         var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
         var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
+        var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
 
         content.find('.googlemeet-ai-nodata').hide();
         content.find('.googlemeet-ai-result').hide();
@@ -370,7 +465,7 @@ require([
           generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
 
           if (response.status === 'completed') {
-            displayAiAnalysis(recordingid, response);
+            displayAiAnalysis(recordingid, response, card, content);
           } else if (response.status === 'failed') {
             showAiError(recordingid, response.error);
           }
@@ -381,52 +476,137 @@ require([
         });
       }
 
-      function displayAiAnalysis(recordingid, data) {
-        var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
-        var result = content.find('.googlemeet-ai-result');
-
+      function displayAiAnalysis(recordingid, data, card, content) {
         content.find('.googlemeet-ai-nodata').hide();
         content.find('.googlemeet-ai-loading').hide();
         content.find('.googlemeet-ai-error').hide();
 
-        // Summary
-        result.find('.googlemeet-ai-summary-text').html(formatText(data.summary));
+        // Create or update result section
+        var result = content.find('.googlemeet-ai-result');
+        if (!result.length) {
+          result = $('<div class="googlemeet-ai-result"></div>');
+          content.append(result);
+        }
+        result.empty();
 
-        // Key points
-        var keypointsList = result.find('.googlemeet-ai-keypoints-list');
-        keypointsList.empty();
+        // Summary section
+        result.append(
+          '<div class="googlemeet-ai-section googlemeet-ai-summary">' +
+            '<h6><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z" fill="currentColor"/></svg> {{# str }} ai_summary, mod_googlemeet {{/ str }}</h6>' +
+            '<div class="googlemeet-ai-summary-text">' + formatText(data.summary) + '</div>' +
+          '</div>'
+        );
+
+        // Key points section
+        var keypointsHtml = '<div class="googlemeet-ai-section googlemeet-ai-keypoints">' +
+          '<h6><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 7H13V9H11V7ZM11 11H13V17H11V11ZM12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" fill="currentColor"/></svg> {{# str }} ai_keypoints, mod_googlemeet {{/ str }} <span class="googlemeet-ai-count-badge">' + (data.keypoints ? data.keypoints.length : 0) + '</span></h6>' +
+          '<ul class="googlemeet-ai-keypoints-list">';
         if (data.keypoints && data.keypoints.length > 0) {
           data.keypoints.forEach(function(point) {
-            keypointsList.append('<li>' + escapeHtml(point) + '</li>');
+            keypointsHtml += '<li>' + escapeHtml(point) + '</li>';
           });
         }
+        keypointsHtml += '</ul></div>';
+        result.append(keypointsHtml);
 
-        // Topics
-        var topicsTags = result.find('.googlemeet-ai-topics-tags');
-        topicsTags.empty();
+        // Topics section
+        var topicsHtml = '<div class="googlemeet-ai-section googlemeet-ai-topics">' +
+          '<h6><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7V17C3 18.1 3.9 18.99 5 18.99L16 19C16.67 19 17.27 18.67 17.63 18.16L22 12L17.63 5.84Z" fill="currentColor"/></svg> {{# str }} ai_topics, mod_googlemeet {{/ str }}</h6>' +
+          '<div class="googlemeet-ai-topics-tags">';
         if (data.topics && data.topics.length > 0) {
           data.topics.forEach(function(topic) {
-            topicsTags.append('<span class="badge badge-secondary googlemeet-ai-topic-badge">' + escapeHtml(topic) + '</span> ');
+            topicsHtml += '<span class="googlemeet-ai-topic-badge">' + escapeHtml(topic) + '</span>';
           });
         }
+        topicsHtml += '</div></div>';
+        result.append(topicsHtml);
 
-        // Transcript
-        result.find('.googlemeet-ai-transcript-text').html(formatText(data.transcript));
+        // Transcript section
+        result.append(
+          '<div class="googlemeet-ai-section googlemeet-ai-transcript">' +
+            '<h6><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM6 9H18V11H6V9ZM14 14H6V12H14V14ZM18 8H6V6H18V8Z" fill="currentColor"/></svg> {{# str }} ai_transcript, mod_googlemeet {{/ str }} <button class="btn btn-sm btn-link googlemeet-ai-copy-btn" data-id="' + recordingid + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/></svg> {{# str }} ai_copy_transcript, mod_googlemeet {{/ str }}</button></h6>' +
+            '<div class="googlemeet-ai-transcript-text" data-recordingid="' + recordingid + '">' + formatText(data.transcript) + '</div>' +
+          '</div>'
+        );
 
-        // Meta info
-        if (data.aimodel) {
-          result.find('.googlemeet-ai-model').text('Model: ' + data.aimodel);
-        }
-        if (data.timemodified) {
-          var date = new Date(data.timemodified * 1000);
-          result.find('.googlemeet-ai-date').text(date.toLocaleDateString());
-        }
+        // Meta section
+        result.append(
+          '<div class="googlemeet-ai-meta">' +
+            '<span class="googlemeet-ai-model">{{# str }} ai_model, mod_googlemeet {{/ str }}: ' + escapeHtml(data.aimodel || '') + '</span>' +
+          '</div>'
+        );
 
         result.show();
+        loadedTranscripts[recordingid] = true;
 
-        // Update button text
-        var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
-        generateBtn.text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
+        // Update card to show AI badge and preview
+        card.addClass('googlemeet-recording-has-ai');
+        var toggleBtn = card.find('.googlemeet-ai-toggle-btn');
+        toggleBtn.addClass('googlemeet-ai-toggle-active');
+        toggleBtn.attr('data-hasai', '1');
+        content.attr('data-hasai', '1');
+
+        // Add or update preview
+        var preview = card.find('.googlemeet-ai-preview');
+        var summaryPreview = data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '';
+        var previewHtml = '<div class="googlemeet-ai-preview" data-recordingid="' + recordingid + '">' +
+          '<div class="googlemeet-ai-preview-summary"><span class="googlemeet-ai-preview-label">{{# str }} ai_summary, mod_googlemeet {{/ str }}:</span> ' + escapeHtml(summaryPreview) + '</div>';
+        if (data.topics && data.topics.length > 0) {
+          previewHtml += '<div class="googlemeet-ai-preview-topics">';
+          data.topics.forEach(function(topic) {
+            previewHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
+          });
+          previewHtml += '</div>';
+        }
+        previewHtml += '</div>';
+
+        if (preview.length) {
+          preview.replaceWith(previewHtml);
+        } else {
+          card.find('.googlemeet-recording-content').after(previewHtml);
+        }
+
+        // Add AI badge to name if not present
+        var nameContainer = card.find('.googlemeet-recording-name');
+        if (!nameContainer.find('.googlemeet-ai-badge').length) {
+          nameContainer.find('.recording-name-text').after(
+            '<span class="googlemeet-ai-badge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                '<path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>' +
+              '</svg> AI' +
+            '</span>'
+          );
+        }
+
+        // Update keypoints count in meta
+        var metaContainer = card.find('.googlemeet-recording-meta');
+        var aiInfo = metaContainer.find('.googlemeet-recording-ai-info');
+        var keypointsCount = data.keypoints ? data.keypoints.length : 0;
+        if (aiInfo.length) {
+          aiInfo.find('.googlemeet-ai-keypoints-count').text(keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}');
+        } else {
+          metaContainer.append('<span class="googlemeet-recording-ai-info"><span class="googlemeet-ai-keypoints-count">' + keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span></span>');
+        }
+
+        // Rebind click handler for new preview
+        $('.googlemeet-ai-preview[data-recordingid="' + recordingid + '"]').on('click', function() {
+          $('.googlemeet-ai-toggle-btn[data-id="' + recordingid + '"]').trigger('click');
+        });
+
+        // Rebind copy handler
+        result.find('.googlemeet-ai-copy-btn').on('click', function(e) {
+          e.stopPropagation();
+          var btn = $(this);
+          var rid = btn.attr('data-id');
+          var transcriptText = $('.googlemeet-ai-transcript-text[data-recordingid="' + rid + '"]').text();
+          navigator.clipboard.writeText(transcriptText).then(function() {
+            var originalHtml = btn.html();
+            btn.html('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="currentColor"/></svg> {{# str }} ai_copied, mod_googlemeet {{/ str }}');
+            setTimeout(function() {
+              btn.html(originalHtml);
+            }, 2000);
+          });
+        });
       }
 
       function showAiError(recordingid, message) {
