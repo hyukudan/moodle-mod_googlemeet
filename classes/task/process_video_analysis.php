@@ -231,6 +231,16 @@ class process_video_analysis extends adhoc_task {
             mkdir($tempdir, 0777, true);
         }
 
+        // Clean up old temp files first (older than 1 hour).
+        $this->cleanup_old_temp_files($tempdir, 3600);
+
+        // Check available disk space (require at least 3GB free).
+        $freespace = disk_free_space($tempdir);
+        if ($freespace !== false && $freespace < 3221225472) { // 3GB in bytes.
+            throw new \moodle_exception('ai_error', 'googlemeet', '',
+                'Insufficient disk space for video download. Need at least 3GB free.');
+        }
+
         // Generate temp filename.
         $ext = pathinfo($filename, PATHINFO_EXTENSION) ?: 'mp4';
         $tempfile = $tempdir . '/' . uniqid('video_') . '.' . $ext;
@@ -342,5 +352,41 @@ class process_video_analysis extends adhoc_task {
         ];
 
         return $mimetypes[$ext] ?? 'video/mp4';
+    }
+
+    /**
+     * Clean up old temporary files from the temp directory.
+     *
+     * @param string $tempdir The temporary directory path
+     * @param int $maxage Maximum age in seconds (files older than this will be deleted)
+     */
+    private function cleanup_old_temp_files(string $tempdir, int $maxage): void {
+        if (!is_dir($tempdir)) {
+            return;
+        }
+
+        $now = time();
+        $files = scandir($tempdir);
+
+        foreach ($files as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $filepath = $tempdir . '/' . $file;
+
+            // Only delete files, not directories.
+            if (!is_file($filepath)) {
+                continue;
+            }
+
+            // Check if file is older than maxage.
+            $filemtime = filemtime($filepath);
+            if ($filemtime !== false && ($now - $filemtime) > $maxage) {
+                if (unlink($filepath)) {
+                    mtrace("Cleaned up old temp file: {$file}");
+                }
+            }
+        }
     }
 }
