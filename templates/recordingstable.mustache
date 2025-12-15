@@ -454,13 +454,20 @@ require([
         loadingEl.show();
         generateBtn.prop('disabled', true).text('{{# str }} ai_generating, mod_googlemeet {{/ str }}');
 
-        // Show progress indicator
+        // Show progress indicator with elapsed time
+        var startTime = Date.now();
         var progressDots = 0;
         var progressInterval = setInterval(function() {
           progressDots = (progressDots + 1) % 4;
           var dots = '.'.repeat(progressDots);
-          loadingEl.find('p').text('{{# str }} ai_generating, mod_googlemeet {{/ str }}' + dots);
+          var elapsed = Math.floor((Date.now() - startTime) / 1000);
+          var minutes = Math.floor(elapsed / 60);
+          var seconds = elapsed % 60;
+          var timeStr = minutes > 0 ? minutes + 'm ' + seconds + 's' : seconds + 's';
+          loadingEl.find('p').html('{{# str }} ai_generating, mod_googlemeet {{/ str }}' + dots + '<br><small style="opacity: 0.7;">⏱ ' + timeStr + '</small>');
         }, 500);
+
+        console.log('AI Analysis: Starting request for recording ' + recordingid);
 
         Ajax.call([{
           methodname: 'mod_googlemeet_generate_ai_analysis',
@@ -469,9 +476,12 @@ require([
             coursemoduleid: {{ coursemoduleid }},
             regenerate: regenerate
           },
-          timeout: 150000 // 2.5 minutes timeout for AI processing
+          timeout: 180000 // 3 minutes timeout for AI processing
         }])[0].then(function(response) {
           clearInterval(progressInterval);
+          var elapsed = Math.floor((Date.now() - startTime) / 1000);
+          console.log('AI Analysis: Response received after ' + elapsed + 's', response);
+
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
 
@@ -479,13 +489,34 @@ require([
             displayAiAnalysis(recordingid, response, card, content);
           } else if (response.status === 'failed') {
             showAiError(recordingid, response.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
+          } else {
+            // Status is processing or pending - show message
+            showAiError(recordingid, 'Status: ' + response.status + '. Please try again in a moment.');
           }
         }).fail(function(ex) {
           clearInterval(progressInterval);
+          var elapsed = Math.floor((Date.now() - startTime) / 1000);
+          console.error('AI Analysis: Failed after ' + elapsed + 's', ex);
+
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_generate, mod_googlemeet {{/ str }}');
-          var errorMsg = ex.message || ex.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}';
-          console.error('AI Analysis error:', ex);
+
+          var errorMsg = '';
+          if (ex.message) {
+            errorMsg = ex.message;
+          } else if (ex.error) {
+            errorMsg = ex.error;
+          } else if (ex.errorcode) {
+            errorMsg = 'Error: ' + ex.errorcode;
+          } else {
+            errorMsg = '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}';
+          }
+
+          // Add timeout hint if it took long
+          if (elapsed >= 170) {
+            errorMsg += ' (Timeout - the request took too long)';
+          }
+
           showAiError(recordingid, errorMsg);
         });
       }
