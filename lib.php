@@ -262,7 +262,7 @@ function googlemeet_view($googlemeet, $course, $cm, $context) {
  * @param array $params Array of parameters to a query.
  * @return stdClass $formattedrecordings    List of recordings
  */
-function googlemeet_list_recordings($params) {
+function googlemeet_list_recordings($params, $includeai = false) {
     global $DB;
 
     $recordings = $DB->get_records(
@@ -272,9 +272,51 @@ function googlemeet_list_recordings($params) {
         'id,googlemeetid,name,createdtime,duration,webviewlink,visible'
     );
 
+    // Get all recording IDs for batch AI query.
+    $recordingids = array_keys($recordings);
+
+    // Fetch AI analysis data if enabled and there are recordings.
+    $aidata = [];
+    if ($includeai && !empty($recordingids)) {
+        list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
+        $sql = "SELECT recordingid, summary, keypoints, topics, status, aimodel, timemodified
+                FROM {googlemeet_ai_analysis}
+                WHERE recordingid $insql AND status = 'completed'";
+        $airecords = $DB->get_records_sql($sql, $inparams);
+        foreach ($airecords as $ai) {
+            $aidata[$ai->recordingid] = $ai;
+        }
+    }
+
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
         $recording->createdtimeformatted = userdate($recording->createdtime);
+
+        // Add AI data if available.
+        if (isset($aidata[$recording->id])) {
+            $ai = $aidata[$recording->id];
+            $recording->hasai = true;
+            $recording->aisummary = $ai->summary;
+            // Truncate summary for preview (first 200 chars).
+            $recording->aisummarypreview = strlen($ai->summary) > 200
+                ? substr($ai->summary, 0, 200) . '...'
+                : $ai->summary;
+            $recording->aikeypoints = json_decode($ai->keypoints) ?: [];
+            $recording->aikeypointscount = count($recording->aikeypoints);
+            $recording->aitopics = json_decode($ai->topics) ?: [];
+            $recording->aimodel = $ai->aimodel;
+            $recording->aidate = userdate($ai->timemodified, get_string('strftimedmy', 'googlemeet'));
+        } else {
+            $recording->hasai = false;
+            $recording->aisummary = '';
+            $recording->aisummarypreview = '';
+            $recording->aikeypoints = [];
+            $recording->aikeypointscount = 0;
+            $recording->aitopics = [];
+            $recording->aimodel = '';
+            $recording->aidate = '';
+        }
+
         $formattedrecordings[] = $recording;
     }
 
