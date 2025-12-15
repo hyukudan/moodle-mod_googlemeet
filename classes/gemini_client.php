@@ -163,6 +163,10 @@ PROMPT;
     private function call_api(string $prompt): string {
         $url = self::API_BASE_URL . $this->model . ':generateContent?key=' . $this->apikey;
 
+        // Log that we're making the API call (without exposing the API key).
+        $safeurl = self::API_BASE_URL . $this->model . ':generateContent?key=***';
+        debugging("Gemini API: Starting request to {$safeurl}", DEBUG_DEVELOPER);
+
         $data = [
             'contents' => [
                 [
@@ -200,13 +204,35 @@ PROMPT;
         $curl = new \curl();
         $curl->setHeader(['Content-Type: application/json']);
 
-        $response = $curl->post($url, json_encode($data));
+        // Set timeout options for potentially long AI processing.
+        $options = [
+            'CURLOPT_TIMEOUT' => 120,        // 2 minutes max total time.
+            'CURLOPT_CONNECTTIMEOUT' => 30,  // 30 seconds to connect.
+        ];
 
-        $httpcode = $curl->get_info()['http_code'];
+        $response = $curl->post($url, json_encode($data), $options);
+
+        $info = $curl->get_info();
+        $httpcode = $info['http_code'] ?? 0;
+        $curlerror = $curl->get_errno();
+
+        // Check for curl errors first.
+        if ($curlerror) {
+            $errormsg = $curl->error;
+            debugging("Gemini API curl error: {$errormsg}", DEBUG_DEVELOPER);
+            throw new moodle_exception('ai_error', 'googlemeet', '', "Connection error: {$errormsg}");
+        }
+
+        // Check for HTTP errors.
+        if ($httpcode === 0) {
+            debugging("Gemini API: No response received", DEBUG_DEVELOPER);
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'No response from API - check network connectivity');
+        }
 
         if ($httpcode !== 200) {
             $error = json_decode($response);
-            $errormsg = isset($error->error->message) ? $error->error->message : 'Unknown API error';
+            $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
+            debugging("Gemini API error: {$errormsg}", DEBUG_DEVELOPER);
             throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
         }
 

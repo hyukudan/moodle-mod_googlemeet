@@ -81,8 +81,11 @@ class ai_service {
     public function generate_analysis(int $recordingid, bool $regenerate = false): stdClass {
         global $DB;
 
+        debugging("AI Service: Starting analysis for recording {$recordingid}, regenerate=" . ($regenerate ? 'true' : 'false'), DEBUG_DEVELOPER);
+
         // Get the recording.
         $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        debugging("AI Service: Found recording '{$recording->name}'", DEBUG_DEVELOPER);
 
         // Check if analysis already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
@@ -109,11 +112,13 @@ class ai_service {
 
         try {
             // Call the Gemini API.
+            debugging("AI Service: Calling Gemini API...", DEBUG_DEVELOPER);
             $result = $this->client->analyze_video(
                 $recording->webviewlink,
                 $recording->name,
                 $recording->duration
             );
+            debugging("AI Service: Received response from Gemini API", DEBUG_DEVELOPER);
 
             // Update the analysis with results.
             $analysis->summary = $result->summary;
@@ -136,6 +141,7 @@ class ai_service {
 
         } catch (\Exception $e) {
             // Update with error status.
+            debugging("AI Service: Error - " . $e->getMessage(), DEBUG_DEVELOPER);
             $analysis->status = 'failed';
             $analysis->error = $e->getMessage();
             $analysis->timemodified = time();

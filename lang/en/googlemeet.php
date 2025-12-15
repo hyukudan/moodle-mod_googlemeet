@@ -243,3 +243,4 @@ $string['ai_process_task'] = 'Process pending AI analyses';
 $string['ai_analysis_available'] = 'AI analysis available';
 $string['ai_keypoints_short'] = 'key points';
 $string['ai_transcript_loading'] = 'Loading transcript...';
+$string['ai_error_unknown'] = 'An unknown error occurred. Please try again.';
