@@ -381,6 +381,13 @@ class client {
                         $recordings[$i]->duration = $duration;
                         $recordings[$i]->createdTime = $createdtime->getTimestamp();
 
+                        // Try to find and fetch associated transcript.
+                        $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
+                        if ($transcriptdata) {
+                            $recordings[$i]->transcriptfileid = $transcriptdata['fileid'];
+                            $recordings[$i]->transcripttext = $transcriptdata['content'];
+                        }
+
                         unset($recordings[$i]->id);
                         unset($recordings[$i]->permissionIds);
                         unset($recordings[$i]->videoMediaMetadata);
@@ -405,6 +412,142 @@ class client {
             EOD;
             die($js);
         }
+    }
+
+    /**
+     * Find and fetch transcript for a recording.
+     *
+     * @param rest $service The REST service
+     * @param string $parents The parent folders query
+     * @param string $videoname The video filename
+     * @return array|null Array with 'fileid' and 'content' or null if not found
+     */
+    private function find_transcript_for_recording($service, $parents, $videoname) {
+        // Get the base name without extension.
+        $basename = pathinfo($videoname, PATHINFO_FILENAME);
+
+        // Search for transcript files (sbv, vtt, txt) with similar name.
+        $transcriptparams = [
+            'q' => '('.$parents.') and
+                    trashed = false and
+                    "me" in owners and
+                    (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
+                    name contains "'.$basename.'"',
+            'pageSize' => 10,
+            'fields' => 'files(id,name,mimeType)'
+        ];
+
+        try {
+            $response = helper::request($service, 'list', $transcriptparams, false);
+
+            if (!empty($response->files)) {
+                // Prefer .sbv or .vtt files, then .txt.
+                $transcriptfile = null;
+                foreach ($response->files as $file) {
+                    $ext = strtolower(pathinfo($file->name, PATHINFO_EXTENSION));
+                    if ($ext === 'sbv' || $ext === 'vtt') {
+                        $transcriptfile = $file;
+                        break;
+                    }
+                    if ($ext === 'txt' && !$transcriptfile) {
+                        $transcriptfile = $file;
+                    }
+                }
+
+                if ($transcriptfile) {
+                    // Download the transcript content.
+                    $content = $this->download_file_content($service, $transcriptfile->id);
+                    if ($content) {
+                        // Parse the transcript to extract just the text.
+                        $parsedcontent = $this->parse_transcript($content, pathinfo($transcriptfile->name, PATHINFO_EXTENSION));
+                        return [
+                            'fileid' => $transcriptfile->id,
+                            'content' => $parsedcontent,
+                        ];
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Transcript not found or error, continue without it.
+            debugging("Failed to fetch transcript: " . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        return null;
+    }
+
+    /**
+     * Download file content from Google Drive.
+     *
+     * @param rest $service The REST service
+     * @param string $fileid The file ID
+     * @return string|null The file content or null on failure
+     */
+    private function download_file_content($service, $fileid) {
+        try {
+            $params = ['fileid' => $fileid, 'alt' => 'media'];
+            $response = helper::request($service, 'get', $params, false);
+            return $response;
+        } catch (\Exception $e) {
+            debugging("Failed to download file {$fileid}: " . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * Parse transcript content to extract plain text.
+     *
+     * @param string $content The raw transcript content
+     * @param string $format The file format (sbv, vtt, txt)
+     * @return string The parsed text content
+     */
+    private function parse_transcript($content, $format) {
+        $format = strtolower($format);
+
+        if ($format === 'txt') {
+            // Plain text, return as is.
+            return trim($content);
+        }
+
+        // For SBV and VTT formats, remove timestamps and keep only text.
+        $lines = explode("\n", $content);
+        $text = [];
+        $skipnext = false;
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            // Skip empty lines.
+            if (empty($line)) {
+                continue;
+            }
+
+            // Skip WEBVTT header.
+            if (strpos($line, 'WEBVTT') === 0) {
+                continue;
+            }
+
+            // Skip timestamp lines (format: 00:00:00.000 --> 00:00:00.000 or 0:00:00.000,0:00:00.000).
+            if (preg_match('/^\d{1,2}:\d{2}:\d{2}[.,]\d{3}/', $line)) {
+                continue;
+            }
+
+            // Skip cue identifiers (numbers).
+            if (preg_match('/^\d+$/', $line)) {
+                continue;
+            }
+
+            // This is actual transcript text.
+            // Remove speaker labels like "[Speaker Name]" or "<v Speaker Name>".
+            $line = preg_replace('/^\[.*?\]\s*/', '', $line);
+            $line = preg_replace('/<v\s+[^>]+>/', '', $line);
+            $line = preg_replace('/<\/v>/', '', $line);
+
+            if (!empty($line)) {
+                $text[] = $line;
+            }
+        }
+
+        return implode(' ', $text);
     }
 
     /**

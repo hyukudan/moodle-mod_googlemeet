@@ -59,6 +59,8 @@
         <FIELD NAME="createdtime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of the video creation date."/>
         <FIELD NAME="duration" TYPE="char" LENGTH="16" NOTNULL="true" SEQUENCE="false" COMMENT="Duration of the video."/>
         <FIELD NAME="webviewlink" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Video preview link."/>
+        <FIELD NAME="transcripttext" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Original transcript from Google Meet."/>
+        <FIELD NAME="transcriptfileid" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Google Drive file ID of the transcript."/>
         <FIELD NAME="visible" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="If the recording should be visible."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of when the instance was added to the course."/>
       </FIELDS>

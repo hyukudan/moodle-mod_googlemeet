@@ -388,6 +388,12 @@ function sync_recordings($googlemeetid, $files) {
             $recording->webviewlink = $updaterecording->webViewLink;
             $recording->timemodified = time();
 
+            // Update transcript if available and not already set.
+            if (!empty($updaterecording->transcripttext) && empty($recording->transcripttext)) {
+                $recording->transcripttext = $updaterecording->transcripttext;
+                $recording->transcriptfileid = $updaterecording->transcriptfileid ?? null;
+            }
+
             $DB->update_record('googlemeet_recordings', $recording);
         }
 
@@ -406,6 +412,12 @@ function sync_recordings($googlemeetid, $files) {
             $recording->duration = $insertrecording->duration;
             $recording->webviewlink = $insertrecording->webViewLink;
             $recording->timemodified = time();
+
+            // Add transcript if available.
+            if (!empty($insertrecording->transcripttext)) {
+                $recording->transcripttext = $insertrecording->transcripttext;
+                $recording->transcriptfileid = $insertrecording->transcriptfileid ?? null;
+            }
 
             $DB->insert_record('googlemeet_recordings', $recording);
         }

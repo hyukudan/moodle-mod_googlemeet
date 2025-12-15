@@ -78,14 +78,75 @@ class process_video_analysis extends adhoc_task {
                 throw new \moodle_exception('ai_not_configured', 'googlemeet');
             }
 
-            // Extract file ID from Google Drive URL.
-            $fileid = $this->extract_drive_file_id($recording->webviewlink);
-            if (!$fileid) {
-                throw new \moodle_exception('ai_error', 'googlemeet', '', 'Could not extract file ID from Drive URL');
+            // Check if we have a transcript available (much faster path).
+            if (!empty($recording->transcripttext)) {
+                mtrace("Transcript available, using fast text-based analysis...");
+                $result = $this->analyze_with_transcript($client, $recording);
+            } else {
+                mtrace("No transcript available, using video-based analysis...");
+                $result = $this->analyze_with_video($client, $recording);
             }
 
-            mtrace("Extracted Drive file ID: {$fileid}");
+            // Update the analysis record with results.
+            $analysis->summary = $result->summary;
+            $analysis->keypoints = json_encode($result->keypoints);
+            $analysis->topics = json_encode($result->topics);
+            $analysis->transcript = $result->transcript;
+            $analysis->language = $result->language;
+            $analysis->status = 'completed';
+            $analysis->error = null;
+            $analysis->aimodel = $client->get_model();
+            $analysis->timemodified = time();
+            $DB->update_record('googlemeet_ai_analysis', $analysis);
 
+            mtrace("Analysis saved successfully.");
+
+        } catch (\Exception $e) {
+            mtrace("Error: " . $e->getMessage());
+
+            // Update analysis with error status.
+            $analysis->status = 'failed';
+            $analysis->error = $e->getMessage();
+            $analysis->timemodified = time();
+            $DB->update_record('googlemeet_ai_analysis', $analysis);
+        }
+    }
+
+    /**
+     * Analyze using the transcript text (fast path).
+     *
+     * @param gemini_client $client The Gemini client
+     * @param stdClass $recording The recording record
+     * @return stdClass The analysis result
+     */
+    private function analyze_with_transcript(gemini_client $client, stdClass $recording): stdClass {
+        return $client->analyze_transcript(
+            $recording->transcripttext,
+            $recording->name,
+            $recording->duration
+        );
+    }
+
+    /**
+     * Analyze by downloading and uploading the video (slow path).
+     *
+     * @param gemini_client $client The Gemini client
+     * @param stdClass $recording The recording record
+     * @return stdClass The analysis result
+     */
+    private function analyze_with_video(gemini_client $client, stdClass $recording): stdClass {
+        // Extract file ID from Google Drive URL.
+        $fileid = $this->extract_drive_file_id($recording->webviewlink);
+        if (!$fileid) {
+            throw new \moodle_exception('ai_error', 'googlemeet', '', 'Could not extract file ID from Drive URL');
+        }
+
+        mtrace("Extracted Drive file ID: {$fileid}");
+
+        $tempfile = null;
+        $filedata = null;
+
+        try {
             // Download the video from Google Drive.
             $tempfile = $this->download_from_drive($fileid, $recording->name);
             mtrace("Downloaded video to: {$tempfile}");
@@ -114,42 +175,17 @@ class process_video_analysis extends adhoc_task {
             );
             mtrace("Analysis completed.");
 
-            // Update the analysis record with results.
-            $analysis->summary = $result->summary;
-            $analysis->keypoints = json_encode($result->keypoints);
-            $analysis->topics = json_encode($result->topics);
-            $analysis->transcript = $result->transcript;
-            $analysis->language = $result->language;
-            $analysis->status = 'completed';
-            $analysis->error = null;
-            $analysis->aimodel = $client->get_model();
-            $analysis->timemodified = time();
-            $DB->update_record('googlemeet_ai_analysis', $analysis);
-
-            mtrace("Analysis saved successfully.");
-
             // Clean up: delete the file from Gemini.
             $client->delete_file($filedata->name);
             mtrace("Cleaned up Gemini file.");
 
+            return $result;
+
+        } finally {
             // Clean up: delete the temp file.
-            if (file_exists($tempfile)) {
+            if ($tempfile && file_exists($tempfile)) {
                 unlink($tempfile);
                 mtrace("Cleaned up temp file.");
-            }
-
-        } catch (\Exception $e) {
-            mtrace("Error: " . $e->getMessage());
-
-            // Update analysis with error status.
-            $analysis->status = 'failed';
-            $analysis->error = $e->getMessage();
-            $analysis->timemodified = time();
-            $DB->update_record('googlemeet_ai_analysis', $analysis);
-
-            // Clean up temp file if it exists.
-            if (isset($tempfile) && file_exists($tempfile)) {
-                unlink($tempfile);
             }
         }
     }

@@ -467,6 +467,55 @@ PROMPT;
     }
 
     /**
+     * Analyze a transcript text directly (fast path - no video processing needed).
+     *
+     * @param string $transcript The transcript text
+     * @param string $videoname The video name for context
+     * @param string $duration The video duration
+     * @return stdClass Analysis result
+     * @throws moodle_exception If analysis fails
+     */
+    public function analyze_transcript(string $transcript, string $videoname, string $duration): stdClass {
+        if (!$this->is_configured()) {
+            throw new moodle_exception('ai_not_configured', 'googlemeet');
+        }
+
+        debugging("Gemini API: Analyzing transcript for '{$videoname}'", DEBUG_DEVELOPER);
+
+        $prompt = <<<PROMPT
+You are an educational assistant analyzing a transcript from a recorded meeting/class.
+
+Meeting Information:
+- Title: {$videoname}
+- Duration: {$duration}
+
+Transcript:
+{$transcript}
+
+Based on this transcript, please provide the following in a structured JSON format:
+
+1. **Summary**: A comprehensive summary of the meeting content (2-3 paragraphs)
+2. **Key Points**: A list of 5-10 main takeaways or important points discussed
+3. **Topics**: A list of main topics/themes covered
+4. **Cleaned Transcript**: The transcript reformatted with proper punctuation and paragraph breaks
+
+IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
+{
+    "summary": "Your comprehensive summary here...",
+    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
+    "topics": ["Topic 1", "Topic 2", "Topic 3", ...],
+    "transcript": "The cleaned and formatted transcript...",
+    "language": "detected language code (e.g., en, es, fr)"
+}
+PROMPT;
+
+        $response = $this->call_api($prompt);
+        debugging("Gemini API: Transcript analysis completed", DEBUG_DEVELOPER);
+
+        return $this->parse_analysis_response($response);
+    }
+
+    /**
      * Analyze a video using its Gemini file URI.
      *
      * @param string $fileuri The Gemini file URI
