@@ -73,4 +73,12 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'googlemeet:view',
     ),
+    'mod_googlemeet_save_ai_analysis' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'save_ai_analysis',
+        'description' => 'Save AI analysis manually for a recording',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'googlemeet:editrecording',
+    ),
 );

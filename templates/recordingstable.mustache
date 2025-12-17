@@ -122,6 +122,9 @@
                     {{# pix }} i/show, core, {{# str }} show, mod_googlemeet {{/ str }} {{/ pix }}
                   {{/visible}}
                 </a>
+                <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">
+                  {{# pix }} i/edit, core {{/ pix }}
+                </a>
               {{/hascapability}}
               {{#aienabled}}
                 <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}">
@@ -167,6 +170,12 @@
                   {{^hasai}}{{# str }} ai_generate, mod_googlemeet {{/ str }}{{/hasai}}
                 </button>
                 {{/cangenerateai}}
+                {{#hascapability}}
+                <button class="btn btn-sm btn-outline-secondary googlemeet-ai-edit-btn ml-1" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">
+                  {{# pix }} i/edit, core {{/ pix }}
+                  {{# str }} ai_edit_manual, mod_googlemeet {{/ str }}
+                </button>
+                {{/hascapability}}
               </div>
             </div>
             <div class="googlemeet-ai-content" data-recordingid="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}">
@@ -310,6 +319,47 @@
 
   <div id="googlemeet_syncimg" class="googlemeet-loading-overlay">
     {{# pix }} i/processing64, googlemeet, {{# str }} loading, mod_googlemeet {{/ str }} {{/ pix }}
+  </div>
+
+  {{! Modal for manual AI analysis editing }}
+  <div class="modal fade" id="googlemeet-ai-edit-modal" tabindex="-1" role="dialog" aria-labelledby="googlemeet-ai-edit-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="googlemeet-ai-edit-modal-title">{{# str }} ai_edit_manual_title, mod_googlemeet {{/ str }}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="googlemeet-ai-edit-form">
+            <input type="hidden" id="googlemeet-ai-edit-recordingid" value="">
+            <div class="form-group">
+              <label for="googlemeet-ai-edit-summary">{{# str }} ai_summary, mod_googlemeet {{/ str }}</label>
+              <textarea class="form-control" id="googlemeet-ai-edit-summary" rows="4" placeholder="{{# str }} ai_edit_summary_placeholder, mod_googlemeet {{/ str }}"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="googlemeet-ai-edit-keypoints">{{# str }} ai_keypoints, mod_googlemeet {{/ str }}</label>
+              <textarea class="form-control" id="googlemeet-ai-edit-keypoints" rows="6" placeholder="{{# str }} ai_edit_keypoints_placeholder, mod_googlemeet {{/ str }}"></textarea>
+              <small class="form-text text-muted">{{# str }} ai_edit_keypoints_placeholder, mod_googlemeet {{/ str }}</small>
+            </div>
+            <div class="form-group">
+              <label for="googlemeet-ai-edit-topics">{{# str }} ai_topics, mod_googlemeet {{/ str }}</label>
+              <textarea class="form-control" id="googlemeet-ai-edit-topics" rows="2" placeholder="{{# str }} ai_edit_topics_placeholder, mod_googlemeet {{/ str }}"></textarea>
+              <small class="form-text text-muted">{{# str }} ai_edit_topics_placeholder, mod_googlemeet {{/ str }}</small>
+            </div>
+            <div class="form-group">
+              <label for="googlemeet-ai-edit-transcript">{{# str }} ai_transcript, mod_googlemeet {{/ str }}</label>
+              <textarea class="form-control" id="googlemeet-ai-edit-transcript" rows="8" placeholder="{{# str }} ai_edit_transcript_placeholder, mod_googlemeet {{/ str }}"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">{{# str }} ai_edit_cancel, mod_googlemeet {{/ str }}</button>
+          <button type="button" class="btn btn-primary" id="googlemeet-ai-edit-save">{{# str }} ai_edit_save, mod_googlemeet {{/ str }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -818,7 +868,90 @@ require([
         div.textContent = text;
         return div.innerHTML;
       }
+
     {{/aienabled}}
+
+    {{#hascapability}}
+      // Manual AI analysis editing
+      $('.googlemeet-ai-edit-btn').on('click', function(e) {
+        e.stopPropagation();
+        var recordingid = $(this).attr('data-id');
+        var recordingname = $(this).attr('data-recordingname');
+
+        // Clear form
+        $('#googlemeet-ai-edit-recordingid').val(recordingid);
+        $('#googlemeet-ai-edit-summary').val('');
+        $('#googlemeet-ai-edit-keypoints').val('');
+        $('#googlemeet-ai-edit-topics').val('');
+        $('#googlemeet-ai-edit-transcript').val('');
+
+        // Update modal title with recording name
+        $('#googlemeet-ai-edit-modal-title').text('{{# str }} ai_edit_manual_title, mod_googlemeet {{/ str }}: ' + recordingname);
+
+        // Load existing data if available
+        Ajax.call([{
+          methodname: 'mod_googlemeet_get_ai_analysis',
+          args: {
+            recordingid: recordingid,
+            coursemoduleid: {{ coursemoduleid }}
+          }
+        }])[0].then(function(response) {
+          if (response.found && response.status === 'completed') {
+            $('#googlemeet-ai-edit-summary').val(response.summary || '');
+            $('#googlemeet-ai-edit-keypoints').val((response.keypoints || []).join('\n'));
+            $('#googlemeet-ai-edit-topics').val((response.topics || []).join(', '));
+            $('#googlemeet-ai-edit-transcript').val(response.transcript || '');
+          }
+        });
+
+        // Show modal
+        $('#googlemeet-ai-edit-modal').modal('show');
+      });
+
+      // Save AI analysis
+      $('#googlemeet-ai-edit-save').on('click', function() {
+        var btn = $(this);
+        var recordingid = $('#googlemeet-ai-edit-recordingid').val();
+        var summary = $('#googlemeet-ai-edit-summary').val();
+        var keypoints = $('#googlemeet-ai-edit-keypoints').val();
+        var topics = $('#googlemeet-ai-edit-topics').val();
+        var transcript = $('#googlemeet-ai-edit-transcript').val();
+
+        btn.prop('disabled', true).text('{{# str }} ai_edit_saving, mod_googlemeet {{/ str }}');
+
+        Ajax.call([{
+          methodname: 'mod_googlemeet_save_ai_analysis',
+          args: {
+            recordingid: parseInt(recordingid),
+            coursemoduleid: {{ coursemoduleid }},
+            summary: summary,
+            keypoints: keypoints,
+            topics: topics,
+            transcript: transcript
+          }
+        }])[0].then(function(response) {
+          btn.prop('disabled', false).text('{{# str }} ai_edit_save, mod_googlemeet {{/ str }}');
+          if (response.success) {
+            // Close modal and reload page to show updated data
+            $('#googlemeet-ai-edit-modal').modal('hide');
+
+            // Show success notification
+            Notification.addNotification({
+              message: '{{# str }} ai_edit_saved, mod_googlemeet {{/ str }}',
+              type: 'success'
+            });
+
+            // Reload page after a short delay to show the notification
+            setTimeout(function() {
+              window.location.reload();
+            }, 1000);
+          }
+        }).fail(function(ex) {
+          btn.prop('disabled', false).text('{{# str }} ai_edit_save, mod_googlemeet {{/ str }}');
+          Notification.exception(ex);
+        });
+      });
+    {{/hascapability}}
   });
 });
 {{/js}}

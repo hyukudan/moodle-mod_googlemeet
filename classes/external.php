@@ -580,4 +580,159 @@ class mod_googlemeet_external extends external_api {
             ]
         );
     }
+
+    /**
+     * Describes the parameters for save_ai_analysis.
+     *
+     * @return external_function_parameters
+     */
+    public static function save_ai_analysis_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+                'summary' => new external_value(PARAM_RAW, 'Summary text', VALUE_DEFAULT, ''),
+                'keypoints' => new external_value(PARAM_RAW, 'Key points (one per line)', VALUE_DEFAULT, ''),
+                'topics' => new external_value(PARAM_RAW, 'Topics (comma separated)', VALUE_DEFAULT, ''),
+                'transcript' => new external_value(PARAM_RAW, 'Transcript text', VALUE_DEFAULT, ''),
+            ]
+        );
+    }
+
+    /**
+     * Save AI analysis manually for a recording.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @param string $summary The summary text
+     * @param string $keypoints Key points (one per line)
+     * @param string $topics Topics (comma separated)
+     * @param string $transcript Transcript text
+     * @return array The saved analysis data
+     */
+    public static function save_ai_analysis($recordingid, $coursemoduleid, $summary = '', $keypoints = '', $topics = '', $transcript = '') {
+        global $DB;
+
+        // Parameter validation.
+        $params = self::validate_parameters(
+            self::save_ai_analysis_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+                'summary' => $summary,
+                'keypoints' => $keypoints,
+                'topics' => $topics,
+                'transcript' => $transcript,
+            ]
+        );
+
+        $context = context_module::instance($coursemoduleid);
+        require_capability('mod/googlemeet:editrecording', $context);
+
+        // Verify recording exists.
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+
+        // Parse keypoints (one per line).
+        $keypointsarray = [];
+        if (!empty($keypoints)) {
+            $lines = explode("\n", $keypoints);
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (!empty($line)) {
+                    // Remove leading bullet points, dashes, numbers.
+                    $line = preg_replace('/^[\-\*\•\d\.]+\s*/', '', $line);
+                    if (!empty($line)) {
+                        $keypointsarray[] = $line;
+                    }
+                }
+            }
+        }
+
+        // Parse topics (comma or newline separated).
+        $topicsarray = [];
+        if (!empty($topics)) {
+            // Split by comma or newline.
+            $items = preg_split('/[,\n]+/', $topics);
+            foreach ($items as $item) {
+                $item = trim($item);
+                if (!empty($item)) {
+                    $topicsarray[] = $item;
+                }
+            }
+        }
+
+        // Check if analysis exists.
+        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
+
+        $now = time();
+
+        if ($analysis) {
+            // Update existing.
+            $analysis->summary = $summary;
+            $analysis->keypoints = json_encode($keypointsarray);
+            $analysis->topics = json_encode($topicsarray);
+            $analysis->transcript = $transcript;
+            $analysis->status = 'completed';
+            $analysis->error = null;
+            $analysis->aimodel = 'manual';
+            $analysis->timemodified = $now;
+
+            $DB->update_record('googlemeet_ai_analysis', $analysis);
+        } else {
+            // Insert new.
+            $analysis = new \stdClass();
+            $analysis->recordingid = $recordingid;
+            $analysis->summary = $summary;
+            $analysis->keypoints = json_encode($keypointsarray);
+            $analysis->topics = json_encode($topicsarray);
+            $analysis->transcript = $transcript;
+            $analysis->language = 'es';
+            $analysis->status = 'completed';
+            $analysis->error = null;
+            $analysis->aimodel = 'manual';
+            $analysis->timecreated = $now;
+            $analysis->timemodified = $now;
+
+            $analysis->id = $DB->insert_record('googlemeet_ai_analysis', $analysis);
+        }
+
+        return [
+            'success' => true,
+            'id' => $analysis->id,
+            'recordingid' => $recordingid,
+            'summary' => $summary,
+            'keypoints' => $keypointsarray,
+            'topics' => $topicsarray,
+            'transcript' => $transcript,
+            'aimodel' => 'manual',
+            'timemodified' => $now,
+        ];
+    }
+
+    /**
+     * Describes the save_ai_analysis return value.
+     *
+     * @return external_single_structure
+     */
+    public static function save_ai_analysis_returns() {
+        return new external_single_structure(
+            [
+                'success' => new external_value(PARAM_BOOL, 'Whether save was successful'),
+                'id' => new external_value(PARAM_INT, 'Analysis ID'),
+                'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+                'summary' => new external_value(PARAM_RAW, 'Summary text'),
+                'keypoints' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Key point'),
+                    'List of key points'
+                ),
+                'topics' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Topic'),
+                    'List of topics'
+                ),
+                'transcript' => new external_value(PARAM_RAW, 'Transcript'),
+                'aimodel' => new external_value(PARAM_TEXT, 'Model used (manual)'),
+                'timemodified' => new external_value(PARAM_INT, 'Time modified'),
+            ]
+        );
+    }
 }
