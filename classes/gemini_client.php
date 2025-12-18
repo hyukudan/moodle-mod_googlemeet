@@ -507,15 +507,17 @@ You are an educational assistant analyzing a class transcript. Focus ONLY on edu
 
 Based ONLY on the educational content, provide in JSON format:
 
-1. **Summary**: Summary of the educational content covered (2-3 paragraphs)
-2. **Key Points**: 5-10 key learning points from the lesson
-3. **Topics**: Educational topics/themes covered
+1. **Summary**: Summary of the educational content covered (2-3 paragraphs) - in the same language as the transcript
+2. **Key Points**: 5-10 key learning points from the lesson - in the same language as the transcript
+3. **Topics**: Educational topics/themes covered - in the same language as the transcript
+4. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
 
 Respond ONLY with valid JSON (no markdown):
 {
     "summary": "Educational summary here...",
     "keypoints": ["Learning point 1", "Learning point 2", ...],
-    "topics": ["Topic 1", "Topic 2", ...]
+    "topics": ["Topic 1", "Topic 2", ...],
+    "language": "es"
 }
 PROMPT;
 

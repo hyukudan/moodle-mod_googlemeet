@@ -804,7 +804,7 @@ class mod_googlemeet_external extends external_api {
             $analysis->keypoints = json_encode($result->keypoints ?? []);
             $analysis->topics = json_encode($result->topics ?? []);
             $analysis->transcript = $params['transcript'];
-            $analysis->language = 'es';
+            $analysis->language = $result->language ?? 'en';
             $analysis->status = 'completed';
             $analysis->error = null;
             $analysis->aimodel = $client->get_model();
