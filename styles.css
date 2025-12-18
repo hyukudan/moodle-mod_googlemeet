@@ -835,7 +835,7 @@
     align-items: center;
     gap: 4px;
     padding: 2px 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff;
     border-radius: 12px;
     font-size: 0.7rem;
@@ -853,11 +853,11 @@
 
 /* Card with AI - subtle highlight */
 .googlemeet-recording-has-ai {
-    border-left: 3px solid #764ba2;
+    border-left: 3px solid #1a73e8;
 }
 
 .googlemeet-recording-has-ai:hover {
-    border-left-color: #667eea;
+    border-left-color: #1a73e8;
 }
 
 /* AI keypoints count in meta */
@@ -865,7 +865,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #764ba2;
+    color: #1a73e8;
     font-weight: 500;
 }
 
@@ -898,19 +898,19 @@
 }
 
 .googlemeet-ai-toggle-btn:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff;
     transform: scale(1.05);
     text-decoration: none;
 }
 
 .googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff;
 }
 
 .googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active:hover {
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
 }
 
 .googlemeet-ai-toggle-btn svg {
@@ -948,7 +948,7 @@
 
 .googlemeet-ai-preview-label {
     font-weight: 600;
-    color: #764ba2;
+    color: #1a73e8;
 }
 
 .googlemeet-ai-preview-topics {
@@ -961,7 +961,7 @@
 .googlemeet-ai-topic-tag {
     display: inline-block;
     padding: 3px 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff;
     border-radius: 12px;
     font-size: 0.75rem;
@@ -970,7 +970,7 @@
 
 /* Expanded card state */
 .googlemeet-ai-expanded {
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+    box-shadow: 0 4px 20px rgba(26, 115, 232, 0.15);
 }
 
 .googlemeet-ai-expanded .googlemeet-ai-preview {
@@ -1011,7 +1011,7 @@
     display: inline-block;
     width: 8px;
     height: 8px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     border-radius: 50%;
 }
 
@@ -1028,7 +1028,7 @@
 }
 
 .googlemeet-ai-generate-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     border: none;
     color: #fff;
     font-weight: 500;
@@ -1038,10 +1038,10 @@
 }
 
 .googlemeet-ai-generate-btn:hover {
-    background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+    background: #1557b0;
     color: #fff;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
 }
 
 .googlemeet-ai-generate-btn:disabled {
@@ -1060,7 +1060,7 @@
     width: 48px;
     height: 48px;
     border: 3px solid #e0e5f0;
-    border-top-color: #764ba2;
+    border-top-color: #1a73e8;
     border-radius: 50%;
     margin: 0 auto 16px;
     animation: googlemeet-ai-spin 1s linear infinite;
@@ -1127,7 +1127,7 @@
 }
 
 .googlemeet-ai-section h6 svg {
-    color: #764ba2;
+    color: #1a73e8;
     flex-shrink: 0;
 }
 
@@ -1138,7 +1138,7 @@
     min-width: 22px;
     height: 22px;
     padding: 0 6px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff;
     border-radius: 11px;
     font-size: 0.75rem;
@@ -1173,7 +1173,7 @@
 }
 
 .googlemeet-ai-topic-badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1a73e8;
     color: #fff !important;
     padding: 4px 12px;
     border-radius: 16px;
