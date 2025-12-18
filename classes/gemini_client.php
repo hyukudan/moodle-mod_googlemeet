@@ -475,21 +475,34 @@ PROMPT;
      * @return stdClass Analysis result
      * @throws moodle_exception If analysis fails
      */
-    public function analyze_transcript(string $transcript, string $videoname, string $duration): stdClass {
+    public function analyze_transcript(string $transcript, string $videoname = '', string $duration = ''): stdClass {
         if (!$this->is_configured()) {
             throw new moodle_exception('ai_not_configured', 'googlemeet');
         }
 
+        if (empty(trim($transcript))) {
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'Transcript is empty');
+        }
+
         debugging("Gemini API: Analyzing transcript for '{$videoname}'", DEBUG_DEVELOPER);
+
+        // Build context info only if we have data.
+        $contextinfo = '';
+        if (!empty($videoname) || !empty($duration)) {
+            $contextinfo = "Meeting Information:\n";
+            if (!empty($videoname)) {
+                $contextinfo .= "- Title: {$videoname}\n";
+            }
+            if (!empty($duration)) {
+                $contextinfo .= "- Duration: {$duration}\n";
+            }
+            $contextinfo .= "\n";
+        }
 
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a transcript from a recorded meeting/class.
 
-Meeting Information:
-- Title: {$videoname}
-- Duration: {$duration}
-
-Transcript:
+{$contextinfo}Transcript:
 {$transcript}
 
 Based on this transcript, please provide the following in a structured JSON format:
@@ -497,14 +510,13 @@ Based on this transcript, please provide the following in a structured JSON form
 1. **Summary**: A comprehensive summary of the meeting content (2-3 paragraphs)
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed
 3. **Topics**: A list of main topics/themes covered
-4. **Cleaned Transcript**: The transcript reformatted with proper punctuation and paragraph breaks
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
     "summary": "Your comprehensive summary here...",
     "keypoints": ["Point 1", "Point 2", "Point 3", ...],
     "topics": ["Topic 1", "Topic 2", "Topic 3", ...],
-    "transcript": "The cleaned and formatted transcript...",
+    "transcript": "Return the original transcript as-is",
     "language": "detected language code (e.g., en, es, fr)"
 }
 PROMPT;
