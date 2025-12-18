@@ -138,7 +138,7 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 
 ## Security
 
-If you discover any security related issues, please email [ronefel@hotmail.com](mailto:ronefel@hotmail.com) instead of using the issue tracker.
+If you discover any security related issues, please use the [GitHub issue tracker](https://github.com/hyukudan/moodle-mod_googlemeet/issues).
 
 ## Credits
 
