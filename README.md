@@ -20,15 +20,23 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Calendar integration** with Moodle calendar events
 - **Mobile app support** for Moodle mobile app (Ionic 5+)
 
-### AI-Powered Features (NEW)
+### Recording Management
+- **Custom recording filter** to specify the exact name pattern to search in Google Drive
+- **Sync feedback** showing how many recordings were added, updated, or removed
+- **Pagination** with configurable recordings per page
+- **Sorting options** (newest/oldest first)
+
+### AI-Powered Features (Gemini)
 - **AI Video Analysis** using Google Gemini to automatically analyze meeting recordings
-- **Automatic summaries** generated from video content
-- **Key points extraction** highlighting the most important topics discussed
+- **Manual transcript analysis** - paste Google Meet transcripts and analyze with Gemini
+- **Automatic summaries** generated from video content (educational content only, ignores small talk)
+- **Key points extraction** highlighting the most important learning points
 - **Topic tags** for quick content identification
-- **Transcript generation** with copy-to-clipboard functionality
+- **Auto language detection** - summaries generated in the same language as the content
 - **Preview cards** showing AI summary and topics directly in recording list
 - **Teacher-only generation** - professors generate analysis once, students view without API calls
 - **Background processing** with scheduled task for queued analyses
+- **Default model: Gemini 3 Flash Preview** (latest Google AI model)
 
 ## Requirements
 
@@ -76,13 +84,32 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 ### Using AI Analysis
 
 1. Open a Google Meet activity with synced recordings
-2. Click the AI button (star icon) on any recording
-3. Teachers can click "Generate AI Analysis" to create analysis
-4. Students will see the summary preview directly in the recording card
-5. Click on the preview or AI button to expand the full analysis
-6. Use "Copy" to copy the transcript to clipboard
+2. Click the expand button (▼) on any recording to view AI analysis
+3. Teachers can click "Generate AI Analysis" to create analysis from video
+4. Alternatively, teachers can click the edit icon and paste a Google Meet transcript to analyze
+5. Students will see the summary preview directly in the recording card
+6. Click on the preview or expand button to see the full analysis
+7. Use "Copy" to copy the transcript to clipboard
 
 ## Changes in this fork
+
+### Version 2.7.4
+- **Manual transcript analysis** - paste Google Meet transcripts and analyze with Gemini
+- **Updated default model** to Gemini 3 Flash Preview (December 2025)
+- **Educational content focus** - AI ignores small talk and focuses on curriculum
+- **Auto language detection** - analysis in the same language as the transcript
+- **Improved UX** - chevron expand icon instead of star, solid blue theme colors
+
+### Version 2.7.3
+- **Custom recording filter** - specify text pattern to match recordings in Google Drive
+- **Sync feedback** - shows count of added, updated, and removed recordings
+- **Manual AI editing** - teachers can manually enter/edit summaries, key points, and topics
+- **Transcript section** hidden from students (teachers only)
+
+### Version 2.7.0
+- **Recordings pagination** with configurable items per page
+- **Sorting options** (newest/oldest first)
+- **Improved disk space management** for video processing
 
 ### Version 2.5.0 (AI Features)
 - **Added AI-powered video analysis** using Google Gemini API
