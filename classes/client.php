@@ -368,7 +368,9 @@ EOD;
             // Additional filtering for duplicate check across activities.
             $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
 
+            // Remove sync param to avoid redirect loop.
             $url = new moodle_url($PAGE->url);
+            $url->remove_params(['sync']);
             $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0];
 
             if ($recordings && count($recordings) > 0) {
