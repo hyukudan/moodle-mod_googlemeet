@@ -735,4 +735,124 @@ class mod_googlemeet_external extends external_api {
             ]
         );
     }
+
+    /**
+     * Describes the parameters for analyze_transcript.
+     *
+     * @return external_function_parameters
+     */
+    public static function analyze_transcript_parameters() {
+        return new external_function_parameters(
+            [
+                'transcript' => new external_value(PARAM_RAW, 'The transcript text to analyze'),
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+            ]
+        );
+    }
+
+    /**
+     * Analyze a pasted transcript using Gemini AI.
+     *
+     * @param string $transcript The transcript text
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @return array Analysis results
+     */
+    public static function analyze_transcript($transcript, $recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(self::analyze_transcript_parameters(), [
+            'transcript' => $transcript,
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+        ]);
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:editrecording', $context);
+
+        // Get recording info for context.
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $params['recordingid']], '*', MUST_EXIST);
+
+        // Call Gemini to analyze the transcript.
+        $client = new \mod_googlemeet\gemini_client();
+
+        if (!$client->is_configured()) {
+            throw new \moodle_exception('ai_not_configured', 'googlemeet');
+        }
+
+        try {
+            $result = $client->analyze_transcript($params['transcript'], $recording->name);
+
+            // Save to database.
+            $now = time();
+            $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $params['recordingid']]);
+
+            $analysis = new \stdClass();
+            $analysis->recordingid = $params['recordingid'];
+            $analysis->summary = $result->summary ?? '';
+            $analysis->keypoints = json_encode($result->keypoints ?? []);
+            $analysis->topics = json_encode($result->topics ?? []);
+            $analysis->transcript = $params['transcript'];
+            $analysis->language = $result->language ?? 'es';
+            $analysis->status = 'completed';
+            $analysis->error = null;
+            $analysis->aimodel = $client->get_model();
+            $analysis->timemodified = $now;
+
+            if ($existing) {
+                $analysis->id = $existing->id;
+                $DB->update_record('googlemeet_ai_analysis', $analysis);
+            } else {
+                $analysis->timecreated = $now;
+                $analysis->id = $DB->insert_record('googlemeet_ai_analysis', $analysis);
+            }
+
+            return [
+                'success' => true,
+                'summary' => $result->summary ?? '',
+                'keypoints' => $result->keypoints ?? [],
+                'topics' => $result->topics ?? [],
+                'language' => $result->language ?? 'es',
+                'aimodel' => $client->get_model(),
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'summary' => '',
+                'keypoints' => [],
+                'topics' => [],
+                'language' => '',
+                'aimodel' => '',
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Describes the analyze_transcript return value.
+     *
+     * @return external_single_structure
+     */
+    public static function analyze_transcript_returns() {
+        return new external_single_structure(
+            [
+                'success' => new external_value(PARAM_BOOL, 'Whether analysis was successful'),
+                'summary' => new external_value(PARAM_RAW, 'Generated summary'),
+                'keypoints' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Key point'),
+                    'List of key points'
+                ),
+                'topics' => new external_multiple_structure(
+                    new external_value(PARAM_RAW, 'Topic'),
+                    'List of topics'
+                ),
+                'language' => new external_value(PARAM_TEXT, 'Detected language'),
+                'aimodel' => new external_value(PARAM_TEXT, 'AI model used'),
+            ]
+        );
+    }
 }

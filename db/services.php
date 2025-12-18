@@ -81,4 +81,12 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'googlemeet:editrecording',
     ),
+    'mod_googlemeet_analyze_transcript' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'analyze_transcript',
+        'description' => 'Analyze a pasted transcript using Gemini AI',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'googlemeet:editrecording',
+    ),
 );
