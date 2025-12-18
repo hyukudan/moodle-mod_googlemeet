@@ -128,8 +128,8 @@
               {{/hascapability}}
               {{#aienabled}}
                 <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon">
+                    <path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/>
                   </svg>
                 </a>
               {{/aienabled}}
@@ -505,14 +505,16 @@ require([
 
       // Toggle AI panel
       $('.googlemeet-ai-toggle-btn').on('click', function() {
-        var recordingid = $(this).attr('data-id');
-        var hasai = $(this).attr('data-hasai') === '1';
+        var btn = $(this);
+        var recordingid = btn.attr('data-id');
+        var hasai = btn.attr('data-hasai') === '1';
         var panel = $('.googlemeet-ai-panel[data-recordingid="' + recordingid + '"]');
-        var card = $(this).closest('.googlemeet-recording-card');
+        var card = btn.closest('.googlemeet-recording-card');
 
         if (panel.is(':visible')) {
           panel.slideUp(200);
           card.removeClass('googlemeet-ai-expanded');
+          btn.removeClass('expanded');
         } else {
           // Load transcript on demand if we have AI data but haven't loaded transcript yet
           if (hasai && !loadedTranscripts[recordingid]) {
@@ -520,6 +522,7 @@ require([
           }
           panel.slideDown(200);
           card.addClass('googlemeet-ai-expanded');
+          btn.addClass('expanded');
         }
       });
 
