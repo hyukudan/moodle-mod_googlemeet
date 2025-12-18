@@ -181,3 +181,10 @@ $string['url_failed'] = 'É obrigatório uma URL válida do Google Meet';
 $string['url_help'] = 'Ex. https://meet.google.com/aaa-aaaa-aaa';
 $string['visible'] = 'Visível';
 $string['week'] = 'Semana(s)';
+
+// AI analyze transcript strings.
+$string['ai_analyze_with_gemini'] = 'Analisar com Gemini';
+$string['ai_analyze_transcript_hint'] = 'Cole a transcrição do Google Meet e clique em "Analisar com Gemini" para gerar automaticamente o resumo, pontos-chave e tópicos.';
+$string['ai_analyze_empty_transcript'] = 'Por favor, cole uma transcrição primeiro';
+$string['ai_analyzing'] = 'Analisando...';
+$string['ai_analyze_success'] = 'Análise concluída! Revise e salve os resultados.';

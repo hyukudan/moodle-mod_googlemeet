@@ -57,7 +57,7 @@ class gemini_client {
     public function __construct() {
         $this->enabled = (bool) get_config('googlemeet', 'enableai');
         $this->apikey = get_config('googlemeet', 'geminiapikey');
-        $this->model = get_config('googlemeet', 'aimodel') ?: 'gemini-1.5-flash';
+        $this->model = get_config('googlemeet', 'aimodel') ?: 'gemini-3-flash-preview';
     }
 
     /**
@@ -628,4 +628,5 @@ PROMPT;
     public function get_api_key(): string {
         return $this->apikey;
     }
+
 }
