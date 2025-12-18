@@ -505,19 +505,17 @@ You are an educational assistant analyzing a transcript from a recorded meeting/
 {$contextinfo}Transcript:
 {$transcript}
 
-Based on this transcript, please provide the following in a structured JSON format:
+Based on this transcript, provide the following in JSON format:
 
-1. **Summary**: A comprehensive summary of the meeting content (2-3 paragraphs)
-2. **Key Points**: A list of 5-10 main takeaways or important points discussed
-3. **Topics**: A list of main topics/themes covered
+1. **Summary**: A comprehensive summary (2-3 paragraphs)
+2. **Key Points**: 5-10 main takeaways
+3. **Topics**: Main topics/themes covered
 
-IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
+Respond ONLY with valid JSON (no markdown, no code blocks):
 {
-    "summary": "Your comprehensive summary here...",
-    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
-    "topics": ["Topic 1", "Topic 2", "Topic 3", ...],
-    "transcript": "Return the original transcript as-is",
-    "language": "detected language code (e.g., en, es, fr)"
+    "summary": "Your summary here...",
+    "keypoints": ["Point 1", "Point 2", ...],
+    "topics": ["Topic 1", "Topic 2", ...]
 }
 PROMPT;
 
