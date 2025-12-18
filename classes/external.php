@@ -773,8 +773,16 @@ class mod_googlemeet_external extends external_api {
         self::validate_context($context);
         require_capability('mod/googlemeet:editrecording', $context);
 
+        // Validate recording ID.
+        if (empty($params['recordingid']) || $params['recordingid'] <= 0) {
+            throw new \moodle_exception('ai_error', 'googlemeet', '', 'Invalid recording ID');
+        }
+
         // Get recording info for context.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $params['recordingid']], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $params['recordingid']]);
+        if (!$recording) {
+            throw new \moodle_exception('ai_error', 'googlemeet', '', 'Recording not found (ID: ' . $params['recordingid'] . ')');
+        }
 
         // Call Gemini to analyze the transcript.
         $client = new \mod_googlemeet\gemini_client();
@@ -796,7 +804,7 @@ class mod_googlemeet_external extends external_api {
             $analysis->keypoints = json_encode($result->keypoints ?? []);
             $analysis->topics = json_encode($result->topics ?? []);
             $analysis->transcript = $params['transcript'];
-            $analysis->language = $result->language ?? 'es';
+            $analysis->language = 'es';
             $analysis->status = 'completed';
             $analysis->error = null;
             $analysis->aimodel = $client->get_model();
@@ -815,8 +823,6 @@ class mod_googlemeet_external extends external_api {
                 'summary' => $result->summary ?? '',
                 'keypoints' => $result->keypoints ?? [],
                 'topics' => $result->topics ?? [],
-                'language' => $result->language ?? 'es',
-                'aimodel' => $client->get_model(),
             ];
 
         } catch (\Exception $e) {
@@ -825,8 +831,6 @@ class mod_googlemeet_external extends external_api {
                 'summary' => '',
                 'keypoints' => [],
                 'topics' => [],
-                'language' => '',
-                'aimodel' => '',
                 'error' => $e->getMessage(),
             ];
         }
@@ -850,8 +854,7 @@ class mod_googlemeet_external extends external_api {
                     new external_value(PARAM_RAW, 'Topic'),
                     'List of topics'
                 ),
-                'language' => new external_value(PARAM_TEXT, 'Detected language'),
-                'aimodel' => new external_value(PARAM_TEXT, 'AI model used'),
+                'error' => new external_value(PARAM_RAW, 'Error message if failed', VALUE_OPTIONAL),
             ]
         );
     }
