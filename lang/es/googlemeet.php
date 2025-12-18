@@ -43,6 +43,11 @@ $string['recording_hidden'] = 'Oculto para estudiantes';
 
 $string['sync_settings'] = 'Configuración de sincronización';
 $string['sync_help_title'] = 'Cómo funciona la sincronización';
+$string['sync_new_recordings'] = '{$a} grabación(es) nueva(s) añadida(s)';
+$string['sync_updated_recordings'] = '{$a} grabación(es) actualizada(s)';
+$string['sync_deleted_recordings'] = '{$a} grabación(es) eliminada(s)';
+$string['sync_no_changes'] = 'Sincronización completa. {$a} grabación(es) ya estaban actualizadas';
+$string['sync_no_recordings_found'] = 'Sincronización completa. No se encontraron grabaciones en Google Drive para esta reunión';
 
 // Holiday/exclusion periods.
 $string['holidayperiods'] = 'Períodos de exclusión';
@@ -78,6 +83,9 @@ $string['recordingsorder'] = 'Orden de grabaciones';
 $string['recordingsorder_help'] = 'Selecciona si mostrar primero las grabaciones más recientes o las más antiguas.';
 $string['recordingsorder_desc'] = 'Más recientes primero';
 $string['recordingsorder_asc'] = 'Más antiguas primero';
+$string['recordingfilter'] = 'Filtro de nombre de grabación';
+$string['recordingfilter_placeholder'] = 'ej. Clase de oposiciones CSIF';
+$string['recordingfilter_help'] = 'Introduce un patrón de texto personalizado para filtrar las grabaciones de Google Drive. La sincronización solo incluirá grabaciones cuyo nombre de archivo contenga este texto. Esto es útil cuando el nombre de la grabación en Google Drive (del calendario de Google) difiere del nombre de la actividad en Moodle. Déjalo vacío para usar el filtrado predeterminado (nombre de actividad o código de reunión).';
 $string['recordings_pagination_info'] = 'Mostrando {$a->start} a {$a->end} de {$a->total} grabaciones';
 $string['recordings_page_previous'] = 'Anterior';
 $string['recordings_page_next'] = 'Siguiente';

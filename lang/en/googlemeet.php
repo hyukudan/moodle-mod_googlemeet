@@ -155,6 +155,11 @@ For more information, look this Help Center article:
 <br>
 <a href="https://notifications.google.com/g/p/APNL1TjJltVk6EcLPyFTJ8V_9ty1FeTAD0XSSJVLiaWPezIaQKfIPd1kGURFUMVV3I5yHgVZoOgxkl4gySV-4SCf2pZ27Vk8Iy9DnHSQBqtK51uG3Gyz" target="_blank" rel="nofollow noopener">https://support.google.com/meet/answer/9308681</a>';
 $string['sync_notloggedin'] = 'Log in to your Google account for the synchronize Google Meet recording with Moodle';
+$string['sync_new_recordings'] = '{$a} new recording(s) added';
+$string['sync_updated_recordings'] = '{$a} recording(s) updated';
+$string['sync_deleted_recordings'] = '{$a} recording(s) removed';
+$string['sync_no_changes'] = 'Sync complete. {$a} recording(s) already up to date';
+$string['sync_no_recordings_found'] = 'Sync complete. No recordings found in Google Drive for this meeting';
 $string['thereisnorecordingtoshow'] = 'There is no recording to show.';
 $string['timeahead'] = 'Is not possible to create multiple recurrences of the event date that exceed one year, adjust the start and end dates.';
 $string['timedate'] = '%d/%m/%Y %H:%M';
@@ -211,6 +216,9 @@ $string['recordingsorder'] = 'Recordings order';
 $string['recordingsorder_help'] = 'Select whether to show newest or oldest recordings first.';
 $string['recordingsorder_desc'] = 'Newest first';
 $string['recordingsorder_asc'] = 'Oldest first';
+$string['recordingfilter'] = 'Recording name filter';
+$string['recordingfilter_placeholder'] = 'e.g. Class Meeting CSIF';
+$string['recordingfilter_help'] = 'Enter a custom text pattern to filter recordings from Google Drive. The sync will only include recordings whose filename contains this text. This is useful when the recording name in Google Drive (from Google Calendar) differs from the activity name in Moodle. Leave empty to use the default filtering (activity name or meeting code).';
 $string['recordings_pagination_info'] = 'Showing {$a->start} to {$a->end} of {$a->total} recordings';
 $string['recordings_page_previous'] = 'Previous';
 $string['recordings_page_next'] = 'Next';

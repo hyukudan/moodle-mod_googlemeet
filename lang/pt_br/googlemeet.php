@@ -155,6 +155,11 @@ Para mais informações, veja esse artigo da Central de Ajuda:
 <br>
 <a href="https://notifications.google.com/g/p/APNL1TjJltVk6EcLPyFTJ8V_9ty1FeTAD0XSSJVLiaWPezIaQKfIPd1kGURFUMVV3I5yHgVZoOgxkl4gySV-4SCf2pZ27Vk8Iy9DnHSQBqtK51uG3Gyz" target="_blank" rel="nofollow noopener">https://support.google.com/meet/answer/9308681</a>';
 $string['sync_notloggedin'] = 'Faça login na sua conta do Google para sincronizar a gravação do Google Meet com o Moodle';
+$string['sync_new_recordings'] = '{$a} nova(s) gravação(ões) adicionada(s)';
+$string['sync_updated_recordings'] = '{$a} gravação(ões) atualizada(s)';
+$string['sync_deleted_recordings'] = '{$a} gravação(ões) removida(s)';
+$string['sync_no_changes'] = 'Sincronização concluída. {$a} gravação(ões) já estavam atualizadas';
+$string['sync_no_recordings_found'] = 'Sincronização concluída. Nenhuma gravação encontrada no Google Drive para esta reunião';
 $string['thereisnorecordingtoshow'] = 'Não há gravação para mostrar.';
 $string['timeahead'] = 'Não é possível criar várias recorrências da data do evento que excedam um ano, ajuste as datas de início e término.';
 $string['timedate'] = '%d/%m/%Y %H:%M';

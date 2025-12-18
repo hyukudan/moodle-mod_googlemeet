@@ -313,7 +313,7 @@ EOD;
      * @return void
      */
     public function syncrecordings($googlemeet) {
-        global $PAGE;
+        global $PAGE, $DB;
 
         if ($this->check_login()) {
             $service = new rest($this->get_user_oauth_client());
@@ -340,12 +340,23 @@ EOD;
 
             $meetingcode = substr($googlemeet->url, 24, 12);
             $name = $googlemeet->name;
+            $customfilter = trim($googlemeet->recordingfilter ?? '');
+
+            // Build optimized query: use custom filter if set, otherwise use meetingcode/name.
+            if (!empty($customfilter)) {
+                // Custom filter set - search only by that pattern (more efficient).
+                $namefilter = 'name contains "' . $customfilter . '"';
+            } else {
+                // Default: search by meeting code or activity name.
+                $namefilter = '(name contains "' . $meetingcode . '" or name contains "' . $name . '")';
+            }
+
             $recordingparams = [
-                'q' => '('.$parents.') and
+                'q' => '(' . $parents . ') and
                         trashed = false and
                         mimeType = "video/mp4" and
                         "me" in owners and
-                        (name contains "'.$meetingcode.'" or name contains "'.$name.'")',
+                        ' . $namefilter,
                 'pageSize' => 1000,
                 'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
             ];
@@ -354,9 +365,11 @@ EOD;
 
             $recordings = $recordingresponse->files;
 
-            // Filter recordings more strictly to avoid duplicates across activities.
-            // The Drive API "contains" filter is broad, so we do additional validation here.
-            $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name);
+            // Additional filtering for duplicate check across activities.
+            $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
+
+            $url = new moodle_url($PAGE->url);
+            $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0];
 
             if ($recordings && count($recordings) > 0) {
                 for ($i = 0; $i < count($recordings); $i++) {
@@ -400,22 +413,53 @@ EOD;
                     }
                 }
 
-                sync_recordings($googlemeet->id, $recordings);
+                $result = sync_recordings($googlemeet->id, $recordings);
+                $stats = $result['stats'];
+            } else {
+                // No recordings found, but still update lastsync time.
+                $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeet->id]);
+                $googlemeetrecord->lastsync = time();
+                $DB->update_record('googlemeet', $googlemeetrecord);
             }
 
-            $url = new moodle_url($PAGE->url);
-            $js = <<<EOD
-<html>
-<head>
-    <script type="text/javascript">
-        window.location = '{$url}'.replaceAll('&amp;','&')
-    </script>
-</head>
-<body></body>
-</html>
-EOD;
-            die($js);
+            // Build feedback message.
+            $message = $this->build_sync_message($stats, count($recordings ?? []));
+            $messagetype = ($stats['inserted'] > 0) ? \core\output\notification::NOTIFY_SUCCESS
+                                                    : \core\output\notification::NOTIFY_INFO;
+
+            redirect($url, $message, null, $messagetype);
         }
+    }
+
+    /**
+     * Build a user-friendly sync feedback message.
+     *
+     * @param array $stats Array with inserted, updated, deleted counts.
+     * @param int $totalfound Total recordings found in Drive.
+     * @return string The feedback message.
+     */
+    private function build_sync_message(array $stats, int $totalfound): string {
+        $parts = [];
+
+        if ($stats['inserted'] > 0) {
+            $parts[] = get_string('sync_new_recordings', 'googlemeet', $stats['inserted']);
+        }
+        if ($stats['updated'] > 0) {
+            $parts[] = get_string('sync_updated_recordings', 'googlemeet', $stats['updated']);
+        }
+        if ($stats['deleted'] > 0) {
+            $parts[] = get_string('sync_deleted_recordings', 'googlemeet', $stats['deleted']);
+        }
+
+        if (empty($parts)) {
+            if ($totalfound > 0) {
+                return get_string('sync_no_changes', 'googlemeet', $totalfound);
+            } else {
+                return get_string('sync_no_recordings_found', 'googlemeet');
+            }
+        }
+
+        return implode('. ', $parts) . '.';
     }
 
     /**
@@ -423,16 +467,19 @@ EOD;
      *
      * The Drive API "contains" filter is broad and may return recordings from
      * other activities with similar names. This method applies stricter filtering:
-     * 1. Recording name must start with the activity name (case-insensitive)
-     * 2. Or recording name must contain the exact meeting code
-     * 3. Recording must not already exist in another activity (avoid duplicates)
+     * 1. If custom filter is set, use it (case-insensitive contains)
+     * 2. Recording name must start with the activity name (case-insensitive)
+     * 3. Or recording name must contain the exact meeting code
+     * 4. Recording must not already exist in another activity (avoid duplicates)
      *
      * @param array $recordings Array of recording objects from Drive API
      * @param string $meetingcode The meeting code (e.g., "abc-defg-hij")
      * @param string $activityname The activity name in Moodle
+     * @param int $googlemeetid The current activity ID
+     * @param string $customfilter Custom filter pattern set by user
      * @return array Filtered array of recordings
      */
-    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname) {
+    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid, $customfilter = '') {
         global $DB;
 
         if (empty($recordings)) {
@@ -441,32 +488,51 @@ EOD;
 
         $filtered = [];
         $activitynamelower = core_text::strtolower(trim($activityname));
+        $customfilterlower = core_text::strtolower(trim($customfilter));
 
         foreach ($recordings as $recording) {
             $recordingname = $recording->name ?? '';
             $recordingnamelower = core_text::strtolower($recordingname);
 
-            // Check if this recording already exists in ANY activity (global duplicate check).
+            // Check if this recording already exists in another activity (global duplicate check).
+            // Allow recordings that belong to THIS activity (so they can be updated).
             $existingrecording = $DB->get_record('googlemeet_recordings', ['recordingid' => $recording->id]);
-            if ($existingrecording) {
+            if ($existingrecording && $existingrecording->googlemeetid != $googlemeetid) {
                 // Skip this recording - it's already associated with another activity.
                 continue;
             }
 
-            // Check 1: Recording name contains the exact meeting code.
+            // If recording already exists in this activity, include it (for updates).
+            if ($existingrecording && $existingrecording->googlemeetid == $googlemeetid) {
+                $filtered[] = $recording;
+                continue;
+            }
+
+            // For new recordings, apply name-based filtering:
+
+            // Priority 1: If custom filter is set, use it (case-insensitive contains).
+            if (!empty($customfilterlower)) {
+                if (strpos($recordingnamelower, $customfilterlower) !== false) {
+                    $filtered[] = $recording;
+                }
+                // If custom filter is set but doesn't match, skip this recording.
+                continue;
+            }
+
+            // Check 2: Recording name contains the exact meeting code.
             if (!empty($meetingcode) && strpos($recordingnamelower, core_text::strtolower($meetingcode)) !== false) {
                 $filtered[] = $recording;
                 continue;
             }
 
-            // Check 2: Recording name starts with the activity name.
+            // Check 3: Recording name starts with the activity name.
             // This handles filenames like "Activity Name (2024-01-15 10:00).mp4".
             if (!empty($activitynamelower) && strpos($recordingnamelower, $activitynamelower) === 0) {
                 $filtered[] = $recording;
                 continue;
             }
 
-            // Check 3: Recording name contains the full activity name followed by space or parenthesis.
+            // Check 4: Recording name contains the full activity name followed by space or parenthesis.
             // This handles cases where the name might have a prefix or different format.
             $pattern = preg_quote($activitynamelower, '/');
             if (preg_match('/\b' . $pattern . '\s*[\(\-]/i', $recordingnamelower)) {
