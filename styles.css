@@ -916,6 +916,11 @@
 .googlemeet-ai-toggle-btn svg {
     width: 18px;
     height: 18px;
+    transition: transform 0.3s ease;
+}
+
+.googlemeet-ai-toggle-btn.expanded svg {
+    transform: rotate(180deg);
 }
 
 /* AI Preview Section */
