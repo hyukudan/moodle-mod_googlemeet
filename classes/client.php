@@ -489,12 +489,12 @@ EOD;
         }
 
         $filtered = [];
-        $activitynamelower = core_text::strtolower(trim($activityname));
-        $customfilterlower = core_text::strtolower(trim($customfilter));
+        $activitynamelower = \core_text::strtolower(trim($activityname));
+        $customfilterlower = \core_text::strtolower(trim($customfilter));
 
         foreach ($recordings as $recording) {
             $recordingname = $recording->name ?? '';
-            $recordingnamelower = core_text::strtolower($recordingname);
+            $recordingnamelower = \core_text::strtolower($recordingname);
 
             // Check if this recording already exists in another activity (global duplicate check).
             // Allow recordings that belong to THIS activity (so they can be updated).
@@ -522,7 +522,7 @@ EOD;
             }
 
             // Check 2: Recording name contains the exact meeting code.
-            if (!empty($meetingcode) && strpos($recordingnamelower, core_text::strtolower($meetingcode)) !== false) {
+            if (!empty($meetingcode) && strpos($recordingnamelower, \core_text::strtolower($meetingcode)) !== false) {
                 $filtered[] = $recording;
                 continue;
             }
