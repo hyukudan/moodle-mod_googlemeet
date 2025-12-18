@@ -399,6 +399,8 @@ function sync_recordings($googlemeetid, $files) {
     ];
 
     if ($deleterecordings) {
+        // Also delete associated AI analysis to avoid orphaned data.
+        $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $deleterecordings['id']]);
         $DB->delete_records('googlemeet_recordings', $deleterecordings);
         $stats['deleted'] = 1;
     }
