@@ -31,6 +31,7 @@
         <FIELD NAME="maxupcomingevents" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="3" SEQUENCE="false" COMMENT="Maximum number of upcoming events to display."/>
         <FIELD NAME="maxrecordings" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="5" SEQUENCE="false" COMMENT="Maximum number of recordings per page."/>
         <FIELD NAME="recordingsorder" TYPE="char" LENGTH="4" NOTNULL="true" DEFAULT="DESC" SEQUENCE="false" COMMENT="Order of recordings: DESC (newest first) or ASC (oldest first)."/>
+        <FIELD NAME="recordingfilter" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom name pattern to filter recordings from Google Drive."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

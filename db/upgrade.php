@@ -207,5 +207,20 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121503, 'googlemeet');
     }
 
+    if ($oldversion < 2025121705) {
+
+        // Define field recordingfilter to be added to googlemeet.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('recordingfilter', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'recordingsorder');
+
+        // Conditionally launch add field recordingfilter.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025121705, 'googlemeet');
+    }
+
     return true;
 }

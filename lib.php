@@ -358,7 +358,7 @@ function mod_googlemeet_get_fontawesome_icon_map() {
  *
  * @param int $googlemeetid the googlemeet ID
  * @param array $files the array of recordings
- * @return array of recordings
+ * @return array with 'recordings' list and 'stats' (inserted, updated, deleted counts)
  */
 function sync_recordings($googlemeetid, $files) {
     global $DB;
@@ -392,8 +392,15 @@ function sync_recordings($googlemeetid, $files) {
         }
     }
 
+    $stats = [
+        'inserted' => 0,
+        'updated' => 0,
+        'deleted' => 0,
+    ];
+
     if ($deleterecordings) {
         $DB->delete_records('googlemeet_recordings', $deleterecordings);
+        $stats['deleted'] = 1;
     }
 
     if ($updaterecordings) {
@@ -416,6 +423,7 @@ function sync_recordings($googlemeetid, $files) {
 
             $DB->update_record('googlemeet_recordings', $recording);
         }
+        $stats['updated'] = count($updaterecordings);
 
         $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
         $googlemeetrecord->lastsync = time();
@@ -441,6 +449,7 @@ function sync_recordings($googlemeetid, $files) {
 
             $DB->insert_record('googlemeet_recordings', $recording);
         }
+        $stats['inserted'] = count($insertrecordings);
 
         $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
         $googlemeetrecord->lastsync = time();
@@ -448,7 +457,17 @@ function sync_recordings($googlemeetid, $files) {
         $DB->update_record('googlemeet', $googlemeetrecord);
     }
 
-    return googlemeet_list_recordings(['googlemeetid' => $googlemeetid]);
+    // Always update lastsync even if no changes were made.
+    if (!$updaterecordings && !$insertrecordings && !$deleterecordings) {
+        $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
+        $googlemeetrecord->lastsync = time();
+        $DB->update_record('googlemeet', $googlemeetrecord);
+    }
+
+    return [
+        'recordings' => googlemeet_list_recordings(['googlemeetid' => $googlemeetid]),
+        'stats' => $stats,
+    ];
 }
 
 /**

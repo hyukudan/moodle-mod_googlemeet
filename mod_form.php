@@ -157,6 +157,12 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $mform->setDefault('recordingsorder', 'DESC');
         $mform->addHelpButton('recordingsorder', 'recordingsorder', 'googlemeet');
 
+        // Recording filter - custom name pattern to filter recordings from Google Drive.
+        $mform->addElement('text', 'recordingfilter', get_string('recordingfilter', 'googlemeet'),
+            ['size' => '50', 'placeholder' => get_string('recordingfilter_placeholder', 'googlemeet')]);
+        $mform->setType('recordingfilter', PARAM_TEXT);
+        $mform->addHelpButton('recordingfilter', 'recordingfilter', 'googlemeet');
+
         // For multiple dates.
         $mform->addElement('header', 'headeraddmultipleeventdates', get_string('recurrenceeventdate', 'googlemeet'));
         if (!empty($config->multieventdateexpanded) || !empty($this->current->addmultiply)) {
