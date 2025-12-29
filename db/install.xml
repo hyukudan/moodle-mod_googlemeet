@@ -52,6 +52,9 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_recordings" COMMENT="Stores references from Google Meet recordings.">
       <FIELDS>
@@ -71,6 +74,9 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_notify_done" COMMENT="Stores references from Google Meet recordings.">
       <FIELDS>
@@ -83,6 +89,10 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="eventidfk" TYPE="foreign" FIELDS="eventid" REFTABLE="googlemeet_events" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="eventid" UNIQUE="false" FIELDS="eventid"/>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_holidays" COMMENT="Stores holiday/exclusion periods for recurring events.">
       <FIELDS>
@@ -97,6 +107,9 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_cancelled" COMMENT="Stores cancelled dates for individual sessions.">
       <FIELDS>
@@ -110,6 +123,9 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_ai_analysis" COMMENT="Stores AI-generated analysis for recordings.">
       <FIELDS>

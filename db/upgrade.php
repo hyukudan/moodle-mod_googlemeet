@@ -222,5 +222,53 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025121705, 'googlemeet');
     }
 
+    if ($oldversion < 2025122900) {
+
+        // Add missing indexes for performance optimization.
+        // These indexes improve JOIN and WHERE clause performance on foreign key columns.
+
+        // Index on googlemeet_events.googlemeetid.
+        $table = new xmldb_table('googlemeet_events');
+        $index = new xmldb_index('googlemeetid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Index on googlemeet_recordings.googlemeetid.
+        $table = new xmldb_table('googlemeet_recordings');
+        $index = new xmldb_index('googlemeetid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Indexes on googlemeet_notify_done.eventid and userid.
+        $table = new xmldb_table('googlemeet_notify_done');
+        $index = new xmldb_index('eventid', XMLDB_INDEX_NOTUNIQUE, ['eventid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        $index = new xmldb_index('userid', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Index on googlemeet_holidays.googlemeetid.
+        $table = new xmldb_table('googlemeet_holidays');
+        $index = new xmldb_index('googlemeetid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Index on googlemeet_cancelled.googlemeetid.
+        $table = new xmldb_table('googlemeet_cancelled');
+        $index = new xmldb_index('googlemeetid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2025122900, 'googlemeet');
+    }
+
     return true;
 }
