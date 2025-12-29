@@ -238,10 +238,9 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     $html = '<div id="googlemeet_recordings" class="googlemeet_recordings">';
 
-    // Check if AI features are enabled.
-    $aienabled = (bool) get_config('googlemeet', 'enableai');
-    $apikey = get_config('googlemeet', 'geminiapikey');
-    $aienabled = $aienabled && !empty($apikey);
+    // Check if AI features are enabled (single config fetch).
+    $aiconfig = get_config('googlemeet');
+    $aienabled = !empty($aiconfig->enableai) && !empty($aiconfig->geminiapikey);
     $cangenerateai = $aienabled && has_capability('mod/googlemeet:generateai', $context);
 
     // Get pagination settings.
