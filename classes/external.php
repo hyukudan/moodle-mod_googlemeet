@@ -99,15 +99,26 @@ class mod_googlemeet_external extends external_api {
 
         $googlemeetrecordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
 
-        $recordingids = array_column($googlemeetrecordings, 'recordingid');
-        $fileids = array_column($files, 'recordingId');
+        // Build lookup maps for O(1) access instead of in_array() O(n).
+        $recordingsbyid = [];
+        foreach ($googlemeetrecordings as $rec) {
+            $recordingsbyid[$rec->recordingid] = $rec;
+        }
+
+        $fileidsmap = [];
+        foreach ($files as $file) {
+            if (isset($file['recordingId'])) {
+                $fileidsmap[$file['recordingId']] = true;
+            }
+        }
 
         $updaterecordings = [];
         $insertrecordings = [];
         $deleterecordings = [];
 
         foreach ($files as $file) {
-            if (in_array($file['recordingId'], $recordingids, true)) {
+            // O(1) lookup with isset() instead of O(n) in_array().
+            if (isset($recordingsbyid[$file['recordingId']])) {
                 $updaterecordings[] = $file;
             } else {
                 $insertrecordings[] = $file;
@@ -115,21 +126,22 @@ class mod_googlemeet_external extends external_api {
         }
 
         foreach ($googlemeetrecordings as $googlemeetrecording) {
-            if (!in_array($googlemeetrecording->recordingid, $fileids)) {
+            // O(1) lookup with isset() instead of O(n) in_array().
+            if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
                 $deleterecordings['id'] = $googlemeetrecording->id;
             }
         }
 
         if ($deleterecordings) {
+            // Also delete associated AI analysis to avoid orphaned data.
+            $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $deleterecordings['id']]);
             $DB->delete_records('googlemeet_recordings', $deleterecordings);
         }
 
         if ($updaterecordings) {
             foreach ($updaterecordings as $updaterecording) {
-                $recording = $DB->get_record('googlemeet_recordings', [
-                    'googlemeetid' => $googlemeetid,
-                    'recordingid' => $updaterecording['recordingId']
-                ]);
+                // Use the already fetched record from lookup map instead of querying again (N+1 fix).
+                $recording = $recordingsbyid[$updaterecording['recordingId']];
 
                 $recording->createdtime = $updaterecording['createdTime'];
                 $recording->duration = $updaterecording['duration'];
@@ -138,10 +150,6 @@ class mod_googlemeet_external extends external_api {
 
                 $DB->update_record('googlemeet_recordings', $recording);
             }
-
-            $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-            $googlemeetrecord->lastsync = time();
-            $DB->update_record('googlemeet', $googlemeetrecord);
         }
 
         if ($insertrecordings) {
@@ -157,15 +165,20 @@ class mod_googlemeet_external extends external_api {
 
                 $DB->insert_record('googlemeet_recordings', $recording);
             }
+        }
 
-            $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-            $googlemeetrecord->lastsync = time();
-
-            if (!$googlemeetrecord->creatoremail) {
-                $googlemeetrecord->creatoremail = $creatoremail;
+        // Update lastsync and creatoremail in a single query.
+        $updatedata = ['lastsync' => time()];
+        if ($insertrecordings) {
+            // Check if creatoremail needs to be set.
+            $currentemail = $DB->get_field('googlemeet', 'creatoremail', ['id' => $googlemeetid]);
+            if (empty($currentemail)) {
+                $updatedata['creatoremail'] = $creatoremail;
             }
-
-            $DB->update_record('googlemeet', $googlemeetrecord);
+        }
+        $DB->set_field('googlemeet', 'lastsync', $updatedata['lastsync'], ['id' => $googlemeetid]);
+        if (isset($updatedata['creatoremail'])) {
+            $DB->set_field('googlemeet', 'creatoremail', $updatedata['creatoremail'], ['id' => $googlemeetid]);
         }
 
         return googlemeet_list_recordings(['googlemeetid' => $googlemeetid]);
@@ -361,11 +374,17 @@ class mod_googlemeet_external extends external_api {
         $context = context_module::instance($coursemoduleid);
         require_capability('mod/googlemeet:removerecording', $context);
 
+        // Get recording IDs to delete associated AI analyses.
+        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$googlemeetid]);
+        if (!empty($recordingids)) {
+            list($insql, $inparams) = $DB->get_in_or_equal($recordingids);
+            $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
+        }
+
         $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
 
-        $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-        $googlemeetrecord->lastsync = time();
-        $DB->update_record('googlemeet', $googlemeetrecord);
+        // Use set_field instead of get_record + update_record.
+        $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
 
         return [];
     }
