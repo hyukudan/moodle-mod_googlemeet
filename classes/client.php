@@ -331,9 +331,10 @@ EOD;
 
             $folders = $folderresponse->files;
             $parents = '';
-            for ($i = 0; $i < count($folders); $i++) {
+            $folderscount = count($folders);
+            for ($i = 0; $i < $folderscount; $i++) {
                 $parents .= 'parents="'.$folders[$i]->id.'"';
-                if ($i + 1 < count($folders)) {
+                if ($i + 1 < $folderscount) {
                     $parents .= ' or ';
                 }
             }
@@ -373,8 +374,9 @@ EOD;
             $url->remove_params(['sync']);
             $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0];
 
-            if ($recordings && count($recordings) > 0) {
-                for ($i = 0; $i < count($recordings); $i++) {
+            $recordingscount = $recordings ? count($recordings) : 0;
+            if ($recordingscount > 0) {
+                for ($i = 0; $i < $recordingscount; $i++) {
                     $recording = $recordings[$i];
 
                     // If the recording has already been processed.
@@ -419,13 +421,11 @@ EOD;
                 $stats = $result['stats'];
             } else {
                 // No recordings found, but still update lastsync time.
-                $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeet->id]);
-                $googlemeetrecord->lastsync = time();
-                $DB->update_record('googlemeet', $googlemeetrecord);
+                $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeet->id]);
             }
 
             // Build feedback message.
-            $message = $this->build_sync_message($stats, count($recordings ?? []));
+            $message = $this->build_sync_message($stats, $recordingscount);
             $messagetype = ($stats['inserted'] > 0) ? \core\output\notification::NOTIFY_SUCCESS
                                                     : \core\output\notification::NOTIFY_INFO;
 
@@ -488,6 +488,20 @@ EOD;
             return [];
         }
 
+        // Batch query: get all existing recordings by their IDs to avoid N+1 queries.
+        $recordingids = array_filter(array_map(function($r) {
+            return $r->id ?? null;
+        }, $recordings));
+
+        $existingrecordings = [];
+        if (!empty($recordingids)) {
+            list($insql, $params) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
+            $records = $DB->get_records_select('googlemeet_recordings', "recordingid $insql", $params, '', 'recordingid, googlemeetid');
+            foreach ($records as $rec) {
+                $existingrecordings[$rec->recordingid] = $rec->googlemeetid;
+            }
+        }
+
         $filtered = [];
         $activitynamelower = \core_text::strtolower(trim($activityname));
         $customfilterlower = \core_text::strtolower(trim($customfilter));
@@ -495,17 +509,18 @@ EOD;
         foreach ($recordings as $recording) {
             $recordingname = $recording->name ?? '';
             $recordingnamelower = \core_text::strtolower($recordingname);
+            $recordingid = $recording->id ?? null;
 
-            // Check if this recording already exists in another activity (global duplicate check).
-            // Allow recordings that belong to THIS activity (so they can be updated).
-            $existingrecording = $DB->get_record('googlemeet_recordings', ['recordingid' => $recording->id]);
-            if ($existingrecording && $existingrecording->googlemeetid != $googlemeetid) {
+            // Check if this recording already exists using our batch-loaded map.
+            $existinggooglemeetid = $existingrecordings[$recordingid] ?? null;
+
+            if ($existinggooglemeetid !== null && $existinggooglemeetid != $googlemeetid) {
                 // Skip this recording - it's already associated with another activity.
                 continue;
             }
 
             // If recording already exists in this activity, include it (for updates).
-            if ($existingrecording && $existingrecording->googlemeetid == $googlemeetid) {
+            if ($existinggooglemeetid !== null && $existinggooglemeetid == $googlemeetid) {
                 $filtered[] = $recording;
                 continue;
             }
