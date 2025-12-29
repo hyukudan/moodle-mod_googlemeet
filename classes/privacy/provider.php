@@ -115,7 +115,7 @@ class provider implements
 
         $params = [
             'cmid' => $context->instanceid,
-            'modulename' => 'choice',
+            'modulename' => 'googlemeet',
         ];
 
         $userlist->add_from_sql('userid', $sql, $params);

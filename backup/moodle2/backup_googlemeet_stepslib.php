@@ -57,7 +57,11 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'notify',
             'minutesbefore',
             'timemodified',
-            'maxupcomingevents'
+            'eventid',
+            'maxupcomingevents',
+            'maxrecordings',
+            'recordingsorder',
+            'recordingfilter'
         ]);
 
         $events = new backup_nested_element('events');
@@ -74,6 +78,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'createdtime',
             'duration',
             'webviewlink',
+            'transcripttext',
+            'transcriptfileid',
             'visible',
             'timemodified'
         ]);
