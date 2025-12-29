@@ -179,12 +179,18 @@ function googlemeet_delete_instance($id) {
     global $DB, $CFG;
     require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 
-    $exists = $DB->get_record('googlemeet', array('id' => $id));
-    if (!$exists) {
+    if (!$DB->record_exists('googlemeet', ['id' => $id])) {
         return false;
     }
 
     googlemeet_delete_events($id);
+
+    // Delete AI analyses for all recordings of this instance.
+    $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$id]);
+    if (!empty($recordingids)) {
+        list($insql, $inparams) = $DB->get_in_or_equal($recordingids);
+        $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
+    }
 
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
