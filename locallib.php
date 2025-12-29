@@ -173,10 +173,13 @@ function googlemeet_construct_events_data_for_add($googlemeet) {
 function googlemeet_delete_events($googlemeetid) {
     global $DB;
 
-    $events = $DB->get_records('googlemeet_events', ['googlemeetid' => $googlemeetid]);
+    // Get event IDs for bulk delete instead of N+1 queries.
+    $eventids = $DB->get_fieldset_select('googlemeet_events', 'id', 'googlemeetid = ?', [$googlemeetid]);
 
-    foreach ($events as $event) {
-        $DB->delete_records('googlemeet_notify_done', ['eventid' => $event->id]);
+    if (!empty($eventids)) {
+        // Bulk delete notify_done records in a single query.
+        list($insql, $params) = $DB->get_in_or_equal($eventids);
+        $DB->delete_records_select('googlemeet_notify_done', "eventid $insql", $params);
     }
 
     $DB->delete_records('googlemeet_events', ['googlemeetid' => $googlemeetid]);
@@ -381,9 +384,9 @@ function googlemeet_clear_url($url) {
 function googlemeet_has_recording($googlemeetid) {
     global $DB;
 
-    $recordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
-
-    return $recordings ? true : false;
+    // Use record_exists() instead of get_records() for efficiency.
+    // record_exists() stops at first match, while get_records() loads all data.
+    return $DB->record_exists('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
 }
 
 /**
@@ -518,15 +521,12 @@ function googlemeet_remove_notify_done_from_old_events() {
 
     $now = time();
 
-    $sql = "SELECT id
-              FROM {googlemeet_events}
-             WHERE eventdate < :now";
+    // Bulk delete using subquery instead of N+1 queries.
+    // Delete all notify_done records for events that have already passed.
+    $sql = "DELETE FROM {googlemeet_notify_done}
+             WHERE eventid IN (SELECT id FROM {googlemeet_events} WHERE eventdate < :now)";
 
-    $oldevents = $DB->get_records_sql($sql, ['now' => $now]);
-
-    foreach ($oldevents as $oldevent) {
-        $DB->delete_records('googlemeet_notify_done', ['eventid' => $oldevent->id]);
-    }
+    $DB->execute($sql, ['now' => $now]);
 }
 
 /**

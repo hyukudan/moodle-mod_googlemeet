@@ -369,8 +369,18 @@ function sync_recordings($googlemeetid, $files) {
 
     $googlemeetrecordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
 
-    $recordingids = array_column($googlemeetrecordings, 'recordingid');
-    $fileids = array_column($files, 'recordingId');
+    // Build lookup maps for O(1) access instead of in_array() O(n).
+    $recordingsbyid = [];
+    foreach ($googlemeetrecordings as $rec) {
+        $recordingsbyid[$rec->recordingid] = $rec;
+    }
+
+    $fileidsmap = [];
+    foreach ($files as $file) {
+        if (isset($file->recordingId)) {
+            $fileidsmap[$file->recordingId] = true;
+        }
+    }
 
     $updaterecordings = [];
     $insertrecordings = [];
@@ -378,7 +388,8 @@ function sync_recordings($googlemeetid, $files) {
 
     foreach ($files as $file) {
         if (!isset($file->unprocessed)) {
-            if (in_array($file->recordingId, $recordingids, true)) {
+            // O(1) lookup with isset() instead of O(n) in_array().
+            if (isset($recordingsbyid[$file->recordingId])) {
                 $updaterecordings[] = $file;
             } else {
                 $insertrecordings[] = $file;
@@ -387,7 +398,8 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     foreach ($googlemeetrecordings as $googlemeetrecording) {
-        if (!in_array($googlemeetrecording->recordingid, $fileids)) {
+        // O(1) lookup with isset() instead of O(n) in_array().
+        if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
             $deleterecordings['id'] = $googlemeetrecording->id;
         }
     }
@@ -407,10 +419,8 @@ function sync_recordings($googlemeetid, $files) {
 
     if ($updaterecordings) {
         foreach ($updaterecordings as $updaterecording) {
-            $recording = $DB->get_record('googlemeet_recordings', [
-                'googlemeetid' => $googlemeetid,
-                'recordingid' => $updaterecording->recordingId
-            ]);
+            // Use the already fetched record from lookup map instead of querying again (N+1 fix).
+            $recording = $recordingsbyid[$updaterecording->recordingId];
 
             $recording->createdtime = $updaterecording->createdTime;
             $recording->duration = $updaterecording->duration;
@@ -426,10 +436,6 @@ function sync_recordings($googlemeetid, $files) {
             $DB->update_record('googlemeet_recordings', $recording);
         }
         $stats['updated'] = count($updaterecordings);
-
-        $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-        $googlemeetrecord->lastsync = time();
-        $DB->update_record('googlemeet', $googlemeetrecord);
     }
 
     if ($insertrecordings) {
@@ -452,19 +458,10 @@ function sync_recordings($googlemeetid, $files) {
             $DB->insert_record('googlemeet_recordings', $recording);
         }
         $stats['inserted'] = count($insertrecordings);
-
-        $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-        $googlemeetrecord->lastsync = time();
-
-        $DB->update_record('googlemeet', $googlemeetrecord);
     }
 
-    // Always update lastsync even if no changes were made.
-    if (!$updaterecordings && !$insertrecordings && !$deleterecordings) {
-        $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $googlemeetid]);
-        $googlemeetrecord->lastsync = time();
-        $DB->update_record('googlemeet', $googlemeetrecord);
-    }
+    // Always update lastsync timestamp (single query instead of 3 redundant queries).
+    $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
 
     return [
         'recordings' => googlemeet_list_recordings(['googlemeetid' => $googlemeetid]),
