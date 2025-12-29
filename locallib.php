@@ -398,9 +398,12 @@ function googlemeet_has_recording($googlemeetid) {
 function googlemeet_get_users_to_notify($eventid) {
     global $DB;
 
-    // Get the student role ID dynamically instead of hardcoding.
-    $studentrole = $DB->get_record('role', ['shortname' => 'student'], 'id');
-    $studentroleid = $studentrole ? $studentrole->id : 5;
+    // Cache student role ID to avoid repeated DB queries when called in a loop.
+    static $studentroleid = null;
+    if ($studentroleid === null) {
+        $studentrole = $DB->get_record('role', ['shortname' => 'student'], 'id');
+        $studentroleid = $studentrole ? $studentrole->id : 5;
+    }
 
     $sql = "SELECT DISTINCT
                    u.*
