@@ -17,14 +17,17 @@
 namespace mod_googlemeet\task;
 
 use mod_googlemeet\gemini_client;
+use mod_googlemeet\subtitle_extractor;
 use core\task\adhoc_task;
 use stdClass;
 
 /**
  * Adhoc task to process video analysis in the background.
  *
- * This task downloads a video from Google Drive, uploads it to Gemini File API,
- * waits for processing, generates the analysis, and saves the results.
+ * Analysis paths (in order of preference):
+ * 1. Existing transcript text (fastest - already in DB)
+ * 2. Google Drive auto-generated subtitles via yt-dlp (fast - no video download)
+ * 3. Video download + Gemini File API upload (slowest - full video processing)
  *
  * @package     mod_googlemeet
  * @copyright   2024 Your Name
@@ -78,20 +81,35 @@ class process_video_analysis extends adhoc_task {
                 throw new \moodle_exception('ai_not_configured', 'googlemeet');
             }
 
-            // Check if we have a transcript available (much faster path).
+            // Path 1: Use existing transcript if available.
             if (!empty($recording->transcripttext)) {
                 mtrace("Transcript available, using fast text-based analysis...");
                 $result = $this->analyze_with_transcript($client, $recording);
             } else {
-                mtrace("No transcript available, using video-based analysis...");
-                $result = $this->analyze_with_video($client, $recording);
+                // Path 2: Try to extract subtitles from Google Drive (no video download needed).
+                mtrace("No transcript in DB. Trying subtitle extraction from Google Drive...");
+                $transcript = $this->try_extract_subtitles($recording);
+
+                if (!empty($transcript)) {
+                    mtrace("Subtitles extracted (" . strlen($transcript) . " chars). Using text-based analysis...");
+
+                    // Save transcript to recording for future use.
+                    $DB->set_field('googlemeet_recordings', 'transcripttext', $transcript, ['id' => $recording->id]);
+                    $recording->transcripttext = $transcript;
+
+                    $result = $this->analyze_with_transcript($client, $recording);
+                } else {
+                    // Path 3: Fall back to video download + Gemini File API.
+                    mtrace("Subtitle extraction failed. Falling back to video-based analysis...");
+                    $result = $this->analyze_with_video($client, $recording);
+                }
             }
 
             // Update the analysis record with results.
             $analysis->summary = $result->summary;
             $analysis->keypoints = json_encode($result->keypoints);
             $analysis->topics = json_encode($result->topics);
-            $analysis->transcript = $result->transcript;
+            $analysis->transcript = $result->transcript ?? $recording->transcripttext ?? '';
             $analysis->language = $result->language;
             $analysis->status = 'completed';
             $analysis->error = null;
@@ -125,6 +143,17 @@ class process_video_analysis extends adhoc_task {
             $recording->name,
             $recording->duration
         );
+    }
+
+    /**
+     * Try to extract subtitles from Google Drive using yt-dlp.
+     *
+     * @param stdClass $recording The recording record
+     * @return string|null The parsed transcript or null on failure
+     */
+    private function try_extract_subtitles(stdClass $recording): ?string {
+        $extractor = new subtitle_extractor();
+        return $extractor->extract($recording->webviewlink);
     }
 
     /**

@@ -27,6 +27,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Sorting options** (newest/oldest first)
 
 ### AI-Powered Features (Gemini)
+- **Automatic subtitle extraction** from Google Drive recordings (no video download needed)
 - **AI Video Analysis** using Google Gemini to automatically analyze meeting recordings
 - **Manual transcript analysis** - paste Google Meet transcripts and analyze with Gemini
 - **Automatic summaries** generated from video content (educational content only, ignores small talk)
@@ -36,6 +37,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Preview cards** showing AI summary and topics directly in recording list
 - **Teacher-only generation** - professors generate analysis once, students view without API calls
 - **Background processing** with scheduled task for queued analyses
+- **CLI bulk processing** for batch transcript extraction and analysis
 - **Default model: Gemini 3 Flash Preview** (latest Google AI model)
 
 ## Requirements
@@ -91,7 +93,39 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 6. Click on the preview or expand button to see the full analysis
 7. Use "Copy" to copy the transcript to clipboard
 
+### CLI Bulk Processing
+
+Extract subtitles and run AI analysis for all recordings in one command:
+
+```bash
+# Requires yt-dlp: curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp
+
+# Process all recordings for a Google Meet activity
+php admin/cli/process_transcripts.php --googlemeetid=1
+
+# Dry run (preview without changes)
+php admin/cli/process_transcripts.php --googlemeetid=1 --dry-run
+
+# Process a single recording
+php admin/cli/process_transcripts.php --googlemeetid=1 --recordingid=4
+
+# Extract subtitles only (skip Gemini analysis)
+php admin/cli/process_transcripts.php --googlemeetid=1 --skip-gemini
+```
+
+The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
+
 ## Changes in this fork
+
+### Version 2.8.0
+- **Automatic subtitle extraction** from Google Drive recordings using yt-dlp
+  - Extracts auto-generated captions without downloading the full video
+  - 3-tier analysis: existing transcript → subtitle extraction → video upload (fallback)
+  - New `subtitle_extractor` class for reusable subtitle fetching
+- **CLI bulk processing** (`cli/process_transcripts.php`) for batch operations
+  - Process all recordings in a Google Meet activity with one command
+  - Supports dry-run, single recording, and skip-gemini modes
+- **Requires**: [yt-dlp](https://github.com/yt-dlp/yt-dlp) for subtitle extraction
 
 ### Version 2.7.4
 - **Manual transcript analysis** - paste Google Meet transcripts and analyze with Gemini
