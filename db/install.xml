@@ -90,7 +90,7 @@
         <KEY NAME="eventidfk" TYPE="foreign" FIELDS="eventid" REFTABLE="googlemeet_events" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="eventid" UNIQUE="false" FIELDS="eventid"/>
+        <INDEX NAME="eventid_userid" UNIQUE="true" FIELDS="eventid, userid" COMMENT="Unique notification per user per event"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
