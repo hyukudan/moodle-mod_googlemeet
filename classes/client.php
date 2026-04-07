@@ -425,6 +425,17 @@ EOD;
                             $recordings[$i]->transcripttext = $transcriptdata['content'];
                         }
 
+                        // Fallback: extract auto-generated CC via yt-dlp if no transcript file found.
+                        if (empty($recordings[$i]->transcripttext) && !empty($recording->webViewLink)) {
+                            $extractor = new subtitle_extractor('es');
+                            if ($extractor->is_available()) {
+                                $cctext = $extractor->extract($recording->webViewLink);
+                                if (!empty($cctext)) {
+                                    $recordings[$i]->transcripttext = $cctext;
+                                }
+                            }
+                        }
+
                         unset($recordings[$i]->id);
                         unset($recordings[$i]->permissionIds);
                         unset($recordings[$i]->videoMediaMetadata);
