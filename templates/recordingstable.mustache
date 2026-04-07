@@ -42,12 +42,12 @@
   <div class="googlemeet-recordings-header d-flex justify-content-between align-items-center flex-wrap mb-3">
     <h4 class="googlemeet-section-title mb-0">
       {{# str }} recordings, mod_googlemeet {{/ str }}
-      {{#totalrecordings}}<span class="badge badge-secondary ml-2">{{totalrecordings}}</span>{{/totalrecordings}}
+      {{#totalrecordings}}<span class="badge bg-secondary ms-2">{{totalrecordings}}</span>{{/totalrecordings}}
     </h4>
 
     {{#hasrecordings}}
     <div class="googlemeet-recordings-controls d-flex align-items-center">
-      <label class="mr-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
+      <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
       <div class="btn-group btn-group-sm" role="group">
         <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0"
            class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
@@ -171,7 +171,7 @@
                 </button>
                 {{/cangenerateai}}
                 {{#hascapability}}
-                <button class="btn btn-sm btn-outline-secondary googlemeet-ai-edit-btn ml-1" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">
+                <button class="btn btn-sm btn-outline-secondary googlemeet-ai-edit-btn ms-1" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">
                   {{# pix }} i/edit, core {{/ pix }}
                   {{# str }} ai_edit_manual, mod_googlemeet {{/ str }}
                 </button>
@@ -353,7 +353,7 @@
               <textarea class="form-control" id="googlemeet-ai-edit-transcript" rows="8" placeholder="{{# str }} ai_edit_transcript_placeholder, mod_googlemeet {{/ str }}"></textarea>
               <small class="form-text text-muted">{{# str }} ai_analyze_transcript_hint, mod_googlemeet {{/ str }}</small>
               <button type="button" class="btn btn-info btn-sm mt-2" id="googlemeet-ai-analyze-transcript">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="mr-1">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-1">
                   <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
                 </svg>
                 {{# str }} ai_analyze_with_gemini, mod_googlemeet {{/ str }}
@@ -806,7 +806,7 @@ require([
         if (!processingEl.length) {
           processingEl = $('<div class="googlemeet-ai-processing alert alert-info">' +
             '<div class="d-flex align-items-center">' +
-              '<div class="spinner-border spinner-border-sm mr-2" role="status"></div>' +
+              '<div class="spinner-border spinner-border-sm me-2" role="status"></div>' +
               '<div>' +
                 '<strong>{{# str }} ai_processing_background, mod_googlemeet {{/ str }}</strong><br>' +
                 '<small>{{# str }} ai_processing_background_hint, mod_googlemeet {{/ str }}</small>' +
@@ -933,7 +933,7 @@ require([
         }
 
         var originalText = btn.html();
-        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span> {{# str }} ai_analyzing, mod_googlemeet {{/ str }}');
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> {{# str }} ai_analyzing, mod_googlemeet {{/ str }}');
 
         Ajax.call([{
           methodname: 'mod_googlemeet_analyze_transcript',
