@@ -289,6 +289,10 @@
     max-width: 800px;
 }
 
+.googlemeet-recordings-controls .btn-group .btn + .btn {
+    margin-left: 6px !important;
+}
+
 .googlemeet-recordings-list {
     display: flex;
     flex-direction: column;
@@ -366,8 +370,11 @@
     margin: 0 !important;
     padding: 0 !important;
     filter: brightness(0) invert(1);
-    vertical-align: middle;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transform: translateX(2px);
 }
 
 .googlemeet-play-btn span {
