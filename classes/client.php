@@ -318,8 +318,10 @@ EOD;
         if ($this->check_login()) {
             $service = new rest($this->get_user_oauth_client());
 
+            // Search for Meet Recordings folder in multiple languages.
+            // Google localises the auto-created folder name to the account language.
             $folderparams = [
-                'q' => 'name = "Meet Recordings" and
+                'q' => '(name = "Meet Recordings" or name contains "Registros de reuniones") and
                         trashed = false and
                         mimeType = "application/vnd.google-apps.folder" and
                         "me" in owners',
@@ -343,24 +345,38 @@ EOD;
             $name = $googlemeet->name;
             $customfilter = trim($googlemeet->recordingfilter ?? '');
 
-            // Build optimized query: use custom filter if set, otherwise use meetingcode/name.
-            if (!empty($customfilter)) {
-                // Custom filter set - search only by that pattern (more efficient).
-                $namefilter = 'name contains "' . $customfilter . '"';
-            } else {
-                // Default: search by meeting code or activity name.
-                $namefilter = '(name contains "' . $meetingcode . '" or name contains "' . $name . '")';
+            // Build name filter: always include meetingcode + name as fallbacks,
+            // plus custom filter if set. This avoids the problem where a custom
+            // filter is an incorrect substring that doesn't match the actual filename.
+            $conditions = [];
+            $conditions[] = 'name contains "' . $meetingcode . '"';
+            $conditions[] = 'name contains "' . $name . '"';
+            if (!empty($customfilter) && $customfilter !== $name) {
+                $conditions[] = 'name contains "' . $customfilter . '"';
             }
+            $namefilter = '(' . implode(' or ', $conditions) . ')';
 
-            $recordingparams = [
-                'q' => '(' . $parents . ') and
-                        trashed = false and
-                        mimeType = "video/mp4" and
-                        "me" in owners and
-                        ' . $namefilter,
-                'pageSize' => 1000,
-                'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
-            ];
+            // If no folders found, try searching ALL of Drive (no parent filter).
+            if (empty($parents)) {
+                $recordingparams = [
+                    'q' => 'trashed = false and
+                            mimeType = "video/mp4" and
+                            "me" in owners and
+                            ' . $namefilter,
+                    'pageSize' => 100,
+                    'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
+                ];
+            } else {
+                $recordingparams = [
+                    'q' => '(' . $parents . ') and
+                            trashed = false and
+                            mimeType = "video/mp4" and
+                            "me" in owners and
+                            ' . $namefilter,
+                    'pageSize' => 1000,
+                    'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
+                ];
+            }
 
             $recordingresponse = helper::request($service, 'list', $recordingparams, false);
 
@@ -527,13 +543,14 @@ EOD;
 
             // For new recordings, apply name-based filtering:
 
-            // Priority 1: If custom filter is set, use it (case-insensitive contains).
+            // Priority 1: If custom filter is set, check it first (case-insensitive contains).
             if (!empty($customfilterlower)) {
                 if (strpos($recordingnamelower, $customfilterlower) !== false) {
                     $filtered[] = $recording;
+                    continue;
                 }
-                // If custom filter is set but doesn't match, skip this recording.
-                continue;
+                // Custom filter didn't match — fall through to meetingcode/name checks
+                // instead of skipping. The custom filter is a bonus, not exclusive.
             }
 
             // Check 2: Recording name contains the exact meeting code.
