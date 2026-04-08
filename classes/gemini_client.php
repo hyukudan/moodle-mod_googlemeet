@@ -48,6 +48,9 @@ class gemini_client {
     /** @var string The model to use */
     private $model;
 
+    /** @var string Fallback model when primary fails */
+    private const FALLBACK_MODEL = 'gemini-2.5-flash';
+
     /** @var bool Whether AI features are enabled */
     private $enabled;
 
@@ -160,17 +163,41 @@ PROMPT;
     }
 
     /**
-     * Call the Gemini API.
+     * Call the Gemini API with automatic fallback to a secondary model.
+     *
+     * If the primary model fails with an API error (4xx/5xx), retries
+     * with the fallback model before throwing.
      *
      * @param string $prompt The prompt to send
      * @return string The API response
-     * @throws moodle_exception If the API call fails
+     * @throws moodle_exception If both primary and fallback API calls fail
      */
     private function call_api(string $prompt): string {
-        $url = self::API_BASE_URL . $this->model . ':generateContent?key=' . $this->apikey;
+        try {
+            return $this->call_api_with_model($prompt, $this->model);
+        } catch (moodle_exception $e) {
+            if ($this->model === self::FALLBACK_MODEL) {
+                throw $e;
+            }
+            debugging("Gemini model {$this->model} failed: " . $e->getMessage()
+                . ". Falling back to " . self::FALLBACK_MODEL, DEBUG_DEVELOPER);
+            return $this->call_api_with_model($prompt, self::FALLBACK_MODEL);
+        }
+    }
+
+    /**
+     * Call the Gemini API with a specific model.
+     *
+     * @param string $prompt The prompt to send
+     * @param string $model The model name to use
+     * @return string The API response
+     * @throws moodle_exception If the API call fails
+     */
+    private function call_api_with_model(string $prompt, string $model): string {
+        $url = self::API_BASE_URL . $model . ':generateContent?key=' . $this->apikey;
 
         // Log that we're making the API call (without exposing the API key).
-        $safeurl = self::API_BASE_URL . $this->model . ':generateContent?key=***';
+        $safeurl = self::API_BASE_URL . $model . ':generateContent?key=***';
         debugging("Gemini API: Starting request to {$safeurl}", DEBUG_DEVELOPER);
 
         $data = [
@@ -542,9 +569,36 @@ PROMPT;
             throw new moodle_exception('ai_not_configured', 'googlemeet');
         }
 
-        debugging("Gemini API: Analyzing video with file URI: {$fileuri}", DEBUG_DEVELOPER);
+        try {
+            return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, $this->model);
+        } catch (moodle_exception $e) {
+            if ($this->model === self::FALLBACK_MODEL) {
+                throw $e;
+            }
+            debugging("Gemini model {$this->model} failed for video analysis: " . $e->getMessage()
+                . ". Falling back to " . self::FALLBACK_MODEL, DEBUG_DEVELOPER);
+            return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, self::FALLBACK_MODEL);
+        }
+    }
 
-        $url = self::API_BASE_URL . $this->model . ':generateContent?key=' . $this->apikey;
+    /**
+     * Analyze a video using a specific model.
+     *
+     * @param string $fileuri The Gemini file URI
+     * @param string $mimetype The MIME type
+     * @param string $videoname The video name for context
+     * @param string $duration The video duration
+     * @param string $model The model to use
+     * @return stdClass Analysis result
+     * @throws moodle_exception If analysis fails
+     */
+    private function analyze_video_with_file_using_model(
+        string $fileuri, string $mimetype, string $videoname, string $duration, string $model
+    ): stdClass {
+
+        debugging("Gemini API: Analyzing video with file URI: {$fileuri} using model: {$model}", DEBUG_DEVELOPER);
+
+        $url = self::API_BASE_URL . $model . ':generateContent?key=' . $this->apikey;
 
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
@@ -607,11 +661,11 @@ PROMPT;
         if ($httpcode !== 200) {
             $error = json_decode($response);
             $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
-            debugging("Gemini API error: {$errormsg}", DEBUG_DEVELOPER);
+            debugging("Gemini API error ({$model}): {$errormsg}", DEBUG_DEVELOPER);
             throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
         }
 
-        debugging("Gemini API: Video analysis completed successfully", DEBUG_DEVELOPER);
+        debugging("Gemini API: Video analysis completed successfully with model {$model}", DEBUG_DEVELOPER);
 
         return $this->parse_analysis_response($response);
     }
