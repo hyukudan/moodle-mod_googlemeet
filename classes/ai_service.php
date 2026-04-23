@@ -75,13 +75,15 @@ class ai_service {
      *
      * @param int $recordingid The recording ID
      * @param bool $regenerate Whether to regenerate if analysis exists
+     * @param bool $forcedownload Whether to allow falling back to full-video download (tier 3)
      * @return stdClass The analysis record with status 'processing'
      * @throws moodle_exception If queueing fails
      */
-    public function generate_analysis(int $recordingid, bool $regenerate = false): stdClass {
+    public function generate_analysis(int $recordingid, bool $regenerate = false, bool $forcedownload = false): stdClass {
         global $DB;
 
-        debugging("AI Service: Starting analysis for recording {$recordingid}, regenerate=" . ($regenerate ? 'true' : 'false'), DEBUG_DEVELOPER);
+        debugging("AI Service: Starting analysis for recording {$recordingid}, regenerate=" . ($regenerate ? 'true' : 'false')
+            . ", forcedownload=" . ($forcedownload ? 'true' : 'false'), DEBUG_DEVELOPER);
 
         // Get the recording.
         $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
@@ -126,6 +128,7 @@ class ai_service {
         $task->set_custom_data([
             'recordingid' => $recordingid,
             'analysisid' => $analysis->id,
+            'forcedownload' => $forcedownload,
         ]);
         \core\task\manager::queue_adhoc_task($task, true); // true = check for duplicates.
 
@@ -308,7 +311,8 @@ class ai_service {
 
         foreach ($pending as $analysis) {
             try {
-                $this->generate_analysis($analysis->recordingid, true);
+                // Background runner must never escalate to tier 3 (video download) automatically.
+                $this->generate_analysis($analysis->recordingid, true, false);
                 $processed++;
             } catch (\Exception $e) {
                 // Error is already logged in generate_analysis.

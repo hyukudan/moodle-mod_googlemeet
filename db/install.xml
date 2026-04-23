@@ -32,6 +32,7 @@
         <FIELD NAME="maxrecordings" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="5" SEQUENCE="false" COMMENT="Maximum number of recordings per page."/>
         <FIELD NAME="recordingsorder" TYPE="char" LENGTH="4" NOTNULL="true" DEFAULT="DESC" SEQUENCE="false" COMMENT="Order of recordings: DESC (newest first) or ASC (oldest first)."/>
         <FIELD NAME="recordingfilter" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom name pattern to filter recordings from Google Drive."/>
+        <FIELD NAME="autosynchours" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Hours after session end to auto-sync recordings from Google Drive. 0 = disabled."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -47,6 +48,7 @@
         <FIELD NAME="eventdate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The date of the event."/>
         <FIELD NAME="duration" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The duration of the event."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of when the instance was added to the course."/>
+        <FIELD NAME="autosynced" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp when this event was auto-synced with Google Drive. 0 = not yet."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -54,6 +56,7 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
+        <INDEX NAME="autosynced" UNIQUE="false" FIELDS="autosynced" COMMENT="Used by process_autosync task"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_recordings" COMMENT="Stores references from Google Meet recordings.">

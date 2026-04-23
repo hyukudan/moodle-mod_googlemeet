@@ -53,6 +53,7 @@ class process_video_analysis extends adhoc_task {
         $data = $this->get_custom_data();
         $recordingid = $data->recordingid;
         $analysisid = $data->analysisid;
+        $forcedownload = !empty($data->forcedownload);
 
         mtrace("Processing video analysis for recording {$recordingid}...");
 
@@ -98,10 +99,19 @@ class process_video_analysis extends adhoc_task {
                     $recording->transcripttext = $transcript;
 
                     $result = $this->analyze_with_transcript($client, $recording);
-                } else {
-                    // Path 3: Fall back to video download + Gemini File API.
-                    mtrace("Subtitle extraction failed. Falling back to video-based analysis...");
+                } else if ($forcedownload) {
+                    // Path 3: Fall back to video download + Gemini File API (opt-in).
+                    mtrace("Subtitle extraction failed. Forcedownload=true, falling back to video-based analysis...");
                     $result = $this->analyze_with_video($client, $recording);
+                } else {
+                    // Default: do not auto-download the video. Mark as failed with a stable
+                    // error code so the UI can offer the "Transcribe from video" opt-in.
+                    mtrace("Subtitle extraction failed and forcedownload=false. Aborting without video download.");
+                    $analysis->status = 'failed';
+                    $analysis->error = 'ai_subtitles_unavailable';
+                    $analysis->timemodified = time();
+                    $DB->update_record('googlemeet_ai_analysis', $analysis);
+                    return;
                 }
             }
 

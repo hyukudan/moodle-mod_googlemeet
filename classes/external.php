@@ -409,6 +409,7 @@ class mod_googlemeet_external extends external_api {
                 'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
                 'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
                 'regenerate' => new external_value(PARAM_BOOL, 'Whether to regenerate existing analysis', VALUE_DEFAULT, false),
+                'forcedownload' => new external_value(PARAM_BOOL, 'Allow tier 3: download full video for transcription', VALUE_DEFAULT, false),
             ]
         );
     }
@@ -419,9 +420,10 @@ class mod_googlemeet_external extends external_api {
      * @param int $recordingid The recording ID
      * @param int $coursemoduleid The course module ID
      * @param bool $regenerate Whether to regenerate existing analysis
+     * @param bool $forcedownload Whether to allow tier 3 (full video download)
      * @return array The analysis data
      */
-    public static function generate_ai_analysis($recordingid, $coursemoduleid, $regenerate = false) {
+    public static function generate_ai_analysis($recordingid, $coursemoduleid, $regenerate = false, $forcedownload = false) {
         global $DB;
 
         // Parameter validation.
@@ -431,10 +433,11 @@ class mod_googlemeet_external extends external_api {
                 'recordingid' => $recordingid,
                 'coursemoduleid' => $coursemoduleid,
                 'regenerate' => $regenerate,
+                'forcedownload' => $forcedownload,
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $context = context_module::instance($params['coursemoduleid']);
         require_capability('mod/googlemeet:generateai', $context);
 
         $aiservice = new \mod_googlemeet\ai_service();
@@ -444,7 +447,7 @@ class mod_googlemeet_external extends external_api {
         }
 
         try {
-            $analysis = $aiservice->generate_analysis($recordingid, $regenerate);
+            $analysis = $aiservice->generate_analysis($params['recordingid'], $params['regenerate'], $params['forcedownload']);
 
             return [
                 'id' => $analysis->id,

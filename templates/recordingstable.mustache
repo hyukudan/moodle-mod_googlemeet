@@ -571,7 +571,8 @@ require([
         });
       }
 
-      function generateAiAnalysis(recordingid, regenerate) {
+      function generateAiAnalysis(recordingid, regenerate, forcedownload) {
+        forcedownload = !!forcedownload;
         var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
         var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
         var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
@@ -603,7 +604,8 @@ require([
           args: {
             recordingid: recordingid,
             coursemoduleid: {{ coursemoduleid }},
-            regenerate: regenerate
+            regenerate: regenerate,
+            forcedownload: forcedownload
           },
           timeout: 180000 // 3 minutes timeout for AI processing
         }])[0].then(function(response) {
@@ -792,7 +794,29 @@ require([
         content.find('.googlemeet-ai-loading').hide();
         content.find('.googlemeet-ai-result').hide();
         content.find('.googlemeet-ai-processing').hide();
-        content.find('.googlemeet-ai-error').show().find('.alert').text(message);
+
+        var errorEl = content.find('.googlemeet-ai-error').show();
+        var alert = errorEl.find('.alert');
+
+        // Special case: subtitles unavailable → offer opt-in to tier 3 (video download).
+        if (message === 'ai_subtitles_unavailable') {
+          var explain = document.createElement('div');
+          explain.textContent = '{{# str }} ai_subtitles_unavailable, mod_googlemeet {{/ str }}';
+          var forceBtn = document.createElement('button');
+          forceBtn.type = 'button';
+          forceBtn.className = 'btn btn-sm btn-warning mt-2 googlemeet-ai-force-video-btn';
+          forceBtn.setAttribute('data-id', recordingid);
+          forceBtn.textContent = '{{# str }} ai_transcribe_from_video, mod_googlemeet {{/ str }}';
+          alert.empty().append(explain).append(forceBtn);
+          $(forceBtn).on('click', function() {
+            var id = $(this).attr('data-id');
+            if (window.confirm('{{# str }} ai_transcribe_from_video_confirm, mod_googlemeet {{/ str }}')) {
+              generateAiAnalysis(id, true, true);
+            }
+          });
+        } else {
+          alert.text(message);
+        }
       }
 
       function showProcessingStatus(recordingid, content, generateBtn) {

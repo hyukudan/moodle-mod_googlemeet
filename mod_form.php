@@ -163,6 +163,12 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $mform->setType('recordingfilter', PARAM_TEXT);
         $mform->addHelpButton('recordingfilter', 'recordingfilter', 'googlemeet');
 
+        // Auto-sync hours (0 = disabled).
+        $mform->addElement('text', 'autosynchours', get_string('autosynchours', 'googlemeet'), ['size' => '4']);
+        $mform->setType('autosynchours', PARAM_INT);
+        $mform->setDefault('autosynchours', (int) ($config->autosynchours_default ?? 4));
+        $mform->addHelpButton('autosynchours', 'autosynchours', 'googlemeet');
+
         // For multiple dates.
         $mform->addElement('header', 'headeraddmultipleeventdates', get_string('recurrenceeventdate', 'googlemeet'));
         if (!empty($config->multieventdateexpanded) || !empty($this->current->addmultiply)) {

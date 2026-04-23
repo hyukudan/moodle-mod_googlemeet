@@ -91,6 +91,14 @@ if ($ADMIN->fulltree) {
         PARAM_RAW
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/autosynchours_default',
+        get_string('autosynchours_default', 'googlemeet'),
+        get_string('autosynchours_default_desc', 'googlemeet'),
+        4,
+        PARAM_INT
+    ));
+
     // AI Features section.
     $settings->add(new admin_setting_heading(
         'googlemeet/aiheading',

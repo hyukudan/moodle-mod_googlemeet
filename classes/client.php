@@ -309,10 +309,12 @@ EOD;
      * Get recordings from Google Drive and sync with database.
      *
      * @param object $googlemeet An object instance.
+     * @param bool $noredirect When true, skip the final redirect() call and return stats.
+     *                         Required for background/cron contexts (no $PAGE, no HTTP).
      *
-     * @return void
+     * @return array|void Stats array ['inserted','updated','deleted','found'] when $noredirect=true.
      */
-    public function syncrecordings($googlemeet) {
+    public function syncrecordings($googlemeet, $noredirect = false) {
         global $PAGE, $DB;
 
         if ($this->check_login()) {
@@ -385,13 +387,22 @@ EOD;
             // Additional filtering for duplicate check across activities.
             $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
 
-            // Remove sync param to avoid redirect loop.
-            $url = new moodle_url($PAGE->url);
-            $url->remove_params(['sync']);
+            // Remove sync param to avoid redirect loop (skipped when running in cron).
+            $url = null;
+            if (!$noredirect) {
+                $url = new moodle_url($PAGE->url);
+                $url->remove_params(['sync']);
+            }
             $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0];
 
             $recordingscount = $recordings ? count($recordings) : 0;
             if ($recordingscount > 0) {
+                // Pre-fetch the recording ids we already have so we can skip transcript fetching
+                // and yt-dlp extraction for them. sync_recordings() will ignore them anyway.
+                $existingids = $DB->get_fieldset_select('googlemeet_recordings', 'recordingid',
+                    'googlemeetid = ?', [$googlemeet->id]);
+                $existingids = array_flip($existingids);
+
                 for ($i = 0; $i < $recordingscount; $i++) {
                     $recording = $recordings[$i];
 
@@ -418,20 +429,22 @@ EOD;
                         $recordings[$i]->duration = $duration;
                         $recordings[$i]->createdTime = $createdtime->getTimestamp();
 
-                        // Try to find and fetch associated transcript.
-                        $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
-                        if ($transcriptdata) {
-                            $recordings[$i]->transcriptfileid = $transcriptdata['fileid'];
-                            $recordings[$i]->transcripttext = $transcriptdata['content'];
-                        }
+                        if (!isset($existingids[$recording->id])) {
+                            // Only fetch the transcript and run yt-dlp for recordings we are
+                            // about to insert. Existing rows are left untouched by sync_recordings().
+                            $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
+                            if ($transcriptdata) {
+                                $recordings[$i]->transcriptfileid = $transcriptdata['fileid'];
+                                $recordings[$i]->transcripttext = $transcriptdata['content'];
+                            }
 
-                        // Fallback: extract auto-generated CC via yt-dlp if no transcript file found.
-                        if (empty($recordings[$i]->transcripttext) && !empty($recording->webViewLink)) {
-                            $extractor = new subtitle_extractor('es');
-                            if ($extractor->is_available()) {
-                                $cctext = $extractor->extract($recording->webViewLink);
-                                if (!empty($cctext)) {
-                                    $recordings[$i]->transcripttext = $cctext;
+                            if (empty($recordings[$i]->transcripttext) && !empty($recording->webViewLink)) {
+                                $extractor = new subtitle_extractor('es');
+                                if ($extractor->is_available()) {
+                                    $cctext = $extractor->extract($recording->webViewLink);
+                                    if (!empty($cctext)) {
+                                        $recordings[$i]->transcripttext = $cctext;
+                                    }
                                 }
                             }
                         }
@@ -449,6 +462,11 @@ EOD;
             } else {
                 // No recordings found, but still update lastsync time.
                 $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeet->id]);
+            }
+
+            if ($noredirect) {
+                $stats['found'] = $recordingscount;
+                return $stats;
             }
 
             // Build feedback message.

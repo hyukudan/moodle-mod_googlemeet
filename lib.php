@@ -388,18 +388,15 @@ function sync_recordings($googlemeetid, $files) {
         }
     }
 
-    $updaterecordings = [];
+    // Existing recordings are never touched on re-sync: Drive metadata (createdtime, duration,
+    // webviewlink) is immutable once the recording is finalised, and the transcript is captured
+    // at insert time. A manual sync via the UI is the path for re-fetching missing data.
     $insertrecordings = [];
     $deleterecordings = [];
 
     foreach ($files as $file) {
-        if (!isset($file->unprocessed)) {
-            // O(1) lookup with isset() instead of O(n) in_array().
-            if (isset($recordingsbyid[$file->recordingId])) {
-                $updaterecordings[] = $file;
-            } else {
-                $insertrecordings[] = $file;
-            }
+        if (!isset($file->unprocessed) && !isset($recordingsbyid[$file->recordingId])) {
+            $insertrecordings[] = $file;
         }
     }
 
@@ -421,27 +418,6 @@ function sync_recordings($googlemeetid, $files) {
         $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $deleterecordings['id']]);
         $DB->delete_records('googlemeet_recordings', $deleterecordings);
         $stats['deleted'] = 1;
-    }
-
-    if ($updaterecordings) {
-        foreach ($updaterecordings as $updaterecording) {
-            // Use the already fetched record from lookup map instead of querying again (N+1 fix).
-            $recording = $recordingsbyid[$updaterecording->recordingId];
-
-            $recording->createdtime = $updaterecording->createdTime;
-            $recording->duration = $updaterecording->duration;
-            $recording->webviewlink = $updaterecording->webViewLink;
-            $recording->timemodified = time();
-
-            // Update transcript if available and not already set.
-            if (!empty($updaterecording->transcripttext) && empty($recording->transcripttext)) {
-                $recording->transcripttext = $updaterecording->transcripttext;
-                $recording->transcriptfileid = $updaterecording->transcriptfileid ?? null;
-            }
-
-            $DB->update_record('googlemeet_recordings', $recording);
-        }
-        $stats['updated'] = count($updaterecordings);
     }
 
     if ($insertrecordings) {
