@@ -270,5 +270,30 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2025122900, 'googlemeet');
     }
 
+    if ($oldversion < 2026042201) {
+
+        // Add autosynchours to googlemeet (0 = disabled, else hours after session end to auto-sync).
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('autosynchours', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0', 'recordingfilter');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add autosynced to googlemeet_events (timestamp of the auto-sync, 0 = not yet).
+        $table = new xmldb_table('googlemeet_events');
+        $field = new xmldb_field('autosynced', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $index = new xmldb_index('autosynced', XMLDB_INDEX_NOTUNIQUE, ['autosynced']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Googlemeet savepoint reached.
+        upgrade_mod_savepoint(true, 2026042201, 'googlemeet');
+    }
+
     return true;
 }

@@ -137,6 +137,8 @@ class gemini_client {
         return <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
+CRITICAL RULE: You MUST write the summary, keypoints, topics, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+
 Video Information:
 - Title: {$videoname}
 - Duration: {$duration}
@@ -144,18 +146,18 @@ Video Information:
 
 Please analyze this video and provide the following in a structured JSON format:
 
-1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs)
-2. **Key Points**: A list of 5-10 main takeaways or important points discussed
-3. **Topics**: A list of main topics/themes covered in the video
-4. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions
+1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
+2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
+3. **Topics**: A list of main topics/themes covered in the video — in the language of the video
+4. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
-    "summary": "Your comprehensive summary here...",
-    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
-    "topics": ["Topic 1", "Topic 2", "Topic 3", ...],
-    "transcript": "Condensed transcript or 'Not available' if cannot be generated...",
-    "language": "detected language code (e.g., en, es, fr)"
+    "summary": "Resumen completo aquí (en el idioma del vídeo)...",
+    "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
+    "topics": ["Tema 1", "Tema 2", "Tema 3", ...],
+    "transcript": "Transcripción condensada o 'No disponible'...",
+    "language": "detected language code (e.g., es, en, fr)"
 }
 
 If you cannot access the video, analyze based on the title and provide your best interpretation, noting that direct video analysis was not possible.
@@ -527,23 +529,27 @@ PROMPT;
         }
 
         $prompt = <<<PROMPT
-You are an educational assistant analyzing a class transcript. Focus ONLY on educational content and curriculum topics. Ignore any casual conversation, greetings, small talk, holiday wishes, off-topic discussions, or informal chat.
+You are an educational assistant analyzing a class transcript.
+
+CRITICAL RULE: You MUST write the summary, keypoints, and topics in the SAME language as the transcript. If the transcript is in Spanish, your entire response (summary, keypoints, topics) MUST be in Spanish. If the transcript is in English, respond in English. NEVER translate to a different language.
+
+Focus ONLY on educational content and curriculum topics. Ignore any casual conversation, greetings, small talk, holiday wishes, off-topic discussions, or informal chat.
 
 {$contextinfo}Transcript:
 {$transcript}
 
 Based ONLY on the educational content, provide in JSON format:
 
-1. **Summary**: Summary of the educational content covered (2-3 paragraphs) - in the same language as the transcript
-2. **Key Points**: 5-10 key learning points from the lesson - in the same language as the transcript
-3. **Topics**: Educational topics/themes covered - in the same language as the transcript
+1. **Summary**: Summary of the educational content covered (2-3 paragraphs) — MUST be in the same language as the transcript
+2. **Key Points**: 5-10 key learning points from the lesson — MUST be in the same language as the transcript
+3. **Topics**: Educational topics/themes covered — MUST be in the same language as the transcript
 4. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
 
 Respond ONLY with valid JSON (no markdown):
 {
-    "summary": "Educational summary here...",
-    "keypoints": ["Learning point 1", "Learning point 2", ...],
-    "topics": ["Topic 1", "Topic 2", ...],
+    "summary": "Resumen educativo aquí (en el idioma de la transcripción)...",
+    "keypoints": ["Punto clave 1", "Punto clave 2", ...],
+    "topics": ["Tema 1", "Tema 2", ...],
     "language": "es"
 }
 PROMPT;
@@ -603,24 +609,26 @@ PROMPT;
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
+CRITICAL RULE: You MUST write the summary, keypoints, topics, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+
 Video Information:
 - Title: {$videoname}
 - Duration: {$duration}
 
 Please analyze this video and provide the following in a structured JSON format:
 
-1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs)
-2. **Key Points**: A list of 5-10 main takeaways or important points discussed
-3. **Topics**: A list of main topics/themes covered in the video
-4. **Transcript Summary**: Provide a condensed transcript of the main discussions
+1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
+2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
+3. **Topics**: A list of main topics/themes covered in the video — in the language of the video
+4. **Transcript Summary**: Provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
-    "summary": "Your comprehensive summary here...",
-    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
-    "topics": ["Topic 1", "Topic 2", "Topic 3", ...],
-    "transcript": "Condensed transcript of the video...",
-    "language": "detected language code (e.g., en, es, fr)"
+    "summary": "Resumen completo aquí (en el idioma del vídeo)...",
+    "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
+    "topics": ["Tema 1", "Tema 2", "Tema 3", ...],
+    "transcript": "Transcripción condensada del vídeo...",
+    "language": "detected language code (e.g., es, en, fr)"
 }
 PROMPT;
 
