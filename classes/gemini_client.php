@@ -19,7 +19,11 @@ namespace mod_googlemeet;
 use stdClass;
 use moodle_exception;
 
-// Note: curl class is from Moodle core (lib/filelib.php) in the global namespace.
+// curl class lives in lib/filelib.php and is not autoloaded — load it eagerly
+// so adhoc/scheduled task contexts (which don't go through code that pulls
+// filelib.php) can still instantiate \curl.
+global $CFG;
+require_once($CFG->libdir . '/filelib.php');
 
 /**
  * Gemini API Client for mod_googlemeet.

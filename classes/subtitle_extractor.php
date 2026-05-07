@@ -16,6 +16,12 @@
 
 namespace mod_googlemeet;
 
+// curl class lives in lib/filelib.php and is not autoloaded — load it eagerly
+// so adhoc/scheduled task contexts (which don't go through code that pulls
+// filelib.php) can still instantiate \curl.
+global $CFG;
+require_once($CFG->libdir . '/filelib.php');
+
 /**
  * Extracts auto-generated subtitles from Google Drive video recordings.
  *
