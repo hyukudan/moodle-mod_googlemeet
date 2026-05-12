@@ -142,6 +142,8 @@
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="Processing status: pending, processing, completed, failed."/>
         <FIELD NAME="error" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Error message if processing failed."/>
         <FIELD NAME="aimodel" TYPE="char" LENGTH="50" NOTNULL="false" SEQUENCE="false" COMMENT="AI model used for analysis."/>
+        <FIELD NAME="retrycount" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Number of retry attempts (0=fresh, 99=permanent failure, no more retries)"/>
+        <FIELD NAME="nextretry" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Unix timestamp of next retry attempt (0=retry immediately, future=cooldown)"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

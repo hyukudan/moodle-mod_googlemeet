@@ -14,18 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Plugin version and other meta-data are defined here.
- *
- * @package     mod_googlemeet
- * @copyright   2020 Rone Santos <ronefel@hotmail.com>
- * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace mod_googlemeet;
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_googlemeet';
-$plugin->release = '2.9.0';
-$plugin->version = 2026051200;
-$plugin->requires = 2022041900; // Moodle 4.0.
-$plugin->maturity = MATURITY_STABLE;
+/**
+ * Excepción lanzada cuando Gemini API devuelve un error transitorio
+ * (rate limit, sobrecarga, 429/500/503). El caller debe aplicar back-off
+ * y reintentar más tarde.
+ *
+ * Hereda de \moodle_exception para que los bloques catch existentes que
+ * atrapan moodle_exception o \Exception sigan funcionando sin cambios.
+ *
+ * @package     mod_googlemeet
+ * @copyright   2024 Your Name
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class gemini_transient_exception extends \moodle_exception {
+
+    /**
+     * Constructor.
+     *
+     * @param string $message Human-readable error message from the API.
+     */
+    public function __construct(string $message) {
+        parent::__construct('ai_error', 'googlemeet', '', $message);
+    }
+}
