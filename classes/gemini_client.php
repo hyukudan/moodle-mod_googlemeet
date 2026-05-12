@@ -18,6 +18,7 @@ namespace mod_googlemeet;
 
 use stdClass;
 use moodle_exception;
+use mod_googlemeet\gemini_transient_exception;
 
 // curl class lives in lib/filelib.php and is not autoloaded — load it eagerly
 // so adhoc/scheduled task contexts (which don't go through code that pulls
@@ -272,6 +273,19 @@ PROMPT;
             $error = json_decode($response);
             $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
             debugging("Gemini API error: {$errormsg}", DEBUG_DEVELOPER);
+            $transient_patterns = ['high demand', 'overloaded', 'RESOURCE_EXHAUSTED', 'quota', 'rate limit', 'try again'];
+            $is_transient = in_array($httpcode, [429, 500, 503], true);
+            if (!$is_transient) {
+                foreach ($transient_patterns as $p) {
+                    if (stripos($errormsg, $p) !== false) {
+                        $is_transient = true;
+                        break;
+                    }
+                }
+            }
+            if ($is_transient) {
+                throw new gemini_transient_exception($errormsg);
+            }
             throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
         }
 
@@ -674,6 +688,19 @@ PROMPT;
             $error = json_decode($response);
             $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
             debugging("Gemini API error ({$model}): {$errormsg}", DEBUG_DEVELOPER);
+            $transient_patterns = ['high demand', 'overloaded', 'RESOURCE_EXHAUSTED', 'quota', 'rate limit', 'try again'];
+            $is_transient = in_array($httpcode, [429, 500, 503], true);
+            if (!$is_transient) {
+                foreach ($transient_patterns as $p) {
+                    if (stripos($errormsg, $p) !== false) {
+                        $is_transient = true;
+                        break;
+                    }
+                }
+            }
+            if ($is_transient) {
+                throw new gemini_transient_exception($errormsg);
+            }
             throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
         }
 

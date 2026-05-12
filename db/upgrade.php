@@ -295,5 +295,18 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026042201, 'googlemeet');
     }
 
+    if ($oldversion < 2026051200) {
+        $table = new xmldb_table('googlemeet_ai_analysis');
+        $field = new xmldb_field('retrycount', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0', 'aimodel');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $field = new xmldb_field('nextretry', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'retrycount');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_mod_savepoint(true, 2026051200, 'googlemeet');
+    }
+
     return true;
 }

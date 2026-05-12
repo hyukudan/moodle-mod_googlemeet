@@ -11,6 +11,17 @@ define('CLI_SCRIPT', true);
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/clilib.php');
 
+// Back-off schedule in seconds for retry attempts on transient Gemini errors.
+// Index = retrycount BEFORE incrementing. After 4 retries (final value 4), give up.
+const TRANSIENT_BACKOFF = [
+    0 => 2 * 3600,    // primer fallo → reintenta en 2h
+    1 => 4 * 3600,    // 2º fallo → 4h
+    2 => 8 * 3600,    // 3º fallo → 8h
+    3 => 24 * 3600,   // 4º fallo → 24h
+];
+const MAX_RETRIES = 4;            // tras 4 reintentos transitorios, se rinde
+const PERMANENT_RETRYCOUNT = 99;  // sentinela: error permanente, no reintentar nunca
+
 list($options, $unrecognized) = cli_get_params([
     'googlemeetid' => 0,
     'recordingid'  => 0,
@@ -66,7 +77,7 @@ if (!empty($options['recordingid'])) {
 }
 
 $sql = "SELECT r.id, r.recordingid, r.name, r.webviewlink, r.duration, r.transcripttext,
-               a.id as analysisid, a.status as ai_status
+               a.id as analysisid, a.status as ai_status, a.retrycount, a.nextretry
         FROM {googlemeet_recordings} r
         LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id
         WHERE {$where}
@@ -93,6 +104,24 @@ foreach ($recordings as $recording) {
     // Skip if already has completed AI analysis.
     if ($recording->ai_status === 'completed') {
         cli_writeln("  SKIP: Already has completed AI analysis.");
+        $skipped++;
+        continue;
+    }
+
+    // Skip if permanent failure or still within cooldown window.
+    $rc = (int)($recording->retrycount ?? 0);
+    $nr = (int)($recording->nextretry ?? 0);
+    $now = time();
+
+    if ($rc >= MAX_RETRIES || $rc === PERMANENT_RETRYCOUNT) {
+        cli_writeln("  SKIP: Marked as permanent failure (retrycount={$rc}). Manual intervention required.");
+        $skipped++;
+        continue;
+    }
+    if ($nr > $now) {
+        $minutes = ceil(($nr - $now) / 60);
+        $when = userdate($nr, '%Y-%m-%d %H:%M');
+        cli_writeln("  SKIP: In cooldown until {$when} ({$minutes} min remaining, retrycount={$rc}).");
         $skipped++;
         continue;
     }
@@ -217,6 +246,8 @@ foreach ($recordings as $recording) {
             'status' => 'completed',
             'aimodel' => $client->get_model(),
             'error' => null,
+            'retrycount' => 0,
+            'nextretry' => 0,
             'timemodified' => time(),
         ]);
 
@@ -225,14 +256,41 @@ foreach ($recordings as $recording) {
         $topicscount = count($result->topics);
         cli_writeln("  AI analysis complete: summary={$summarylen} chars, {$keypointscount} key points, {$topicscount} topics.");
 
-    } catch (\Exception $e) {
+    } catch (\mod_googlemeet\gemini_transient_exception $e) {
+        // Transient error (rate limit / high demand) → schedule retry with back-off.
+        $new_rc = $rc + 1;
+        if ($new_rc >= MAX_RETRIES) {
+            // Hemos agotado los reintentos, marcamos como permanente.
+            $next_unix = 0;
+            $new_rc = MAX_RETRIES; // fija en 4, no escala más
+            $log_suffix = "Max retries reached, giving up.";
+        } else {
+            $backoff = TRANSIENT_BACKOFF[$new_rc - 1] ?? 24 * 3600;
+            $next_unix = $now + $backoff;
+            $log_suffix = sprintf("Will retry at %s (in %d min).", userdate($next_unix, '%Y-%m-%d %H:%M'), (int)($backoff / 60));
+        }
         $DB->update_record('googlemeet_ai_analysis', (object)[
             'id' => $analysisid,
             'status' => 'failed',
             'error' => $e->getMessage(),
-            'timemodified' => time(),
+            'retrycount' => $new_rc,
+            'nextretry' => $next_unix,
+            'timemodified' => $now,
         ]);
-        cli_writeln("  ERROR: Gemini analysis failed: " . $e->getMessage());
+        cli_writeln("  TRANSIENT ERROR (retrycount={$new_rc}): " . $e->getMessage());
+        cli_writeln("  " . $log_suffix);
+        // No se cuenta como error fatal; el transcript ya está guardado.
+    } catch (\moodle_exception $e) {
+        // Permanent error → mark and don't retry.
+        $DB->update_record('googlemeet_ai_analysis', (object)[
+            'id' => $analysisid,
+            'status' => 'failed',
+            'error' => $e->getMessage(),
+            'retrycount' => PERMANENT_RETRYCOUNT,
+            'nextretry' => 0,
+            'timemodified' => $now,
+        ]);
+        cli_writeln("  PERMANENT ERROR (no retry): " . $e->getMessage());
         // Don't count as error - transcript was saved successfully.
     }
 
