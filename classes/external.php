@@ -45,6 +45,61 @@ require_once("$CFG->dirroot/mod/googlemeet/lib.php");
 class mod_googlemeet_external extends external_api {
 
     /**
+     * Load and validate a Google Meet course module.
+     *
+     * @param int $coursemoduleid The course module ID.
+     * @return array [cm, context].
+     */
+    private static function get_cm_and_context(int $coursemoduleid): array {
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
+
+        return [$cm, $context];
+    }
+
+    /**
+     * Ensure the requested googlemeet ID belongs to the provided course module.
+     *
+     * @param int $googlemeetid The googlemeet ID from the request.
+     * @param stdClass $cm The loaded course module.
+     * @param context_module $context The module context.
+     * @return void
+     */
+    private static function require_googlemeet_ownership(
+        int $googlemeetid,
+        stdClass $cm,
+        context_module $context
+    ): void {
+        if ((int)$cm->instance !== $googlemeetid) {
+            throw new moodle_exception('nopermissions', 'error', '', 'mod/googlemeet');
+        }
+    }
+
+    /**
+     * Load a recording and ensure it belongs to the provided course module.
+     *
+     * @param int $recordingid The recording ID.
+     * @param stdClass $cm The loaded course module.
+     * @param context_module $context The module context.
+     * @return stdClass
+     */
+    private static function get_recording_for_cm(
+        int $recordingid,
+        stdClass $cm,
+        context_module $context
+    ): stdClass {
+        global $DB;
+
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        if ((int)$recording->googlemeetid !== (int)$cm->instance) {
+            throw new moodle_exception('nopermissions', 'error', '', 'mod/googlemeet');
+        }
+
+        return $recording;
+    }
+
+    /**
      * Describes the parameters for sync_recordings.
      *
      * @return external_function_parameters
@@ -94,10 +149,11 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:syncgoogledrive', $context);
+        self::require_googlemeet_ownership((int)$params['googlemeetid'], $cm, $context);
 
-        $googlemeetrecordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
+        $googlemeetrecordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $params['googlemeetid']]);
 
         // Build lookup maps for O(1) access instead of in_array() O(n).
         $recordingsbyid = [];
@@ -155,7 +211,7 @@ class mod_googlemeet_external extends external_api {
         if ($insertrecordings) {
             foreach ($insertrecordings as $insertrecording) {
                 $recording = new stdClass();
-                $recording->googlemeetid = $googlemeetid;
+                $recording->googlemeetid = $params['googlemeetid'];
                 $recording->recordingid = $insertrecording['recordingId'];
                 $recording->name = $insertrecording['name'];
                 $recording->createdtime = $insertrecording['createdTime'];
@@ -171,17 +227,17 @@ class mod_googlemeet_external extends external_api {
         $updatedata = ['lastsync' => time()];
         if ($insertrecordings) {
             // Check if creatoremail needs to be set.
-            $currentemail = $DB->get_field('googlemeet', 'creatoremail', ['id' => $googlemeetid]);
+            $currentemail = $DB->get_field('googlemeet', 'creatoremail', ['id' => $params['googlemeetid']]);
             if (empty($currentemail)) {
-                $updatedata['creatoremail'] = $creatoremail;
+                $updatedata['creatoremail'] = $params['creatoremail'];
             }
         }
-        $DB->set_field('googlemeet', 'lastsync', $updatedata['lastsync'], ['id' => $googlemeetid]);
+        $DB->set_field('googlemeet', 'lastsync', $updatedata['lastsync'], ['id' => $params['googlemeetid']]);
         if (isset($updatedata['creatoremail'])) {
-            $DB->set_field('googlemeet', 'creatoremail', $updatedata['creatoremail'], ['id' => $googlemeetid]);
+            $DB->set_field('googlemeet', 'creatoremail', $updatedata['creatoremail'], ['id' => $params['googlemeetid']]);
         }
 
-        return googlemeet_list_recordings(['googlemeetid' => $googlemeetid]);
+        return googlemeet_list_recordings(['googlemeetid' => $params['googlemeetid']]);
     }
 
     /**
@@ -242,12 +298,12 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid]);
+        $recording = self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
-        $recording->name = $name;
+        $recording->name = $params['name'];
         $recording->timemodified = time();
 
         $DB->update_record('googlemeet_recordings', $recording);
@@ -304,10 +360,10 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid]);
+        $recording = self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
         if ($recording->visible) {
             $recording->visible = false;
@@ -371,20 +427,21 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:removerecording', $context);
+        self::require_googlemeet_ownership((int)$params['googlemeetid'], $cm, $context);
 
         // Get recording IDs to delete associated AI analyses.
-        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$googlemeetid]);
+        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$params['googlemeetid']]);
         if (!empty($recordingids)) {
             list($insql, $inparams) = $DB->get_in_or_equal($recordingids);
             $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
         }
 
-        $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
+        $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $params['googlemeetid']]);
 
         // Use set_field instead of get_record + update_record.
-        $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
+        $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $params['googlemeetid']]);
 
         return [];
     }
@@ -437,8 +494,9 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($params['coursemoduleid']);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:generateai', $context);
+        self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
         $aiservice = new \mod_googlemeet\ai_service();
 
@@ -531,17 +589,18 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:view', $context);
+        self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
         $aiservice = new \mod_googlemeet\ai_service();
-        $analysis = $aiservice->get_analysis($recordingid);
+        $analysis = $aiservice->get_analysis((int)$params['recordingid']);
 
         if (!$analysis) {
             return [
                 'found' => false,
                 'id' => 0,
-                'recordingid' => $recordingid,
+                'recordingid' => (int)$params['recordingid'],
                 'summary' => '',
                 'keypoints' => [],
                 'topics' => [],
@@ -648,11 +707,11 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        // Verify recording exists.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        // Verify recording exists and belongs to this module.
+        $recording = self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
         // Parse keypoints (one per line).
         $keypointsarray = [];
@@ -684,7 +743,7 @@ class mod_googlemeet_external extends external_api {
         }
 
         // Check if analysis exists.
-        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
+        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $params['recordingid']]);
 
         $now = time();
 
@@ -703,7 +762,7 @@ class mod_googlemeet_external extends external_api {
         } else {
             // Insert new.
             $analysis = new \stdClass();
-            $analysis->recordingid = $recordingid;
+            $analysis->recordingid = $params['recordingid'];
             $analysis->summary = $summary;
             $analysis->keypoints = json_encode($keypointsarray);
             $analysis->topics = json_encode($topicsarray);
@@ -721,7 +780,7 @@ class mod_googlemeet_external extends external_api {
         return [
             'success' => true,
             'id' => $analysis->id,
-            'recordingid' => $recordingid,
+            'recordingid' => $params['recordingid'],
             'summary' => $summary,
             'keypoints' => $keypointsarray,
             'topics' => $topicsarray,
@@ -790,9 +849,7 @@ class mod_googlemeet_external extends external_api {
             'coursemoduleid' => $coursemoduleid,
         ]);
 
-        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
-        $context = context_module::instance($cm->id);
-        self::validate_context($context);
+        [$cm, $context] = self::get_cm_and_context((int)$params['coursemoduleid']);
         require_capability('mod/googlemeet:editrecording', $context);
 
         // Validate recording ID.
@@ -801,10 +858,7 @@ class mod_googlemeet_external extends external_api {
         }
 
         // Get recording info for context.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $params['recordingid']]);
-        if (!$recording) {
-            throw new \moodle_exception('ai_error', 'googlemeet', '', 'Recording not found (ID: ' . $params['recordingid'] . ')');
-        }
+        $recording = self::get_recording_for_cm((int)$params['recordingid'], $cm, $context);
 
         // Call Gemini to analyze the transcript.
         $client = new \mod_googlemeet\gemini_client();
