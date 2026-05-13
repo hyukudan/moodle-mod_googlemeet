@@ -26,6 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 use mod_googlemeet\client;
 use mod_googlemeet\helper;
+use core\output;
 
 require_once("$CFG->dirroot/mod/googlemeet/lib.php");
 
@@ -337,7 +338,12 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
             $url = new moodle_url($PAGE->url);
             $url->param('sync', true);
-            $syncbutton = new single_button($url, get_string('syncwithgoogledrive', 'googlemeet'), 'post', true);
+            $syncbutton = new single_button(
+                $url,
+                get_string('syncwithgoogledrive', 'googlemeet'),
+                'post',
+                single_button::BUTTON_PRIMARY
+            );
             $syncbutton = $OUTPUT->render($syncbutton);
         }
 
