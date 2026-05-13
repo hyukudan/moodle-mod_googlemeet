@@ -38,7 +38,7 @@ require_once($CFG->libdir . '/filelib.php');
 class subtitle_extractor {
 
     /** @var string Path to the yt-dlp binary */
-    private string $ytdlppath;
+    private ?string $ytdlppath;
 
     /** @var string Subtitle language to extract */
     private string $language;
