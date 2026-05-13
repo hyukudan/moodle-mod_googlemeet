@@ -203,7 +203,10 @@ function googlemeet_delete_events($googlemeetid) {
 function googlemeet_set_events($googlemeet, $events) {
     global $DB;
 
-    googlemeet_delete_events($events[0]->googlemeetid);
+    // Always delete previous events, even if there are no new ones to insert
+    // (e.g. all dates fall within holiday periods).
+    $id = (!empty($events) && isset($events[0])) ? $events[0]->googlemeetid : $googlemeet->id;
+    googlemeet_delete_events($id);
 
     foreach ($events as $event) {
         $event->id = $DB->insert_record('googlemeet_events', $event);
