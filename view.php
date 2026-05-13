@@ -49,7 +49,7 @@ require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
 require_capability('mod/googlemeet:view', $context);
 
-$PAGE->set_url('/mod/googlemeet/view.php', array('id' => $cm->id));
+$PAGE->set_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
 $PAGE->set_context($context);
 
 if (has_capability('mod/googlemeet:editrecording', $context)) {
