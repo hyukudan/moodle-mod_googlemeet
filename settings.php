@@ -99,6 +99,22 @@ if ($ADMIN->fulltree) {
         PARAM_INT
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/maxsyncattempts',
+        get_string('maxsyncattempts', 'googlemeet'),
+        get_string('maxsyncattempts_desc', 'googlemeet'),
+        3,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/syncretryinterval',
+        get_string('syncretryinterval', 'googlemeet'),
+        get_string('syncretryinterval_desc', 'googlemeet'),
+        10800,
+        PARAM_INT
+    ));
+
     // AI Features section.
     $settings->add(new admin_setting_heading(
         'googlemeet/aiheading',
