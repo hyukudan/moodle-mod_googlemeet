@@ -426,7 +426,7 @@ PROMPT;
         $result->keypoints = is_array($analysis->keypoints ?? null) ? $analysis->keypoints : [];
         $result->topics = is_array($analysis->topics ?? null) ? $analysis->topics : [];
         $result->transcript = is_string($analysis->transcript ?? null) ? $analysis->transcript : '';
-        $result->language = is_string($analysis->language ?? null) ? $analysis->language : 'en';
+        $result->language = is_string($analysis->language ?? null) ? $analysis->language : 'es';
 
         return $result;
     }

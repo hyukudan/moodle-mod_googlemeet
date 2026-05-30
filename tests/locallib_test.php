@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace mod_googlemeet;
+
+use PHPUnit\Framework\Attributes\CoversFunction;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -35,12 +39,12 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
  * @category    test
  * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers      ::googlemeet_is_holiday
- * @covers      ::googlemeet_is_cancelled
- * @covers      ::googlemeet_clear_url
- * @covers      ::googlemeet_construct_events_data_for_add
  */
-class mod_googlemeet_locallib_test extends \advanced_testcase {
+#[CoversFunction('googlemeet_is_holiday')]
+#[CoversFunction('googlemeet_is_cancelled')]
+#[CoversFunction('googlemeet_clear_url')]
+#[CoversFunction('googlemeet_construct_events_data_for_add')]
+class locallib_test extends \advanced_testcase {
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -51,10 +55,10 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
      *
      * @param int $startdate Unix timestamp (any time during the start day).
      * @param int $enddate   Unix timestamp (any time during the end day).
-     * @return stdClass
+     * @return \stdClass
      */
-    private function make_holiday(int $startdate, int $enddate): stdClass {
-        $h = new stdClass();
+    private function make_holiday(int $startdate, int $enddate): \stdClass {
+        $h = new \stdClass();
         $h->startdate = $startdate;
         $h->enddate   = $enddate;
         return $h;
@@ -65,10 +69,10 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
      *
      * @param int    $cancelleddate Unix timestamp for the cancelled day.
      * @param string $reason        Optional cancellation reason.
-     * @return stdClass
+     * @return \stdClass
      */
-    private function make_cancelled(int $cancelleddate, string $reason = ''): stdClass {
-        $c = new stdClass();
+    private function make_cancelled(int $cancelleddate, string $reason = ''): \stdClass {
+        $c = new \stdClass();
         $c->cancelleddate = $cancelleddate;
         $c->reason        = $reason;
         return $c;
@@ -81,7 +85,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * An empty holidays array means nothing is a holiday.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_empty_array(): void {
         $this->assertFalse(googlemeet_is_holiday(mktime(10, 0, 0, 6, 15, 2026), []));
@@ -90,7 +93,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp exactly on the start day of a single-day holiday.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_on_start_day(): void {
         // Holiday: 15-Jun-2026 (single day).
@@ -103,7 +105,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp exactly on the end day of a multi-day holiday (inclusive boundary).
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_on_end_day(): void {
         // Holiday: 10-Jun-2026 to 20-Jun-2026.
@@ -118,7 +119,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp one day before the holiday start — must not be a holiday.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_day_before_start(): void {
         $start = mktime(0, 0, 0, 6, 10, 2026);
@@ -131,7 +131,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp one day after the holiday end — must not be a holiday.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_day_after_end(): void {
         $start = mktime(0, 0, 0, 6, 10, 2026);
@@ -144,7 +143,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * A date that falls in the middle of a holiday range is a holiday.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_inside_range(): void {
         $start = mktime(0, 0, 0, 6, 10, 2026);
@@ -157,7 +155,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Multiple holidays — date matches the second range.
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_multiple_ranges_second_matches(): void {
         $holidays = [
@@ -172,7 +169,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Multiple holidays — date falls between them (not a holiday).
      *
-     * @covers ::googlemeet_is_holiday
      */
     public function test_is_holiday_between_two_ranges(): void {
         $holidays = [
@@ -191,7 +187,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Empty cancelled list — nothing is cancelled.
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_empty_list(): void {
         $this->assertFalse(googlemeet_is_cancelled(mktime(10, 0, 0, 6, 15, 2026), []));
@@ -200,7 +195,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp matching a cancelled date returns the cancelled object.
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_matching_date(): void {
         $day = mktime(0, 0, 0, 6, 15, 2026);
@@ -214,7 +208,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Timestamp one day off from a cancelled date returns false.
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_different_day(): void {
         $day = mktime(0, 0, 0, 6, 15, 2026);
@@ -227,7 +220,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Same calendar day, different time within the day — still cancelled (day-level comparison).
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_same_day_different_time(): void {
         $day = mktime(8, 0, 0, 6, 15, 2026);
@@ -241,7 +233,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Multiple cancelled dates — only the matching one is returned.
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_multiple_dates_only_one_matches(): void {
         $cancelled = [
@@ -262,7 +253,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Cancelled reason can be an empty string — still matches.
      *
-     * @covers ::googlemeet_is_cancelled
      */
     public function test_is_cancelled_empty_reason(): void {
         $day = mktime(0, 0, 0, 4, 1, 2026);
@@ -279,7 +269,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * A full Meet URL is normalised to the canonical https:// form.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_full_meet_url(): void {
         $url = 'https://meet.google.com/abc-defg-hij';
@@ -289,7 +278,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * A Meet URL with extra query parameters is cleaned to just the canonical form.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_with_extra_params(): void {
         $url    = 'https://meet.google.com/xyz-abcd-efg?authuser=0&hl=es';
@@ -300,7 +288,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * HTTP (not HTTPS) input: the extracted URL is still returned with https://.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_http_input(): void {
         $url    = 'http://meet.google.com/aaa-bbbb-ccc';
@@ -311,7 +298,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * A URL that embeds the Meet code inside a longer string is extracted correctly.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_embedded_in_text(): void {
         $raw    = 'Join the meeting at https://meet.google.com/pqr-stuv-wxy and have fun';
@@ -322,7 +308,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Completely invalid input returns null.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_invalid_returns_null(): void {
         $this->assertNull(googlemeet_clear_url('https://zoom.us/j/12345'));
@@ -333,7 +318,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Code segments with wrong lengths are rejected.
      *
-     * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_wrong_code_format_returns_null(): void {
         // googlemeet_clear_url() extracts the first 3-4-3 code found anywhere in the
@@ -356,7 +340,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Non-recurring event: single event returned, no holidays set.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_single_no_holiday(): void {
         global $DB, $CFG;
@@ -374,7 +357,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
             'timemodified'  => time(),
         ]);
 
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id          = $googlemeetid;
         $googlemeet->starthour   = 10;
         $googlemeet->startminute = 0;
@@ -395,7 +378,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Non-recurring event falls on a holiday → empty event list returned.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_single_on_holiday(): void {
         global $DB;
@@ -420,7 +402,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
             'timemodified' => time(),
         ]);
 
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id          = $googlemeetid;
         $googlemeet->starthour   = 10;
         $googlemeet->startminute = 0;
@@ -437,7 +419,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Recurring event (weekly, Mon+Wed) over a 2-week span — count and day-of-week checks.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_recurring_weekly(): void {
         global $DB, $CFG;
@@ -458,7 +439,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
         ]);
 
         // Start: Monday 2026-06-01.
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id           = $googlemeetid;
         $googlemeet->starthour    = 10;
         $googlemeet->startminute  = 0;
@@ -489,7 +470,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Recurring event every 2 weeks (period=2) produces correct skipping.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_biweekly(): void {
         global $DB, $CFG;
@@ -509,7 +489,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
         ]);
 
         // Start: Monday 2026-06-01. End: Sunday 2026-06-28 (4 weeks).
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id           = $googlemeetid;
         $googlemeet->starthour    = 9;
         $googlemeet->startminute  = 0;
@@ -532,7 +512,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Recurring event: dates that fall in a holiday are excluded.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_recurring_holiday_excluded(): void {
         global $DB, $CFG;
@@ -559,7 +538,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
             'timemodified' => time(),
         ]);
 
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id           = $googlemeetid;
         $googlemeet->starthour    = 10;
         $googlemeet->startminute  = 0;
@@ -584,7 +563,6 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *
-     * @covers ::googlemeet_construct_events_data_for_add
      */
     public function test_construct_events_duration(): void {
         global $DB;
@@ -601,7 +579,7 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
             'timemodified' => time(),
         ]);
 
-        $googlemeet = new stdClass();
+        $googlemeet = new \stdClass();
         $googlemeet->id          = $googlemeetid;
         $googlemeet->starthour   = 9;
         $googlemeet->startminute = 30;

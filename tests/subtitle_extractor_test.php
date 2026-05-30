@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace mod_googlemeet;
+
+use PHPUnit\Framework\Attributes\CoversClass;
+
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Unit tests for mod_googlemeet\subtitle_extractor::parse_xml().
  *
@@ -25,9 +31,9 @@
  * @category    test
  * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers      \mod_googlemeet\subtitle_extractor::parse_xml
  */
-class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
+#[CoversClass(\mod_googlemeet\subtitle_extractor::class)]
+class subtitle_extractor_test extends \advanced_testcase {
 
     /**
      * Build an instance of subtitle_extractor without triggering the yt-dlp
@@ -51,7 +57,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Single text node with a sub-minute timestamp.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_single_node(): void {
         $xml = '<transcript><text start="5.0" dur="2">Hello world</text></transcript>';
@@ -65,7 +70,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Multiple nodes in the same minute share one timestamp marker.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_multiple_nodes_same_minute(): void {
         $xml = '<transcript>'
@@ -86,7 +90,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Nodes that cross a minute boundary produce two timestamp markers.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_minute_boundary_adds_marker(): void {
         $xml = '<transcript>'
@@ -109,7 +112,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Timestamps beyond one hour use H:MM:SS format.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_hour_format(): void {
         $xml = '<transcript>'
@@ -130,7 +132,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Common HTML entities are decoded in the output.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_html_entities_decoded(): void {
         $xml = '<transcript>'
@@ -149,7 +150,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Named HTML5 entities (&apos;, &nbsp;) are decoded.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_html5_entities(): void {
         $xml = '<transcript>'
@@ -168,7 +168,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Nodes with empty text content are silently skipped.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_empty_text_nodes_skipped(): void {
         $xml = '<transcript>'
@@ -192,7 +191,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Empty transcript element returns an empty string.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_empty_transcript(): void {
         $xml = '<transcript></transcript>';
@@ -209,7 +207,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Totally invalid XML returns an empty string (libxml error suppressed).
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_invalid_xml_returns_empty(): void {
         $extractor = $this->make_extractor();
@@ -223,7 +220,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * XML with a valid root but incorrect element structure returns empty string.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_wrong_root_element(): void {
         // Valid XML but root is not <transcript> — simplexml_load_string returns
@@ -243,7 +239,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Lines are in chronological order and timestamps precede their content.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_chronological_order(): void {
         $xml = '<transcript>'
@@ -264,7 +259,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Output lines are joined with "\n" (no trailing newline from implode).
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_newline_separator(): void {
         $xml = '<transcript>'
@@ -282,7 +276,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * CDATA content in text nodes is handled correctly.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_cdata_content(): void {
         $xml = '<transcript>'
@@ -297,7 +290,6 @@ class mod_googlemeet_subtitle_extractor_test extends \advanced_testcase {
     /**
      * Unicode / multibyte characters are preserved correctly.
      *
-     * @covers \mod_googlemeet\subtitle_extractor::parse_xml
      */
     public function test_parse_xml_unicode_text(): void {
         $xml = '<?xml version="1.0" encoding="UTF-8"?>'
