@@ -314,7 +314,7 @@ class mod_googlemeet_external extends external_api {
                 'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
                 'topics' => is_array($analysis->topics) ? $analysis->topics : [],
                 'transcript' => $analysis->transcript ?? '',
-                'language' => $analysis->language ?? 'en',
+                'language' => $analysis->language ?? 'es',
                 'status' => $analysis->status,
                 'error' => $analysis->error ?? '',
                 'aimodel' => $analysis->aimodel ?? '',
@@ -430,7 +430,7 @@ class mod_googlemeet_external extends external_api {
             'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
             'topics' => is_array($analysis->topics) ? $analysis->topics : [],
             'transcript' => $analysis->transcript ?? '',
-            'language' => $analysis->language ?? 'en',
+            'language' => $analysis->language ?? 'es',
             'status' => $analysis->status,
             'error' => $analysis->error ?? '',
             'aimodel' => $analysis->aimodel ?? '',
@@ -697,7 +697,7 @@ class mod_googlemeet_external extends external_api {
             $analysis->keypoints = json_encode($result->keypoints ?? []);
             $analysis->topics = json_encode($result->topics ?? []);
             $analysis->transcript = $params['transcript'];
-            $analysis->language = $result->language ?? 'en';
+            $analysis->language = $result->language ?? 'es';
             $analysis->status = 'completed';
             $analysis->error = null;
             $analysis->aimodel = $client->get_last_used_model() ?? $client->get_model();
