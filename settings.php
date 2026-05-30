@@ -171,4 +171,14 @@ if ($ADMIN->fulltree) {
         get_string('makerecordingspublic_desc', 'googlemeet'),
         1
     ));
+
+    // Language code used when extracting Google Drive auto-generated subtitles
+    // (e.g. es, en, pt-BR). PARAM_ALPHANUMEXT allows the regional-variant hyphen.
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/subtitlelanguage',
+        get_string('subtitlelanguage', 'googlemeet'),
+        get_string('subtitlelanguage_desc', 'googlemeet'),
+        'es',
+        PARAM_ALPHANUMEXT
+    ));
 }

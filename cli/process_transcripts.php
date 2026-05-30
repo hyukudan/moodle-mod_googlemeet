@@ -29,12 +29,14 @@ list($options, $unrecognized) = cli_get_params([
     'dry-run'      => false,
     'help'         => false,
     'skip-gemini'  => false,
+    'language'     => '',
 ], [
     'g' => 'googlemeetid',
     'r' => 'recordingid',
     'd' => 'dry-run',
     'h' => 'help',
     's' => 'skip-gemini',
+    'l' => 'language',
 ]);
 
 if ($options['help']) {
@@ -46,6 +48,7 @@ Options:
   -r, --recordingid=ID    Process only this recording (optional)
   -d, --dry-run           Show what would be done without making changes
   -s, --skip-gemini       Only extract subtitles, skip AI analysis
+  -l, --language=LANG     Subtitle language code (overrides the site setting)
   -h, --help              Show this help
 
 Example:
@@ -68,8 +71,13 @@ if (!file_exists($ytdlp) || !is_executable($ytdlp)) {
     cli_error("yt-dlp not found at {$ytdlp}. Install it with: curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp");
 }
 
-// Instantiate the canonical subtitle extractor (language 'es', same as before).
-$extractor = new \mod_googlemeet\subtitle_extractor('es');
+// Resolve subtitle language: explicit CLI param > site setting > 'es'.
+$language = !empty($options['language'])
+    ? $options['language']
+    : (get_config('googlemeet', 'subtitlelanguage') ?: 'es');
+
+// Instantiate the canonical subtitle extractor with the resolved language.
+$extractor = new \mod_googlemeet\subtitle_extractor($language);
 
 // Get recordings to process.
 $params = ['googlemeetid' => $options['googlemeetid']];

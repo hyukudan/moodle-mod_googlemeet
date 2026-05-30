@@ -162,7 +162,7 @@ class process_video_analysis extends adhoc_task {
      * @return string|null The parsed transcript or null on failure
      */
     private function try_extract_subtitles(stdClass $recording): ?string {
-        $extractor = new subtitle_extractor();
+        $extractor = new subtitle_extractor(get_config('googlemeet', 'subtitlelanguage') ?: 'es');
         return $extractor->extract($recording->webviewlink);
     }
 

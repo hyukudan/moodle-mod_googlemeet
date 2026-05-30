@@ -185,3 +185,5 @@ $string['privacy:metadata:google_drive'] = 'Las grabaciones se leen del Google D
 $string['privacy:metadata:google_drive:userid'] = 'La identidad del usuario autenticado se envía a Google Drive para acceder a sus grabaciones.';
 $string['privacy:metadata:google_calendar'] = 'Los eventos de calendario y la sala de Meet se crean y leen en el Google Calendar del usuario en su nombre mediante su autorización OAuth 2.';
 $string['privacy:metadata:google_calendar:userid'] = 'La identidad del usuario autenticado se envía a Google Calendar para gestionar sus eventos y la sala de Meet.';
+$string['subtitlelanguage'] = 'Idioma de los subtítulos';
+$string['subtitlelanguage_desc'] = 'Código de idioma usado al extraer los subtítulos generados automáticamente de las grabaciones de Google Drive (p. ej. es, en, pt-BR). El valor por defecto es es.';

@@ -52,17 +52,9 @@ require_capability('mod/googlemeet:view', $context);
 $PAGE->set_url('/mod/googlemeet/view.php', array('id' => $cm->id));
 $PAGE->set_context($context);
 
-if (has_capability('mod/googlemeet:editrecording', $context)) {
-    $client = new client();
-    $logout = optional_param('logout', 0, PARAM_BOOL);
-    if ($logout && confirm_sesskey()) {
-        $client->logout();
-    }
-    $sync = optional_param('sync', 0, PARAM_BOOL);
-    if ($sync && confirm_sesskey()) {
-        $client->syncrecordings($googlemeet);
-    }
-}
+// Process the view write actions (logout / sync). The handler enforces the
+// editrecording capability, the sesskey check and (for sync) a POST request.
+googlemeet_handle_view_actions($googlemeet, $cm, $course);
 
 // Make sure URL exists before generating output - some older sites may contain empty urls
 // Do not use PARAM_URL here, it is too strict and does not support general URIs!

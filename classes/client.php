@@ -487,7 +487,7 @@ class client {
                             }
 
                             if (empty($recordings[$i]->transcripttext) && !empty($recording->webViewLink)) {
-                                $extractor = new subtitle_extractor('es');
+                                $extractor = new subtitle_extractor(get_config('googlemeet', 'subtitlelanguage') ?: 'es');
                                 if ($extractor->is_available()) {
                                     $cctext = $extractor->extract($recording->webViewLink);
                                     if (!empty($cctext)) {

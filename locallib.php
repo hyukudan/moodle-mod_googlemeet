@@ -46,6 +46,50 @@ function googlemeet_print_header($googlemeet, $cm, $course) {
 }
 
 /**
+ * Handle the write actions triggered from the activity view (logout / sync).
+ *
+ * This centralises the action-dispatch logic that previously lived inline in
+ * view.php, keeping that file focused on orchestration and presentation.
+ *
+ * Both actions require the `mod/googlemeet:editrecording` capability and a valid
+ * session key. The `sync` action additionally requires the request to be a POST
+ * (it performs DB writes and remote Google calls), so a plain GET to `?sync=1`
+ * is ignored even if it carries a valid sesskey. The sync button rendered in
+ * googlemeet_print_recordings() already submits via POST, so the user-facing
+ * flow is unchanged. The `logout` action is left reachable via GET (sesskey
+ * protected) so the OAuth account-management link keeps working as before.
+ *
+ * No redirect is performed: matching the previous behaviour, the page simply
+ * continues rendering after the action runs.
+ *
+ * @param object $googlemeet the googlemeet instance record
+ * @param object $cm the course module record
+ * @param object $course the course record
+ * @return void
+ */
+function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
+    $context = context_module::instance($cm->id);
+
+    if (!has_capability('mod/googlemeet:editrecording', $context)) {
+        return;
+    }
+
+    $client = new client();
+
+    $logout = optional_param('logout', 0, PARAM_BOOL);
+    if ($logout && confirm_sesskey()) {
+        $client->logout();
+    }
+
+    $sync = optional_param('sync', 0, PARAM_BOOL);
+    // Sync performs DB writes and remote Google calls: only run it for a POST
+    // request (in addition to the sesskey check). Ignore plain GETs.
+    if ($sync && confirm_sesskey() && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        $client->syncrecordings($googlemeet);
+    }
+}
+
+/**
  * Print googlemeet heading.
  * @param object $googlemeet
  * @param object $cm
