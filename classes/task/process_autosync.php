@@ -51,6 +51,29 @@ class process_autosync extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
+        // Guard against overlapping cron runs picking up the same pending events.
+        // If another run already holds the lock, skip this tick rather than wait.
+        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet_autosync');
+        $lock = $lockfactory->get_lock('process_autosync', 0);
+        if (!$lock) {
+            mtrace('mod_googlemeet autosync: another run holds the lock; skipping this tick.');
+            return;
+        }
+
+        try {
+            $this->run_due_events();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Find and process all events that are due for an auto-sync attempt.
+     *
+     * Split out from execute() so the cron lock acquired there always wraps the work
+     * and is released in a finally block.
+     */
+    private function run_due_events(): void {
         global $DB;
 
         $now = time();
@@ -148,16 +171,22 @@ class process_autosync extends \core\task\scheduled_task {
 
         // Inputs we will pass to classify_outcome(). Default values cover the no-creatoremail and
         // no-Moodle-user paths so we still record an attempt even when sync cannot run.
+        // $identitymissing flags the permanent "nobody to authenticate as" case, which must be
+        // kept distinct from a merely missing/revoked token (where $loggedin is also false but
+        // the creator may re-link Google later, so we keep retrying).
         $loggedin = false;
         $exception = null;
         $stats = null;
+        $identitymissing = false;
 
         if (empty($creatoremail)) {
             mtrace("  no creatoremail recorded for this activity.");
+            $identitymissing = true;
         } else {
             $creator = $DB->get_record('user', ['email' => $creatoremail, 'deleted' => 0]);
             if (!$creator) {
                 mtrace("  no active Moodle user with email {$creatoremail}.");
+                $identitymissing = true;
             } else {
                 // Impersonate so core\oauth2\client resolves the refresh token for this user.
                 $previoususer = $GLOBALS['USER'] ?? null;
@@ -193,7 +222,14 @@ class process_autosync extends \core\task\scheduled_task {
         // Resolve outcome for each due event of this activity.
         foreach ($events as $ev) {
             $newattempts = (int) $ev->syncattempts + 1;
-            $outcome = $this->classify_outcome($loggedin, $exception, $stats, $ev, (int) $ev->syncattempts);
+            $outcome = $this->classify_outcome(
+                $loggedin,
+                $exception,
+                $stats,
+                $identitymissing,
+                $ev,
+                (int) $ev->syncattempts
+            );
 
             if ($outcome === 'success' || $outcome === 'permanent') {
                 $this->close_event((int) $ev->eventid, $newattempts, $now);
@@ -224,70 +260,51 @@ class process_autosync extends \core\task\scheduled_task {
     /**
      * Decide what to do with a sync attempt.
      *
-     * Returns one of:
-     *   - 'success'   → grabbed what we needed; close this event forever
-     *   - 'permanent' → no point retrying (e.g. cancelled class, deleted creator); close
-     *   - 'retry'     → transient or recoverable failure; schedule another attempt
+     * Policy: retry transient failures until maxsyncattempts is exhausted, and close
+     * without further retries on success or on a permanent error.
+     *   - success   → the sync ran and brought in at least one recording
+     *                 (inserted or updated > 0); the event is done.
+     *   - permanent → a non-recoverable condition that retrying cannot fix: no creator
+     *                 email recorded, or no active Moodle user for it. There is nobody
+     *                 to authenticate as, so stop.
+     *   - retry     → any transient/recoverable condition: token missing/revoked or
+     *                 not logged in (creator may re-link Google), an exception during
+     *                 sync (network/Drive API error), or the sync ran but Drive has no
+     *                 recordings yet (Google may still be processing them). The
+     *                 attempt cap in process_activity() bounds these retries.
      *
-     * Inputs:
-     *   $loggedin   bool   True iff client->check_login() succeeded for the creator.
-     *                      False covers: no creatoremail, no Moodle user, token revoked.
-     *   $exception  \Throwable|null  Set if syncrecordings() threw; null otherwise.
-     *   $stats      array|null  ['inserted','updated','deleted','found'] when sync ran;
-     *                           null if sync was skipped (e.g. not logged in).
-     *   $event      \stdClass   Has fields eventid, eventdate, duration, syncattempts.
-     *   $attempts_done int      Attempts BEFORE this one (so this is attempt #attempts_done+1).
-     *
-     * --------------------------------------------------------------------
-     * TODO (you decide): replace the body below with the policy you want.
-     *
-     * Building blocks you can mix:
-     *   $hard_failure   = !$loggedin;                              // token issue (or no user)
-     *   $api_failure    = $exception !== null;                     // exception during sync
-     *   $got_recordings = is_array($stats)
-     *                     && (($stats['inserted'] ?? 0) > 0 || ($stats['updated'] ?? 0) > 0);
-     *   $found_zero     = is_array($stats) && (int)($stats['found'] ?? 0) === 0;
-     *   $event_age_h    = (time() - ($event->eventdate + $event->duration)) / 3600;
-     *
-     * Sketches:
-     *
-     *   // (A) Aggressive retry — recommended for Tuesday-style cases:
-     *   if ($got_recordings)            return 'success';
-     *   if ($hard_failure || $api_failure || $found_zero) return 'retry';
-     *   return 'success';   // sync ran, found something (updated/deleted only)
-     *
-     *   // (B) Conservative — only retry hard failures, accept "0 recordings" as final:
-     *   if ($got_recordings)            return 'success';
-     *   if ($hard_failure || $api_failure) return 'retry';
-     *   return 'permanent'; // 0 recordings = class cancelled, don't keep checking
-     *
-     *   // (C) Time-bounded "0 recordings" handling:
-     *   if ($got_recordings)            return 'success';
-     *   if ($hard_failure || $api_failure) return 'retry';
-     *   if ($found_zero && $event_age_h < 24) return 'retry';   // give Drive 24h
-     *   return 'permanent';
-     * --------------------------------------------------------------------
-     *
-     * @param bool $loggedin
-     * @param \Throwable|null $exception
-     * @param array|null $stats
-     * @param \stdClass $event
-     * @param int $attempts_done
-     * @return string
+     * @param bool $loggedin True iff client->check_login() succeeded for the creator.
+     *                       False covers: no creator email, no Moodle user, token revoked.
+     * @param \Throwable|null $exception Set if syncrecordings() threw; null otherwise.
+     * @param array|null $stats ['inserted','updated','deleted','found'] when sync ran;
+     *                          null if sync was skipped (e.g. not logged in).
+     * @param bool $identitymissing True when there is no creator email or no Moodle user
+     *                              for it (the only permanent, non-recoverable failures).
+     * @param \stdClass $event Has fields eventid, eventdate, duration, syncattempts.
+     * @param int $attemptsdone Attempts BEFORE this one (so this is attempt #attemptsdone+1).
+     * @return string One of 'success', 'permanent', 'retry'.
      */
     private function classify_outcome(
         bool $loggedin,
         ?\Throwable $exception,
         ?array $stats,
+        bool $identitymissing,
         \stdClass $event,
-        int $attempts_done
+        int $attemptsdone
     ): string {
-        // Placeholder: keep retrying until max-attempts caps it.
-        // Replace with one of the sketches above (or your own variant).
+        // Got what we came for: at least one recording landed in the DB.
         if (is_array($stats)
             && ((int) ($stats['inserted'] ?? 0) > 0 || (int) ($stats['updated'] ?? 0) > 0)) {
             return 'success';
         }
+
+        // Permanent: nobody to authenticate as. Nothing about this can change by retrying.
+        if ($identitymissing) {
+            return 'permanent';
+        }
+
+        // Everything else is transient: not logged in (token revoked/missing), an exception
+        // during sync (network/Drive API), or the sync ran but found no recordings yet.
         return 'retry';
     }
 

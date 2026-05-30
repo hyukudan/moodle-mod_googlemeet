@@ -33,7 +33,7 @@ require_once($CFG->libdir . '/filelib.php');
  * video summaries, key points, and transcripts.
  *
  * @package     mod_googlemeet
- * @copyright   2024 Your Name
+ * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class gemini_client {
@@ -53,11 +53,17 @@ class gemini_client {
     /** @var string The model to use */
     private $model;
 
+    /** @var string The default primary model when none is configured */
+    private const DEFAULT_MODEL = 'gemini-3-flash-preview';
+
     /** @var string Fallback model when primary fails */
     private const FALLBACK_MODEL = 'gemini-2.5-flash';
 
     /** @var bool Whether AI features are enabled */
     private $enabled;
+
+    /** @var string|null The model actually used by the last successful API call */
+    private $lastusedmodel = null;
 
     /**
      * Constructor.
@@ -65,7 +71,7 @@ class gemini_client {
     public function __construct() {
         $this->enabled = (bool) get_config('googlemeet', 'enableai');
         $this->apikey = get_config('googlemeet', 'geminiapikey');
-        $this->model = get_config('googlemeet', 'aimodel') ?: 'gemini-3-flash-preview';
+        $this->model = get_config('googlemeet', 'aimodel') ?: self::DEFAULT_MODEL;
     }
 
     /**
@@ -84,6 +90,21 @@ class gemini_client {
      */
     public function get_model(): string {
         return $this->model;
+    }
+
+    /**
+     * Get the model that was actually used by the most recent successful API call.
+     *
+     * Because the client transparently falls back to {@see self::FALLBACK_MODEL}
+     * when the configured model fails, the configured model returned by
+     * {@see self::get_model()} may not reflect what actually produced a result.
+     * Callers persisting the model (e.g. the `aimodel` column) should use this
+     * value after a successful call so the stored model is accurate.
+     *
+     * @return string|null The effective model, or null if no successful call has been made.
+     */
+    public function get_last_used_model(): ?string {
+        return $this->lastusedmodel;
     }
 
     /**
@@ -186,10 +207,29 @@ PROMPT;
             if ($this->model === self::FALLBACK_MODEL) {
                 throw $e;
             }
-            debugging("Gemini model {$this->model} failed: " . $e->getMessage()
-                . ". Falling back to " . self::FALLBACK_MODEL, DEBUG_DEVELOPER);
+            $this->log_fallback($this->model, $e);
             return $this->call_api_with_model($prompt, self::FALLBACK_MODEL);
         }
+    }
+
+    /**
+     * Log a model fallback in a visible way.
+     *
+     * Fallbacks change which model actually produced the result, so they are
+     * surfaced via mtrace() (visible in cron/task output) in addition to a
+     * developer-level debugging() message.
+     *
+     * @param string $failedmodel The configured model that failed.
+     * @param \Throwable $e The exception that triggered the fallback.
+     * @return void
+     */
+    private function log_fallback(string $failedmodel, \Throwable $e): void {
+        $message = "Gemini: model '{$failedmodel}' failed ({$e->getMessage()}); "
+            . "falling back to '" . self::FALLBACK_MODEL . "'";
+        if (function_exists('mtrace')) {
+            mtrace($message);
+        }
+        debugging($message, DEBUG_DEVELOPER);
     }
 
     /**
@@ -201,11 +241,11 @@ PROMPT;
      * @throws moodle_exception If the API call fails
      */
     private function call_api_with_model(string $prompt, string $model): string {
-        $url = self::API_BASE_URL . $model . ':generateContent?key=' . $this->apikey;
+        // The API key is sent in the x-goog-api-key header (never in the URL/query
+        // string) so it cannot leak through a logged or thrown URL.
+        $url = self::API_BASE_URL . $model . ':generateContent';
 
-        // Log that we're making the API call (without exposing the API key).
-        $safeurl = self::API_BASE_URL . $model . ':generateContent?key=***';
-        debugging("Gemini API: Starting request to {$safeurl}", DEBUG_DEVELOPER);
+        debugging("Gemini API: Starting request to {$url}", DEBUG_DEVELOPER);
 
         $data = [
             'contents' => [
@@ -242,7 +282,10 @@ PROMPT;
         ];
 
         $curl = new \curl();
-        $curl->setHeader(['Content-Type: application/json']);
+        $curl->setHeader([
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $this->apikey,
+        ]);
 
         // Set timeout options for potentially long AI processing.
         $options = [
@@ -263,33 +306,59 @@ PROMPT;
             throw new moodle_exception('ai_error', 'googlemeet', '', "Connection error: {$errormsg}");
         }
 
-        // Check for HTTP errors.
+        // Validate HTTP status and classify transient vs permanent errors.
+        $this->handle_http_response($httpcode, $response, $model);
+
+        // Record the model that actually produced this successful response.
+        $this->lastusedmodel = $model;
+
+        return $response;
+    }
+
+    /**
+     * Validate an HTTP response and translate error statuses into exceptions.
+     *
+     * Shared by the text-generation and video-analysis paths. On a non-200
+     * status it throws either a {@see gemini_transient_exception} (for
+     * retryable errors such as rate limits / overload) or a moodle_exception.
+     * Returns cleanly on HTTP 200.
+     *
+     * @param int $httpcode The HTTP status code.
+     * @param string $response The raw response body.
+     * @param string $model The model used for this request (for logging context).
+     * @return void
+     * @throws gemini_transient_exception If the error is transient/retryable.
+     * @throws moodle_exception If the error is permanent.
+     */
+    private function handle_http_response(int $httpcode, string $response, string $model): void {
+        // No response at all (network failure not flagged as a curl errno).
         if ($httpcode === 0) {
             debugging("Gemini API: No response received", DEBUG_DEVELOPER);
             throw new moodle_exception('ai_error', 'googlemeet', '', 'No response from API - check network connectivity');
         }
 
-        if ($httpcode !== 200) {
-            $error = json_decode($response);
-            $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
-            debugging("Gemini API error: {$errormsg}", DEBUG_DEVELOPER);
-            $transient_patterns = ['high demand', 'overloaded', 'RESOURCE_EXHAUSTED', 'quota', 'rate limit', 'try again'];
-            $is_transient = in_array($httpcode, [429, 500, 503], true);
-            if (!$is_transient) {
-                foreach ($transient_patterns as $p) {
-                    if (stripos($errormsg, $p) !== false) {
-                        $is_transient = true;
-                        break;
-                    }
-                }
-            }
-            if ($is_transient) {
-                throw new gemini_transient_exception($errormsg);
-            }
-            throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
+        if ($httpcode === 200) {
+            return;
         }
 
-        return $response;
+        $error = json_decode($response);
+        $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
+        debugging("Gemini API error ({$model}): {$errormsg}", DEBUG_DEVELOPER);
+
+        $transient_patterns = ['high demand', 'overloaded', 'RESOURCE_EXHAUSTED', 'quota', 'rate limit', 'try again'];
+        $is_transient = in_array($httpcode, [429, 500, 503], true);
+        if (!$is_transient) {
+            foreach ($transient_patterns as $p) {
+                if (stripos($errormsg, $p) !== false) {
+                    $is_transient = true;
+                    break;
+                }
+            }
+        }
+        if ($is_transient) {
+            throw new gemini_transient_exception($errormsg);
+        }
+        throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
     }
 
     /**
@@ -318,23 +387,28 @@ PROMPT;
 
         $analysis = json_decode($text);
 
-        if (!$analysis) {
-            // If JSON parsing fails, create a basic structure from the text.
-            $analysis = new stdClass();
-            $analysis->summary = $text;
-            $analysis->keypoints = [];
-            $analysis->topics = [];
-            $analysis->transcript = '';
-            $analysis->language = 'en';
+        // A non-parseable model response is a hard failure: persisting an empty
+        // analysis would silently hide the problem. Throw so the caller/task
+        // marks the analysis as failed instead.
+        if (!is_object($analysis)) {
+            debugging("Gemini API: model response was not valid JSON", DEBUG_DEVELOPER);
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', json_last_error_msg());
         }
 
-        // Ensure all fields exist.
+        // The summary is the core required field; without it the analysis is
+        // meaningless. Other fields are optional and may legitimately be empty.
+        $summary = $analysis->summary ?? '';
+        if (!is_string($summary) || trim($summary) === '') {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'Missing summary in analysis response');
+        }
+
+        // Ensure all fields exist with sane types.
         $result = new stdClass();
-        $result->summary = $analysis->summary ?? '';
-        $result->keypoints = $analysis->keypoints ?? [];
-        $result->topics = $analysis->topics ?? [];
-        $result->transcript = $analysis->transcript ?? '';
-        $result->language = $analysis->language ?? 'en';
+        $result->summary = $summary;
+        $result->keypoints = is_array($analysis->keypoints ?? null) ? $analysis->keypoints : [];
+        $result->topics = is_array($analysis->topics ?? null) ? $analysis->topics : [];
+        $result->transcript = is_string($analysis->transcript ?? null) ? $analysis->transcript : '';
+        $result->language = is_string($analysis->language ?? null) ? $analysis->language : 'en';
 
         return $result;
     }
@@ -396,11 +470,13 @@ PROMPT;
         $filesize = filesize($filepath);
         debugging("Gemini File API: Uploading file {$displayname} ({$filesize} bytes)", DEBUG_DEVELOPER);
 
-        // Start resumable upload.
-        $url = self::UPLOAD_URL . '?key=' . $this->apikey;
+        // Start resumable upload. The API key travels in the x-goog-api-key
+        // header (never the query string) so it cannot leak via a logged URL.
+        $url = self::UPLOAD_URL;
 
         $curl = new \curl();
         $curl->setHeader([
+            'x-goog-api-key: ' . $this->apikey,
             'X-Goog-Upload-Protocol: resumable',
             'X-Goog-Upload-Command: start',
             'X-Goog-Upload-Header-Content-Length: ' . $filesize,
@@ -420,9 +496,11 @@ PROMPT;
         // Get the upload URL from response headers.
         $uploadurl = $curl->getResponse()['X-Goog-Upload-URL'] ?? null;
         if (!$uploadurl) {
-            // Try to get from response headers differently.
-            $headers = $curl->get_raw_response_headers();
-            if (preg_match('/x-goog-upload-url:\s*(.+)/i', $headers, $matches)) {
+            // Try to get from response headers differently. Moodle's \curl exposes the raw
+            // header lines via get_raw_response() (an array), not get_raw_response_headers().
+            $rawheaders = $curl->get_raw_response();
+            $headerstr = is_array($rawheaders) ? implode("\n", $rawheaders) : (string) $rawheaders;
+            if (preg_match('/x-goog-upload-url:\s*(.+)/i', $headerstr, $matches)) {
                 $uploadurl = trim($matches[1]);
             }
         }
@@ -434,25 +512,55 @@ PROMPT;
 
         debugging("Gemini File API: Got upload URL, uploading file content...", DEBUG_DEVELOPER);
 
-        // Upload the actual file content.
-        $curl2 = new \curl();
-        $curl2->setHeader([
-            'Content-Length: ' . $filesize,
-            'X-Goog-Upload-Offset: 0',
-            'X-Goog-Upload-Command: upload, finalize',
-        ]);
+        // Upload the actual file content as a stream so the whole video (up to
+        // ~2GB) is never loaded into PHP memory. We hand cURL the open file
+        // handle via CURLOPT_INFILE/CURLOPT_INFILESIZE with CURLOPT_UPLOAD, and
+        // force the HTTP verb to POST (CURLOPT_UPLOAD would otherwise use PUT)
+        // to match the resumable-upload protocol.
+        $fp = fopen($filepath, 'rb');
+        if ($fp === false) {
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'Could not open video file for upload');
+        }
 
-        $options = [
-            'CURLOPT_TIMEOUT' => 600,        // 10 minutes for large files.
-            'CURLOPT_CONNECTTIMEOUT' => 60,
-        ];
+        // We deliberately use a native cURL handle here instead of Moodle's \curl wrapper:
+        // \curl::post() always sets CURLOPT_POST + CURLOPT_POSTFIELDS, which overrides the
+        // CURLOPT_INFILE read stream and would upload an empty body. A raw handle with
+        // CURLOPT_UPLOAD/CURLOPT_INFILE streams the file straight from disk, so the full
+        // video (up to ~2GB) is never loaded into PHP memory. The upload URL is returned by
+        // Google's File API (trusted), so the SSRF protections of \curl are not needed here.
+        try {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $uploadurl,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_UPLOAD => true,
+                CURLOPT_INFILE => $fp,
+                CURLOPT_INFILESIZE => $filesize,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_TIMEOUT => 600,          // 10 minutes for large files.
+                CURLOPT_CONNECTTIMEOUT => 60,
+                CURLOPT_HTTPHEADER => [
+                    'x-goog-api-key: ' . $this->apikey,
+                    'X-Goog-Upload-Offset: 0',
+                    'X-Goog-Upload-Command: upload, finalize',
+                ],
+            ]);
 
-        $filecontent = file_get_contents($filepath);
-        $response = $curl2->post($uploadurl, $filecontent, $options);
-        $info = $curl2->get_info();
+            $response = curl_exec($ch);
+            $httpcode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlerror = curl_errno($ch) ? curl_error($ch) : '';
+            curl_close($ch);
+        } finally {
+            fclose($fp);
+        }
 
-        if ($info['http_code'] !== 200) {
-            debugging("Gemini File API: Upload failed, HTTP " . $info['http_code'], DEBUG_DEVELOPER);
+        if ($curlerror !== '') {
+            debugging("Gemini File API: Upload transport error: {$curlerror}", DEBUG_DEVELOPER);
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'Failed to upload file content');
+        }
+
+        if ($httpcode !== 200) {
+            debugging("Gemini File API: Upload failed, HTTP " . $httpcode, DEBUG_DEVELOPER);
             throw new moodle_exception('ai_error', 'googlemeet', '', 'Failed to upload file content');
         }
 
@@ -476,13 +584,15 @@ PROMPT;
      * @throws moodle_exception If file processing fails or times out
      */
     public function wait_for_file_processing(string $filename, int $maxwait = 600): stdClass {
-        $url = self::FILE_API_URL . '/' . $filename . '?key=' . $this->apikey;
+        // Key sent via header, never in the URL/query string.
+        $url = self::FILE_API_URL . '/' . $filename;
         $starttime = time();
 
         debugging("Gemini File API: Waiting for file {$filename} to be processed...", DEBUG_DEVELOPER);
 
         while (time() - $starttime < $maxwait) {
             $curl = new \curl();
+            $curl->setHeader(['x-goog-api-key: ' . $this->apikey]);
             $response = $curl->get($url);
             $info = $curl->get_info();
 
@@ -622,7 +732,8 @@ PROMPT;
 
         debugging("Gemini API: Analyzing video with file URI: {$fileuri} using model: {$model}", DEBUG_DEVELOPER);
 
-        $url = self::API_BASE_URL . $model . ':generateContent?key=' . $this->apikey;
+        // Key sent via the x-goog-api-key header, never in the URL/query string.
+        $url = self::API_BASE_URL . $model . ':generateContent';
 
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
@@ -673,7 +784,10 @@ PROMPT;
         ];
 
         $curl = new \curl();
-        $curl->setHeader(['Content-Type: application/json']);
+        $curl->setHeader([
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $this->apikey,
+        ]);
 
         $options = [
             'CURLOPT_TIMEOUT' => 300,        // 5 minutes for video analysis.
@@ -684,27 +798,13 @@ PROMPT;
         $info = $curl->get_info();
         $httpcode = $info['http_code'] ?? 0;
 
-        if ($httpcode !== 200) {
-            $error = json_decode($response);
-            $errormsg = isset($error->error->message) ? $error->error->message : "HTTP error {$httpcode}";
-            debugging("Gemini API error ({$model}): {$errormsg}", DEBUG_DEVELOPER);
-            $transient_patterns = ['high demand', 'overloaded', 'RESOURCE_EXHAUSTED', 'quota', 'rate limit', 'try again'];
-            $is_transient = in_array($httpcode, [429, 500, 503], true);
-            if (!$is_transient) {
-                foreach ($transient_patterns as $p) {
-                    if (stripos($errormsg, $p) !== false) {
-                        $is_transient = true;
-                        break;
-                    }
-                }
-            }
-            if ($is_transient) {
-                throw new gemini_transient_exception($errormsg);
-            }
-            throw new moodle_exception('ai_error', 'googlemeet', '', $errormsg);
-        }
+        // Validate HTTP status and classify transient vs permanent errors.
+        $this->handle_http_response($httpcode, $response, $model);
 
         debugging("Gemini API: Video analysis completed successfully with model {$model}", DEBUG_DEVELOPER);
+
+        // Record the model that actually produced this successful response.
+        $this->lastusedmodel = $model;
 
         return $this->parse_analysis_response($response);
     }
@@ -716,9 +816,11 @@ PROMPT;
      * @return bool True if deleted successfully
      */
     public function delete_file(string $filename): bool {
-        $url = self::FILE_API_URL . '/' . $filename . '?key=' . $this->apikey;
+        // Key sent via header, never in the URL/query string.
+        $url = self::FILE_API_URL . '/' . $filename;
 
         $curl = new \curl();
+        $curl->setHeader(['x-goog-api-key: ' . $this->apikey]);
         $curl->delete($url);
         $info = $curl->get_info();
 

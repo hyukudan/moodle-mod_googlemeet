@@ -299,3 +299,26 @@ $string['ai_analyze_transcript_hint'] = 'Paste the transcript from Google Meet a
 $string['ai_analyze_empty_transcript'] = 'Please paste a transcript first';
 $string['ai_analyzing'] = 'Analyzing...';
 $string['ai_analyze_success'] = 'Analysis completed! Review and save the results.';
+
+// Error handling and privacy (security/quality review 2026-05-30).
+$string['ai_error_generic'] = 'Error generating analysis. Please try again later or contact your administrator.';
+$string['ai_invalid_analysis'] = 'The AI returned an analysis that could not be parsed: {$a}';
+$string['ai_video_not_public'] = 'Cannot download the recording for full-video analysis. This option requires the recording to be shared publicly ("Anyone with the link"), which is controlled by the "Make recordings public" setting, or for auto-generated subtitles to be available. The downloaded content was an error page, not a video.';
+$string['makerecordingspublic'] = 'Make recordings publicly accessible';
+$string['makerecordingspublic_desc'] = 'When enabled, synced recordings are granted "anyone with the link" read access on Google Drive so that enrolled students (who are not the Drive owner) can play the embedded recording. Disabling this improves privacy but breaks playback for everyone except the Google account that owns the recordings.';
+$string['noeventswithperiod'] = 'With the selected days and "Repeat every N weeks" period, no events would fall within the chosen date range. Reduce the period or extend the end date.';
+$string['privacy:metadata:core_oauth2'] = 'The Google Meet activity makes use of the OAuth 2 subsystem to authenticate users against Google services.';
+$string['privacy:metadata:googlemeet'] = 'Information about the Google Meet activity instances.';
+$string['privacy:metadata:googlemeet:creatoremail'] = 'The email address of the Google account used to create the Meet room. This identifies the creator but is stored as an activity property, not linked to a Moodle user account.';
+$string['privacy:metadata:googlemeet_ai_analysis'] = 'AI-generated analysis of recordings. The transcript may incidentally contain the names or voices of session participants. This data is associated with a recording, not with an individual Moodle user.';
+$string['privacy:metadata:googlemeet_ai_analysis:summary'] = 'An AI-generated summary of the recording content.';
+$string['privacy:metadata:googlemeet_ai_analysis:keypoints'] = 'AI-generated key points extracted from the recording content.';
+$string['privacy:metadata:googlemeet_ai_analysis:topics'] = 'AI-generated topics discussed in the recording content.';
+$string['privacy:metadata:googlemeet_ai_analysis:transcript'] = 'A transcript of the recording, which may contain the names or voices of session participants.';
+$string['privacy:metadata:google_gemini'] = 'Recording transcripts and, as a fallback, the full recording video are sent to the Google Gemini API to generate the analysis. These may contain personal data such as participants'."'".' names and voices.';
+$string['privacy:metadata:google_gemini:transcript'] = 'The transcript text of the recording sent for analysis.';
+$string['privacy:metadata:google_gemini:video'] = 'The full recording video file, sent for analysis when no transcript is available.';
+$string['privacy:metadata:google_drive'] = 'Recordings are read from the user'."'".'s Google Drive on their behalf using their OAuth 2 authorisation.';
+$string['privacy:metadata:google_drive:userid'] = 'The identity of the authenticated user is sent to Google Drive to access their recordings.';
+$string['privacy:metadata:google_calendar'] = 'Calendar events and the Meet room are created and read in the user'."'".'s Google Calendar on their behalf using their OAuth 2 authorisation.';
+$string['privacy:metadata:google_calendar:userid'] = 'The identity of the authenticated user is sent to Google Calendar to manage their events and Meet room.';

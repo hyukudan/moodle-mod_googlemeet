@@ -148,11 +148,15 @@ class subtitle_extractor {
      * yt-dlp parses the Drive page HTML and extracts the timedtext URL
      * with the authpayload parameter needed for authentication.
      *
+     * Exposed as public so that CLI scripts can call individual pipeline
+     * steps while emitting progress output between them.
+     *
      * @param string $driveurl The Google Drive video URL
      * @return string|null The timedtext URL or null on failure
      */
-    private function get_timedtext_url(string $driveurl): ?string {
+    public function get_timedtext_url(string $driveurl): ?string {
         $cmd = escapeshellarg($this->ytdlppath)
+             . ' --ignore-config --no-playlist'
              . ' -v --write-sub --sub-lang ' . escapeshellarg($this->language)
              . ' --skip-download --sub-format srv3'
              . ' -o /dev/null '
@@ -172,10 +176,13 @@ class subtitle_extractor {
      *
      * The Referer header is required - without it, Google returns empty responses.
      *
+     * Exposed as public so that CLI scripts can call individual pipeline
+     * steps while emitting progress output between them.
+     *
      * @param string $url The timedtext URL with track parameters
      * @return string The subtitle XML content, or empty string on failure
      */
-    private function download_subtitle(string $url): string {
+    public function download_subtitle(string $url): string {
         global $CFG;
         require_once($CFG->libdir . '/filelib.php');
 
@@ -199,10 +206,13 @@ class subtitle_extractor {
      *
      * Timestamps are inserted at each new minute boundary.
      *
+     * Exposed as public so that CLI scripts can call individual pipeline
+     * steps while emitting progress output between them.
+     *
      * @param string $xml The subtitle XML content
      * @return string The parsed transcript with timestamps
      */
-    private function parse_xml(string $xml): string {
+    public function parse_xml(string $xml): string {
         libxml_use_internal_errors(true);
         $doc = simplexml_load_string($xml);
         libxml_clear_errors();

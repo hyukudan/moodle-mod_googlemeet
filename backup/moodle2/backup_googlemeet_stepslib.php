@@ -61,7 +61,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'maxupcomingevents',
             'maxrecordings',
             'recordingsorder',
-            'recordingfilter'
+            'recordingfilter',
+            'autosynchours'
         ]);
 
         $events = new backup_nested_element('events');
@@ -81,6 +82,21 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'transcripttext',
             'transcriptfileid',
             'visible',
+            'timemodified'
+        ]);
+
+        $aianalysis = new backup_nested_element('aianalysis', ['id'], [
+            'summary',
+            'keypoints',
+            'transcript',
+            'topics',
+            'language',
+            'status',
+            'error',
+            'aimodel',
+            'retrycount',
+            'nextretry',
+            'timecreated',
             'timemodified'
         ]);
 
@@ -105,6 +121,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         $googlemeet->add_child($recordings);
         $recordings->add_child($recording);
+        $recording->add_child($aianalysis);
 
         $googlemeet->add_child($holidays);
         $holidays->add_child($holiday);
@@ -118,6 +135,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $event->set_source_table('googlemeet_events', ['googlemeetid' => backup::VAR_PARENTID]);
 
         $recording->set_source_table('googlemeet_recordings', ['googlemeetid' => backup::VAR_PARENTID]);
+
+        $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
 

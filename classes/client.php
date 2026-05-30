@@ -68,9 +68,14 @@ class client {
             $this->enabled = false;
         }
 
-        $client = $this->get_user_oauth_client();
-        if ($this->enabled && $client->get_login_url()->get_host() !== 'accounts.google.com') {
-            throw new moodle_exception('invalidissuerid', 'googlemeet');
+        // Only build the OAuth client (and validate the issuer host) when the plugin is
+        // actually configured. Calling get_user_oauth_client() with a null issuer — e.g. in a
+        // cron context where issuerid is unset — would otherwise error.
+        if ($this->enabled) {
+            $client = $this->get_user_oauth_client();
+            if ($client->get_login_url()->get_host() !== 'accounts.google.com') {
+                throw new moodle_exception('invalidissuerid', 'googlemeet');
+            }
         }
     }
 
@@ -94,6 +99,22 @@ class client {
     }
 
     /**
+     * Escape a value for safe interpolation inside a Google Drive query string literal.
+     *
+     * Drive query terms such as `name contains "..."` or `name = "..."` use double-quoted
+     * string literals. Values controlled by the teacher (activity name, recording filter,
+     * meeting code, recording filename) must have any backslash and double-quote escaped,
+     * otherwise a `"` would break out of the literal and let the value alter the query
+     * (query injection). See https://developers.google.com/drive/api/guides/ref-search-terms.
+     *
+     * @param string $value The raw value to embed inside a double-quoted Drive query literal.
+     * @return string The escaped value (without surrounding quotes).
+     */
+    private function drive_quote($value) {
+        return str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $value);
+    }
+
+    /**
      * Print the login in a popup.
      *
      * @param array|null $attr Custom attributes to be applied to popup div.
@@ -101,18 +122,37 @@ class client {
      * @return string HTML code
      */
     public function print_login_popup($attr = null) {
-        global $OUTPUT;
+        global $OUTPUT, $PAGE;
 
         $client = $this->get_user_oauth_client();
-        $url = new moodle_url($client->get_login_url());
-        $state = $url->get_param('state') . '&reloadparent=true';
-        $url->param('state', $state);
+        $loginurl = $client->get_login_url();
 
-        return html_writer::div('
-            <button class="btn btn-primary" onClick="javascript:window.open(\''.$client->get_login_url().'\',
-                \'Login\',\'height=600,width=599,top=0,left=0,menubar=0,location=0,directories=0,fullscreen=0\'
-            ); return false">'.get_string('logintoaccount', 'googlemeet').'</button>', 'mt-2');
+        // SECURITY: open the OAuth login in a popup without an inline onClick handler.
+        // The URL is carried in a data-* attribute (HTML-escaped by html_writer) and the
+        // popup is opened from a small AMD inline listener, so no user-influenced value is
+        // interpolated into an executable inline-JS attribute. We must keep using a popup
+        // window (window.open) because the OAuth callback relies on it (callback.php closes
+        // the popup and reloads the parent).
+        $buttonid = html_writer::random_id('googlemeet_login_');
+        $button = html_writer::tag('button', get_string('logintoaccount', 'googlemeet'), [
+            'type' => 'button',
+            'class' => 'btn btn-primary',
+            'id' => $buttonid,
+            'data-loginurl' => $loginurl->out(false),
+        ]);
 
+        $PAGE->requires->js_amd_inline("
+            require(['jquery'], function(\$) {
+                \$('#" . $buttonid . "').on('click', function(e) {
+                    e.preventDefault();
+                    var url = \$(this).attr('data-loginurl');
+                    window.open(url, 'Login',
+                        'height=600,width=599,top=0,left=0,menubar=0,location=0,directories=0,fullscreen=0');
+                });
+            });
+        ");
+
+        return html_writer::div($button, 'mt-2');
     }
 
     /**
@@ -190,17 +230,18 @@ class client {
             $url = new moodle_url($PAGE->url);
             $client = $this->get_user_oauth_client();
             $client->log_out();
-            $js = <<<EOD
-<html>
-<head>
-    <script type="text/javascript">
-        window.location = '{$url}'.replaceAll('&amp;','&')
-    </script>
-</head>
-<body></body>
-</html>
-EOD;
-            die($js);
+
+            // SECURITY: redirect the browser back to the activity after logout. The URL is a
+            // moodle_url built from $PAGE->url, and out(false) returns it without HTML entity
+            // encoding so it is safe to place inside a JS string literal (json_encode further
+            // guards against quote/script breakout). We must emit this tiny HTML page and stop
+            // execution here because logout is also reachable from inside the OAuth popup flow,
+            // where a normal redirect() would not reliably reload the originating page.
+            $jsurl = json_encode($url->out(false));
+            $html = '<!DOCTYPE html><html><head><script type="text/javascript">' .
+                    'window.location = ' . $jsurl . ';' .
+                    '</script></head><body></body></html>';
+            die($html);
         }
     }
 
@@ -337,7 +378,7 @@ EOD;
             $parents = '';
             $folderscount = count($folders);
             for ($i = 0; $i < $folderscount; $i++) {
-                $parents .= 'parents="'.$folders[$i]->id.'"';
+                $parents .= 'parents="'.$this->drive_quote($folders[$i]->id).'"';
                 if ($i + 1 < $folderscount) {
                     $parents .= ' or ';
                 }
@@ -351,10 +392,10 @@ EOD;
             // plus custom filter if set. This avoids the problem where a custom
             // filter is an incorrect substring that doesn't match the actual filename.
             $conditions = [];
-            $conditions[] = 'name contains "' . $meetingcode . '"';
-            $conditions[] = 'name contains "' . $name . '"';
+            $conditions[] = 'name contains "' . $this->drive_quote($meetingcode) . '"';
+            $conditions[] = 'name contains "' . $this->drive_quote($name) . '"';
             if (!empty($customfilter) && $customfilter !== $name) {
-                $conditions[] = 'name contains "' . $customfilter . '"';
+                $conditions[] = 'name contains "' . $this->drive_quote($customfilter) . '"';
             }
             $namefilter = '(' . implode(' or ', $conditions) . ')';
 
@@ -408,7 +449,14 @@ EOD;
 
                     // If the recording has already been processed.
                     if (isset($recording->videoMediaMetadata)) {
-                        if (!in_array('anyoneWithLink', $recording->permissionIds)) {
+                        // SECURITY: granting "anyone with the link" is what makes the recording
+                        // playable for non-owner students through the embedded player. The
+                        // 'makerecordingspublic' setting defaults to 1 to preserve that behaviour;
+                        // an admin can disable it to keep recordings private, but that breaks
+                        // playback for everyone except the Drive owner (a deliberate privacy/
+                        // playability trade-off).
+                        if (get_config('googlemeet', 'makerecordingspublic')
+                                && !in_array('anyoneWithLink', $recording->permissionIds)) {
                             $permissionparams = [
                                 'fileid' => $recording->id,
                                 'fields' => 'id'
@@ -625,7 +673,7 @@ EOD;
                     trashed = false and
                     "me" in owners and
                     (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
-                    name contains "'.$basename.'"',
+                    name contains "'.$this->drive_quote($basename).'"',
             'pageSize' => 10,
             'fields' => 'files(id,name,mimeType)'
         ];

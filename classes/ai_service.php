@@ -26,7 +26,7 @@ use moodle_exception;
  * including creating, updating, and retrieving analysis records.
  *
  * @package     mod_googlemeet
- * @copyright   2024 Your Name
+ * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class ai_service {
@@ -76,14 +76,20 @@ class ai_service {
      * @param int $recordingid The recording ID
      * @param bool $regenerate Whether to regenerate if analysis exists
      * @param bool $forcedownload Whether to allow falling back to full-video download (tier 3)
+     * @param bool $alreadyclaimed True when the caller (the cron) has already atomically
+     *                             flipped this row pending->processing via claim_pending();
+     *                             in that case we must not re-evaluate/skip on status and
+     *                             we just (re)enqueue the adhoc task for the claimed row.
      * @return stdClass The analysis record with status 'processing'
      * @throws moodle_exception If queueing fails
      */
-    public function generate_analysis(int $recordingid, bool $regenerate = false, bool $forcedownload = false): stdClass {
+    public function generate_analysis(int $recordingid, bool $regenerate = false, bool $forcedownload = false,
+            bool $alreadyclaimed = false): stdClass {
         global $DB;
 
         debugging("AI Service: Starting analysis for recording {$recordingid}, regenerate=" . ($regenerate ? 'true' : 'false')
-            . ", forcedownload=" . ($forcedownload ? 'true' : 'false'), DEBUG_DEVELOPER);
+            . ", forcedownload=" . ($forcedownload ? 'true' : 'false')
+            . ", alreadyclaimed=" . ($alreadyclaimed ? 'true' : 'false'), DEBUG_DEVELOPER);
 
         // Get the recording.
         $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
@@ -99,8 +105,14 @@ class ai_service {
             return $existing;
         }
 
-        // If already processing, return current status.
-        if ($existing && $existing->status === 'processing' && !$regenerate) {
+        // If already processing, return current status without re-enqueuing.
+        //
+        // This guard now also covers the regenerate path: if another cron run (or a
+        // user-triggered call) already owns this row as 'processing', we must NOT
+        // re-update it and re-queue a second adhoc task, even when regenerate=true
+        // (C2 - race condition). The only legitimate way to act on a 'processing'
+        // row is to have just claimed it ourselves, signalled by $alreadyclaimed.
+        if ($existing && $existing->status === 'processing' && !$alreadyclaimed) {
             $existing->keypoints = [];
             $existing->topics = [];
             return $existing;
@@ -115,7 +127,13 @@ class ai_service {
 
         if ($existing) {
             $analysis->id = $existing->id;
-            $DB->update_record('googlemeet_ai_analysis', $analysis);
+            // When already claimed, the row is already 'processing'; keep it that way
+            // rather than rewriting it, but still proceed to (re)enqueue below.
+            if (!$alreadyclaimed) {
+                $DB->update_record('googlemeet_ai_analysis', $analysis);
+            } else {
+                $analysis->timemodified = $existing->timemodified;
+            }
         } else {
             $analysis->timecreated = time();
             $analysis->id = $DB->insert_record('googlemeet_ai_analysis', $analysis);
@@ -197,7 +215,7 @@ class ai_service {
             $analysis->language = $result->language;
             $analysis->status = 'completed';
             $analysis->error = null;
-            $analysis->aimodel = $this->client->get_model();
+            $analysis->aimodel = $this->client->get_last_used_model() ?? $this->client->get_model();
             $analysis->timemodified = time();
 
             $DB->update_record('googlemeet_ai_analysis', $analysis);
@@ -240,6 +258,82 @@ class ai_service {
         global $DB;
 
         return $DB->get_records('googlemeet_ai_analysis', ['status' => 'pending'], 'timecreated ASC', '*', 0, $limit);
+    }
+
+    /**
+     * Atomically claim a pending analysis for processing.
+     *
+     * Flips a single row from 'pending' to 'processing' with a conditional UPDATE
+     * (WHERE id = :id AND status = 'pending'). This is the concurrency guard that
+     * ensures only one cron run can own a given row: if another run already claimed
+     * it (status is no longer 'pending'), the UPDATE matches zero rows and this
+     * method returns false so the caller skips it (C2 - race condition).
+     *
+     * @param int $analysisid The analysis record ID to claim
+     * @return bool True if THIS call won the claim, false if it was already taken
+     */
+    public function claim_pending(int $analysisid): bool {
+        global $DB;
+
+        $now = time();
+
+        // Conditional update: only succeeds while the row is still 'pending'.
+        // $DB->execute() does not report affected rows portably, so we issue the
+        // guarded UPDATE and then re-read the row to confirm WE are the owner.
+        $sql = "UPDATE {googlemeet_ai_analysis}
+                   SET status = 'processing', timemodified = :now
+                 WHERE id = :id AND status = 'pending'";
+        $DB->execute($sql, ['now' => $now, 'id' => $analysisid]);
+
+        // Re-read and verify. If the row now reads 'processing' with the timestamp
+        // we just wrote, the claim was ours. A concurrent winner would have set its
+        // own (different) timestamp, so we treat a mismatch as "not claimed by us".
+        $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, timemodified');
+        if (!$row) {
+            return false;
+        }
+
+        return $row->status === 'processing' && (int) $row->timemodified === $now;
+    }
+
+    /**
+     * Reset analyses that have been stuck in 'processing' for too long.
+     *
+     * If a cron run or its adhoc task dies mid-flight, a row can be left in
+     * 'processing' forever and would never be retried (the cron only picks up
+     * 'pending' rows). This reverts any 'processing' row older than $maxage back
+     * to 'pending' so it is reconsidered on the next run.
+     *
+     * @param int $maxage Maximum allowed age in 'processing' state, in seconds
+     * @return int Number of rows reset
+     */
+    public function reset_stale_processing(int $maxage = 3600): int {
+        global $DB;
+
+        $threshold = time() - $maxage;
+
+        $stale = $DB->get_records_select(
+            'googlemeet_ai_analysis',
+            "status = 'processing' AND timemodified < :threshold",
+            ['threshold' => $threshold],
+            '',
+            'id'
+        );
+
+        if (empty($stale)) {
+            return 0;
+        }
+
+        $now = time();
+        list($insql, $inparams) = $DB->get_in_or_equal(array_keys($stale), SQL_PARAMS_NAMED);
+        $params = $inparams + ['now' => $now];
+
+        $sql = "UPDATE {googlemeet_ai_analysis}
+                   SET status = 'pending', timemodified = :now
+                 WHERE id $insql AND status = 'processing'";
+        $DB->execute($sql, $params);
+
+        return count($stale);
     }
 
     /**
@@ -306,16 +400,31 @@ class ai_service {
      * @return int Number of analyses processed
      */
     public function process_pending(int $limit = 5): int {
+        global $DB;
+
         $pending = $this->get_pending_analyses($limit);
         $processed = 0;
 
         foreach ($pending as $analysis) {
+            // Atomically claim this row (pending -> processing). If another concurrent
+            // run already took it, claim_pending() returns false and we skip it so we
+            // never process / enqueue the same recording twice (C2 - race condition).
+            if (!$this->claim_pending($analysis->id)) {
+                continue;
+            }
+
             try {
                 // Background runner must never escalate to tier 3 (video download) automatically.
-                $this->generate_analysis($analysis->recordingid, true, false);
+                // $alreadyclaimed=true: the row is already ours in 'processing', so just enqueue.
+                $this->generate_analysis($analysis->recordingid, true, false, true);
                 $processed++;
             } catch (\Exception $e) {
-                // Error is already logged in generate_analysis.
+                // Make sure a row we claimed never gets stuck in 'processing'. If enqueuing
+                // failed, mark it 'failed' so the UI reflects it (and it is not retried in a
+                // loop). Errors are also logged inside generate_analysis where applicable.
+                $DB->set_field('googlemeet_ai_analysis', 'status', 'failed', ['id' => $analysis->id]);
+                $DB->set_field('googlemeet_ai_analysis', 'error', $e->getMessage(), ['id' => $analysis->id]);
+                $DB->set_field('googlemeet_ai_analysis', 'timemodified', time(), ['id' => $analysis->id]);
                 continue;
             }
         }

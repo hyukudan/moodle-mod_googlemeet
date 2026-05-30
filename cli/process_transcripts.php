@@ -10,6 +10,7 @@ define('CLI_SCRIPT', true);
 
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/clilib.php');
+require_once(__DIR__ . '/../classes/subtitle_extractor.php');
 
 // Back-off schedule in seconds for retry attempts on transient Gemini errors.
 // Index = retrycount BEFORE incrementing. After 4 retries (final value 4), give up.
@@ -62,10 +63,13 @@ $dryrun = $options['dry-run'];
 $skipgemini = $options['skip-gemini'];
 $ytdlp = '/tmp/yt-dlp';
 
-// Check yt-dlp is available.
+// Check yt-dlp is available (kept here for a fast-fail with a helpful install hint).
 if (!file_exists($ytdlp) || !is_executable($ytdlp)) {
     cli_error("yt-dlp not found at {$ytdlp}. Install it with: curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp");
 }
+
+// Instantiate the canonical subtitle extractor (language 'es', same as before).
+$extractor = new \mod_googlemeet\subtitle_extractor('es');
 
 // Get recordings to process.
 $params = ['googlemeetid' => $options['googlemeetid']];
@@ -136,7 +140,7 @@ foreach ($recordings as $recording) {
 
     cli_writeln("  Step 1: Extracting subtitle URL from Google Drive...");
 
-    $timedtexturl = extract_timedtext_url($ytdlp, $driveurl);
+    $timedtexturl = $extractor->get_timedtext_url($driveurl);
     if (!$timedtexturl) {
         cli_writeln("  ERROR: Could not extract timedtext URL. Video may not have subtitles.");
         $errors++;
@@ -153,12 +157,12 @@ foreach ($recordings as $recording) {
 
     // Download in fmt=1 format (simple XML with timestamps).
     $suburl = $baseurl . '&type=track&lang=es&kind=asr&fmt=1';
-    $subxml = download_subtitles($suburl);
+    $subxml = $extractor->download_subtitle($suburl);
 
     if (empty($subxml)) {
         // Try the named track "1" as fallback.
         $suburl = $baseurl . '&type=track&lang=es&name=1&fmt=1';
-        $subxml = download_subtitles($suburl);
+        $subxml = $extractor->download_subtitle($suburl);
     }
 
     if (empty($subxml)) {
@@ -168,7 +172,7 @@ foreach ($recordings as $recording) {
     }
 
     // Step 3: Parse XML into readable transcript.
-    $transcript = parse_subtitle_xml($subxml);
+    $transcript = $extractor->parse_xml($subxml);
     $charcount = strlen($transcript);
     cli_writeln("  Downloaded {$charcount} characters of transcript.");
 
@@ -307,99 +311,3 @@ cli_writeln("\n========================================");
 cli_writeln("Results: {$processed} processed, {$skipped} skipped, {$errors} errors (of {$total} total)");
 cli_writeln("========================================");
 
-
-/**
- * Extract the timedtext URL for a Google Drive video using yt-dlp.
- *
- * @param string $ytdlp Path to yt-dlp binary
- * @param string $driveurl Google Drive video URL
- * @return string|null The timedtext URL or null on failure
- */
-function extract_timedtext_url(string $ytdlp, string $driveurl): ?string {
-    $cmd = escapeshellarg($ytdlp) . ' -v --write-sub --sub-lang es --skip-download --sub-format srv3'
-         . ' -o /dev/null ' . escapeshellarg($driveurl) . ' 2>&1';
-
-    $output = shell_exec($cmd);
-
-    // Extract the timedtext URL from verbose output.
-    if (preg_match('/Invoking http downloader on "(https:\/\/drive\.google\.com\/timedtext\?[^"]+)"/', $output, $matches)) {
-        return $matches[1];
-    }
-
-    return null;
-}
-
-/**
- * Download subtitle content from a timedtext URL.
- *
- * @param string $url The timedtext URL with track parameters
- * @return string The subtitle XML content
- */
-function download_subtitles(string $url): string {
-    global $CFG;
-    require_once($CFG->libdir . '/filelib.php');
-
-    $curl = new \curl();
-    $curl->setHeader(['Referer: https://youtube.googleapis.com/']);
-
-    $options = [
-        'CURLOPT_TIMEOUT' => 30,
-        'CURLOPT_CONNECTTIMEOUT' => 10,
-        'CURLOPT_FOLLOWLOCATION' => true,
-    ];
-
-    return $curl->get($url, [], $options) ?: '';
-}
-
-/**
- * Parse subtitle XML (fmt=1 format) into readable transcript with timestamps.
- *
- * @param string $xml The subtitle XML content
- * @return string The parsed transcript with timestamps
- */
-function parse_subtitle_xml(string $xml): string {
-    // Suppress XML warnings.
-    libxml_use_internal_errors(true);
-    $doc = simplexml_load_string($xml);
-    libxml_clear_errors();
-
-    if (!$doc) {
-        return '';
-    }
-
-    $lines = [];
-    $lastminute = -1;
-
-    foreach ($doc->text as $node) {
-        $start = (float)$node['start'];
-        $text = trim((string)$node);
-
-        if (empty($text)) {
-            continue;
-        }
-
-        // Convert seconds to MM:SS or H:MM:SS.
-        $hours = floor($start / 3600);
-        $minutes = floor(($start % 3600) / 60);
-        $seconds = floor($start % 60);
-
-        $currentminute = floor($start / 60);
-
-        // Add timestamp marker at each new minute.
-        if ($currentminute > $lastminute) {
-            if ($hours > 0) {
-                $timestamp = sprintf("%d:%02d:%02d", $hours, $minutes, $seconds);
-            } else {
-                $timestamp = sprintf("%d:%02d", $minutes, $seconds);
-            }
-            $lines[] = $timestamp;
-            $lastminute = $currentminute;
-        }
-
-        // Clean up HTML entities.
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $lines[] = $text;
-    }
-
-    return implode("\n", $lines);
-}

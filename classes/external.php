@@ -45,167 +45,6 @@ require_once("$CFG->dirroot/mod/googlemeet/lib.php");
 class mod_googlemeet_external extends external_api {
 
     /**
-     * Describes the parameters for sync_recordings.
-     *
-     * @return external_function_parameters
-     */
-    public static function sync_recordings_parameters() {
-        return new external_function_parameters(
-            [
-                'googlemeetid' => new external_value(PARAM_INT, ''),
-                'creatoremail' => new external_value(PARAM_EMAIL, ''),
-                'files' => new external_multiple_structure(
-                    new external_single_structure(
-                        [
-                            'recordingId' => new external_value(PARAM_TEXT, 'Google Drive file ID'),
-                            'name' => new external_value(PARAM_TEXT, 'Recording name'),
-                            'createdTime' => new external_value(PARAM_INT, 'Creation date timestamp'),
-                            'duration' => new external_value(PARAM_TEXT, 'Recording time'),
-                            'webViewLink' => new external_value(PARAM_URL, 'Link to preview'),
-                        ]
-                    )
-                ),
-                'coursemoduleid' => new external_value(PARAM_INT, ''),
-            ]
-        );
-    }
-
-    /**
-     * Synchronizes Google Drive recordings with the database.
-     *
-     * @param int $googlemeetid the googlemeet ID
-     * @param string $creatoremail the room creator email
-     * @param array $files the array of recordings
-     * @param int $coursemoduleid the course module ID
-     * @return array of recordings
-     */
-    public static function sync_recordings($googlemeetid, $creatoremail, $files, $coursemoduleid) {
-        global $DB;
-
-        // Parameter validation.
-        // REQUIRED.
-        $params = self::validate_parameters(
-            self::sync_recordings_parameters(),
-            [
-                'googlemeetid' => $googlemeetid,
-                'creatoremail' => $creatoremail,
-                'files' => $files,
-                'coursemoduleid' => $coursemoduleid
-            ]
-        );
-
-        $context = context_module::instance($coursemoduleid);
-        require_capability('mod/googlemeet:syncgoogledrive', $context);
-
-        $googlemeetrecordings = $DB->get_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
-
-        // Build lookup maps for O(1) access instead of in_array() O(n).
-        $recordingsbyid = [];
-        foreach ($googlemeetrecordings as $rec) {
-            $recordingsbyid[$rec->recordingid] = $rec;
-        }
-
-        $fileidsmap = [];
-        foreach ($files as $file) {
-            if (isset($file['recordingId'])) {
-                $fileidsmap[$file['recordingId']] = true;
-            }
-        }
-
-        $updaterecordings = [];
-        $insertrecordings = [];
-        $deleterecordings = [];
-
-        foreach ($files as $file) {
-            // O(1) lookup with isset() instead of O(n) in_array().
-            if (isset($recordingsbyid[$file['recordingId']])) {
-                $updaterecordings[] = $file;
-            } else {
-                $insertrecordings[] = $file;
-            }
-        }
-
-        foreach ($googlemeetrecordings as $googlemeetrecording) {
-            // O(1) lookup with isset() instead of O(n) in_array().
-            if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
-                $deleterecordings['id'] = $googlemeetrecording->id;
-            }
-        }
-
-        if ($deleterecordings) {
-            // Also delete associated AI analysis to avoid orphaned data.
-            $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $deleterecordings['id']]);
-            $DB->delete_records('googlemeet_recordings', $deleterecordings);
-        }
-
-        if ($updaterecordings) {
-            foreach ($updaterecordings as $updaterecording) {
-                // Use the already fetched record from lookup map instead of querying again (N+1 fix).
-                $recording = $recordingsbyid[$updaterecording['recordingId']];
-
-                $recording->createdtime = $updaterecording['createdTime'];
-                $recording->duration = $updaterecording['duration'];
-                $recording->webviewlink = $updaterecording['webViewLink'];
-                $recording->timemodified = time();
-
-                $DB->update_record('googlemeet_recordings', $recording);
-            }
-        }
-
-        if ($insertrecordings) {
-            foreach ($insertrecordings as $insertrecording) {
-                $recording = new stdClass();
-                $recording->googlemeetid = $googlemeetid;
-                $recording->recordingid = $insertrecording['recordingId'];
-                $recording->name = $insertrecording['name'];
-                $recording->createdtime = $insertrecording['createdTime'];
-                $recording->duration = $insertrecording['duration'];
-                $recording->webviewlink = $insertrecording['webViewLink'];
-                $recording->timemodified = time();
-
-                $DB->insert_record('googlemeet_recordings', $recording);
-            }
-        }
-
-        // Update lastsync and creatoremail in a single query.
-        $updatedata = ['lastsync' => time()];
-        if ($insertrecordings) {
-            // Check if creatoremail needs to be set.
-            $currentemail = $DB->get_field('googlemeet', 'creatoremail', ['id' => $googlemeetid]);
-            if (empty($currentemail)) {
-                $updatedata['creatoremail'] = $creatoremail;
-            }
-        }
-        $DB->set_field('googlemeet', 'lastsync', $updatedata['lastsync'], ['id' => $googlemeetid]);
-        if (isset($updatedata['creatoremail'])) {
-            $DB->set_field('googlemeet', 'creatoremail', $updatedata['creatoremail'], ['id' => $googlemeetid]);
-        }
-
-        return googlemeet_list_recordings(['googlemeetid' => $googlemeetid]);
-    }
-
-    /**
-     * Describes the sync_recordings return value.
-     *
-     * @return external_single_structure
-     */
-    public static function sync_recordings_returns() {
-        return new external_multiple_structure(
-            new external_single_structure(
-                [
-                    'id' => new external_value(PARAM_INT, 'Recording instance ID'),
-                    'name' => new external_value(PARAM_TEXT, 'Recording name'),
-                    'createdtime' => new external_value(PARAM_INT, 'Creation date timestamp'),
-                    'createdtimeformatted' => new external_value(PARAM_TEXT, 'Formatted creation date'),
-                    'duration' => new external_value(PARAM_TEXT, 'Recording time'),
-                    'webviewlink' => new external_value(PARAM_URL, 'Link to preview'),
-                    'visible' => new external_value(PARAM_BOOL, 'If recording visible')
-                ]
-            )
-        );
-    }
-
-    /**
      * Describes the parameters for recording_edit_name.
      *
      * @return external_function_parameters
@@ -242,10 +81,14 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid]);
+        // Verify the recording belongs to this googlemeet instance (prevent IDOR).
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
 
         $recording->name = $name;
         $recording->timemodified = time();
@@ -304,10 +147,14 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid]);
+        // Verify the recording belongs to this googlemeet instance (prevent IDOR).
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
 
         if ($recording->visible) {
             $recording->visible = false;
@@ -371,8 +218,13 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:removerecording', $context);
+
+        // Always operate on the instance bound to the validated course module (prevent IDOR).
+        $googlemeetid = $cm->instance;
 
         // Get recording IDs to delete associated AI analyses.
         $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$googlemeetid]);
@@ -437,8 +289,14 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($params['coursemoduleid']);
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:generateai', $context);
+
+        // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
+        $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
 
         $aiservice = new \mod_googlemeet\ai_service();
 
@@ -464,7 +322,10 @@ class mod_googlemeet_external extends external_api {
                 'timemodified' => $analysis->timemodified,
             ];
         } catch (\Exception $e) {
-            throw new \moodle_exception('ai_error', 'googlemeet', '', $e->getMessage());
+            // Log the full error server-side, but return a generic message to avoid leaking
+            // internal details such as API keys or endpoint URLs to the client.
+            debugging('mod_googlemeet generate_ai_analysis failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            throw new \moodle_exception('ai_error_generic', 'googlemeet');
         }
     }
 
@@ -531,8 +392,14 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:view', $context);
+
+        // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
+        $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
 
         $aiservice = new \mod_googlemeet\ai_service();
         $analysis = $aiservice->get_analysis($recordingid);
@@ -648,11 +515,14 @@ class mod_googlemeet_external extends external_api {
             ]
         );
 
-        $context = context_module::instance($coursemoduleid);
+        $cm = get_coursemodule_from_id('googlemeet', $coursemoduleid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
         require_capability('mod/googlemeet:editrecording', $context);
 
-        // Verify recording exists.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        // Verify the recording exists and belongs to this googlemeet instance (prevent IDOR).
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
 
         // Parse keypoints (one per line).
         $keypointsarray = [];
@@ -800,8 +670,9 @@ class mod_googlemeet_external extends external_api {
             throw new \moodle_exception('ai_error', 'googlemeet', '', 'Invalid recording ID');
         }
 
-        // Get recording info for context.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $params['recordingid']]);
+        // Get recording info for context, scoped to this googlemeet instance (prevent IDOR).
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
         if (!$recording) {
             throw new \moodle_exception('ai_error', 'googlemeet', '', 'Recording not found (ID: ' . $params['recordingid'] . ')');
         }
@@ -829,7 +700,7 @@ class mod_googlemeet_external extends external_api {
             $analysis->language = $result->language ?? 'en';
             $analysis->status = 'completed';
             $analysis->error = null;
-            $analysis->aimodel = $client->get_model();
+            $analysis->aimodel = $client->get_last_used_model() ?? $client->get_model();
             $analysis->timemodified = $now;
 
             if ($existing) {
@@ -848,12 +719,15 @@ class mod_googlemeet_external extends external_api {
             ];
 
         } catch (\Exception $e) {
+            // Log the real error server-side; return a generic message so internal API
+            // details are never leaked to the client.
+            debugging('mod_googlemeet analyze_transcript failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return [
                 'success' => false,
                 'summary' => '',
                 'keypoints' => [],
                 'topics' => [],
-                'error' => $e->getMessage(),
+                'error' => get_string('ai_error_generic', 'googlemeet'),
             ];
         }
     }

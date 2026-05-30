@@ -45,6 +45,9 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $paths[] = new restore_path_element('googlemeet_recording',
             '/activity/googlemeet/recordings/recording');
 
+        $paths[] = new restore_path_element('googlemeet_aianalysis',
+            '/activity/googlemeet/recordings/recording/aianalysis');
+
         $paths[] = new restore_path_element('googlemeet_holiday',
             '/activity/googlemeet/holidays/holiday');
 
@@ -116,6 +119,26 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
 
         $newitemid = $DB->insert_record('googlemeet_recordings', $data);
         $this->set_mapping('googlemeet_recording', $oldid, $newitemid);
+    }
+
+    /**
+     * Process an AI analysis restore.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_aianalysis($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $oldid = $data->id;
+
+        $data->recordingid = $this->get_new_parentid('googlemeet_recording');
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        $newitemid = $DB->insert_record('googlemeet_ai_analysis', $data);
+        $this->set_mapping('googlemeet_aianalysis', $oldid, $newitemid);
     }
 
     /**

@@ -136,9 +136,12 @@ if ($ADMIN->fulltree) {
         ''
     ));
 
+    // The list must stay in sync with gemini_client::DEFAULT_MODEL / FALLBACK_MODEL,
+    // otherwise the configured model never matches what the code actually requests.
     $aimodels = [
-        'gemini-1.5-flash' => 'Gemini 1.5 Flash (Fast, free tier)',
-        'gemini-1.5-pro' => 'Gemini 1.5 Pro (More capable, limited free)',
+        'gemini-3-flash-preview' => 'Gemini 3 Flash (Preview, default)',
+        'gemini-2.5-flash' => 'Gemini 2.5 Flash (Fast, fallback)',
+        'gemini-2.5-pro' => 'Gemini 2.5 Pro (More capable)',
         'gemini-2.0-flash-exp' => 'Gemini 2.0 Flash (Experimental)',
     ];
 
@@ -146,7 +149,7 @@ if ($ADMIN->fulltree) {
         'googlemeet/aimodel',
         get_string('aimodel', 'googlemeet'),
         get_string('aimodel_desc', 'googlemeet'),
-        'gemini-1.5-flash',
+        'gemini-3-flash-preview',
         $aimodels
     ));
 
@@ -155,5 +158,16 @@ if ($ADMIN->fulltree) {
         get_string('ai_autogenerate', 'googlemeet'),
         get_string('ai_autogenerate_desc', 'googlemeet'),
         0
+    ));
+
+    // When enabled, synced recordings are granted "anyone with the link" read access on Google
+    // Drive so enrolled students (who are not the Drive owner) can play the embedded recording.
+    // Default 1 preserves prior behaviour; disabling improves privacy but breaks playback for
+    // everyone except the Google account that owns the recordings.
+    $settings->add(new admin_setting_configcheckbox(
+        'googlemeet/makerecordingspublic',
+        get_string('makerecordingspublic', 'googlemeet'),
+        get_string('makerecordingspublic_desc', 'googlemeet'),
+        1
     ));
 }

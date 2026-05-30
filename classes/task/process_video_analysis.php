@@ -30,7 +30,7 @@ use stdClass;
  * 3. Video download + Gemini File API upload (slowest - full video processing)
  *
  * @package     mod_googlemeet
- * @copyright   2024 Your Name
+ * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class process_video_analysis extends adhoc_task {
@@ -123,7 +123,7 @@ class process_video_analysis extends adhoc_task {
             $analysis->language = $result->language;
             $analysis->status = 'completed';
             $analysis->error = null;
-            $analysis->aimodel = $client->get_model();
+            $analysis->aimodel = $client->get_last_used_model() ?? $client->get_model();
             $analysis->timemodified = time();
             $DB->update_record('googlemeet_ai_analysis', $analysis);
 
@@ -264,11 +264,10 @@ class process_video_analysis extends adhoc_task {
     private function download_from_drive(string $fileid, string $filename): string {
         global $CFG;
 
-        // Create temp directory if it doesn't exist.
-        $tempdir = $CFG->tempdir . '/googlemeet_ai';
-        if (!is_dir($tempdir)) {
-            mkdir($tempdir, 0777, true);
-        }
+        // Create temp directory if it doesn't exist. Use the Moodle API so that
+        // the directory is created with the configured (restrictive) permissions
+        // rather than a world-writable 0777.
+        $tempdir = make_temp_directory('googlemeet_ai');
 
         // Clean up old temp files first (older than 1 hour).
         $this->cleanup_old_temp_files($tempdir, 3600);
@@ -342,7 +341,11 @@ class process_video_analysis extends adhoc_task {
             }
         }
 
-        // Download to file.
+        // Download to file. Stream straight to disk via CURLOPT_FILE in a single
+        // pass. The file handle is opened and closed inside a try/finally so that
+        // it is always released, even if curl->get() throws between fopen and
+        // fclose (O14 - resource leak hardening). The outer finally in
+        // analyze_with_video() removes the temp file itself.
         $fp = fopen($tempfile, 'w');
         if (!$fp) {
             throw new \moodle_exception('ai_error', 'googlemeet', '', 'Cannot create temp file');
@@ -357,27 +360,60 @@ class process_video_analysis extends adhoc_task {
             'CURLOPT_FILE' => $fp,
         ]);
 
-        $curl2->get($downloadurl);
-        fclose($fp);
+        try {
+            $curl2->get($downloadurl);
+        } finally {
+            // Guarantee the handle is closed even if get() throws.
+            if (is_resource($fp)) {
+                fclose($fp);
+            }
+        }
 
         $info = $curl2->get_info();
+        $contenttype = isset($info['content_type']) ? strtolower((string)$info['content_type']) : '';
 
-        // Check if download was successful.
-        if (!file_exists($tempfile) || filesize($tempfile) < 1000) {
-            if (file_exists($tempfile)) {
-                // Check if it's an error page.
-                $content = file_get_contents($tempfile);
-                if (strpos($content, '<html') !== false) {
-                    unlink($tempfile);
-                    throw new \moodle_exception('ai_error', 'googlemeet', '',
-                        'Cannot download video. Make sure the file is shared with "Anyone with the link" permission.');
+        // Validate the download (S2 - harden error detection).
+        //
+        // A public-URL download from Drive returns an HTML error/interstitial page
+        // (HTTP 200 with text/html) instead of the video when the file is NOT
+        // shared publicly. Tier-3 analysis relies on the recording being public
+        // (the "makerecordingspublic" coordinator setting). When that is off, this
+        // download cannot succeed, so we detect the HTML page and fail gracefully
+        // with a clear message rather than uploading garbage to Gemini.
+        if (!file_exists($tempfile)) {
+            throw new \moodle_exception('ai_error', 'googlemeet', '', 'Download failed: no file was written');
+        }
+
+        $filesize = filesize($tempfile);
+
+        // Sniff the first bytes to decide whether this is an HTML error page.
+        $head = '';
+        $sniff = fopen($tempfile, 'rb');
+        if ($sniff) {
+            try {
+                $head = (string)fread($sniff, 1024);
+            } finally {
+                if (is_resource($sniff)) {
+                    fclose($sniff);
                 }
+            }
+        }
+        $lowerhead = strtolower(ltrim($head));
+        $lookslikehtml = (strpos($contenttype, 'text/html') !== false)
+            || (strpos($lowerhead, '<!doctype html') === 0)
+            || (strpos($lowerhead, '<html') === 0)
+            || (strpos($lowerhead, '<html') !== false && strpos($lowerhead, '<body') !== false);
+
+        if ($lookslikehtml || $filesize < 1000) {
+            unlink($tempfile);
+            if ($lookslikehtml) {
+                // Most likely the recording is not public.
+                throw new \moodle_exception('ai_video_not_public', 'googlemeet');
             }
             throw new \moodle_exception('ai_error', 'googlemeet', '', 'Download failed or file too small');
         }
 
-        $filesize = filesize($tempfile);
-        mtrace("Downloaded {$filesize} bytes");
+        mtrace("Downloaded {$filesize} bytes (content-type: " . ($contenttype ?: 'unknown') . ")");
 
         // Check file size limit (2GB for Gemini).
         if ($filesize > 2147483648) {

@@ -164,7 +164,10 @@ function googlemeet_update_instance($googlemeet, $mform = null) {
     }
     $events = googlemeet_construct_events_data_for_add($googlemeet);
 
-    googlemeet_set_events($googlemeet, $events);
+    // Incremental merge (instead of wipe-and-recreate) so that persisting dates keep their
+    // `autosynced` timestamp and their notify_done rows. This prevents re-sending notifications
+    // and re-running autosync for sessions that were already processed before this save.
+    googlemeet_merge_events($googlemeet, $events);
 
     return $googlemeetupdated;
 }
@@ -403,7 +406,8 @@ function sync_recordings($googlemeetid, $files) {
     foreach ($googlemeetrecordings as $googlemeetrecording) {
         // O(1) lookup with isset() instead of O(n) in_array().
         if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
-            $deleterecordings['id'] = $googlemeetrecording->id;
+            // Accumulate every orphaned recording id, not just the last one.
+            $deleterecordings[] = $googlemeetrecording->id;
         }
     }
 
@@ -414,10 +418,11 @@ function sync_recordings($googlemeetid, $files) {
     ];
 
     if ($deleterecordings) {
+        list($insql, $inparams) = $DB->get_in_or_equal($deleterecordings);
         // Also delete associated AI analysis to avoid orphaned data.
-        $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $deleterecordings['id']]);
-        $DB->delete_records('googlemeet_recordings', $deleterecordings);
-        $stats['deleted'] = 1;
+        $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
+        $DB->delete_records_select('googlemeet_recordings', "id $insql", $inparams);
+        $stats['deleted'] = count($deleterecordings);
     }
 
     if ($insertrecordings) {
@@ -512,12 +517,13 @@ function googlemeet_get_holidays($googlemeetid) {
  * @return bool True if the date is within a holiday period.
  */
 function googlemeet_is_holiday($timestamp, $holidays) {
-    // Get start of day for the timestamp.
-    $datestart = strtotime('midnight', $timestamp);
+    // Get start of day for the timestamp using the user's timezone (not the server's)
+    // so the day comparison is consistent for users/courses in another timezone.
+    $datestart = usergetmidnight($timestamp);
 
     foreach ($holidays as $holiday) {
-        $holidaystart = strtotime('midnight', $holiday->startdate);
-        $holidayend = strtotime('midnight', $holiday->enddate);
+        $holidaystart = usergetmidnight($holiday->startdate);
+        $holidayend = usergetmidnight($holiday->enddate);
 
         if ($datestart >= $holidaystart && $datestart <= $holidayend) {
             return true;
@@ -585,11 +591,12 @@ function googlemeet_get_cancelled($googlemeetid) {
  * @return object|false The cancelled date object if found, false otherwise.
  */
 function googlemeet_is_cancelled($timestamp, $cancelleddates) {
-    // Get start of day for the timestamp.
-    $datestart = strtotime('midnight', $timestamp);
+    // Get start of day for the timestamp using the user's timezone (not the server's)
+    // so the day comparison is consistent for users/courses in another timezone.
+    $datestart = usergetmidnight($timestamp);
 
     foreach ($cancelleddates as $cancelled) {
-        $cancelledstart = strtotime('midnight', $cancelled->cancelleddate);
+        $cancelledstart = usergetmidnight($cancelled->cancelleddate);
 
         if ($datestart === $cancelledstart) {
             return $cancelled;
