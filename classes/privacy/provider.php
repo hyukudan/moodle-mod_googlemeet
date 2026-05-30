@@ -50,6 +50,8 @@ class provider implements
      * @return collection the updated collection of metadata items.
      */
     public static function get_metadata(collection $collection) : collection {
+        // Per-user notification dispatch log. This is the only table with a direct userid
+        // column, so it is the only personal data this plugin can export and delete per user.
         $collection->add_database_table(
             'googlemeet_notify_done',
             [
@@ -58,6 +60,75 @@ class provider implements
                 'timesent' => 'privacy:metadata:googlemeet_notify_done:timesent',
             ],
             'privacy:metadata:googlemeet_notify_done'
+        );
+
+        // The plugin authenticates against Google using the per-user OAuth 2 tokens managed
+        // by the core_oauth2 subsystem (see \core\oauth2\api::get_user_oauth_client). Those
+        // tokens are personal data, but they are stored and managed by the subsystem, which
+        // is responsible for exporting and deleting them.
+        $collection->add_subsystem_link(
+            'core_oauth2',
+            [],
+            'privacy:metadata:core_oauth2'
+        );
+
+        // The googlemeet table stores the email address of the Google account that created
+        // the Meet room (creatoremail). It is an activity-level property rather than a record
+        // keyed to a Moodle userid, so it cannot be reliably exported or deleted per user; it
+        // is declared here for transparency.
+        $collection->add_database_table(
+            'googlemeet',
+            [
+                'creatoremail' => 'privacy:metadata:googlemeet:creatoremail',
+            ],
+            'privacy:metadata:googlemeet'
+        );
+
+        // The googlemeet_ai_analysis table stores AI-generated material derived from the
+        // recordings (summary, key points, topics and a transcript). The transcript may
+        // incidentally contain the names or voices of session participants. The table has no
+        // userid column (it is keyed only to a recording), so this data is not associated with
+        // an individual Moodle user and cannot be exported or deleted per user; it is declared
+        // here for transparency.
+        $collection->add_database_table(
+            'googlemeet_ai_analysis',
+            [
+                'summary' => 'privacy:metadata:googlemeet_ai_analysis:summary',
+                'keypoints' => 'privacy:metadata:googlemeet_ai_analysis:keypoints',
+                'topics' => 'privacy:metadata:googlemeet_ai_analysis:topics',
+                'transcript' => 'privacy:metadata:googlemeet_ai_analysis:transcript',
+            ],
+            'privacy:metadata:googlemeet_ai_analysis'
+        );
+
+        // Recording transcripts and, as a last-resort fallback, the full recording video are
+        // sent to the Google Gemini API for analysis. These may contain personal data such as
+        // the names and voices of session participants.
+        $collection->add_external_location_link(
+            'google_gemini',
+            [
+                'transcript' => 'privacy:metadata:google_gemini:transcript',
+                'video' => 'privacy:metadata:google_gemini:video',
+            ],
+            'privacy:metadata:google_gemini'
+        );
+
+        // The plugin reads recordings from Google Drive and creates/reads calendar events
+        // (including the Meet room) in Google Calendar on behalf of the authenticated user.
+        $collection->add_external_location_link(
+            'google_drive',
+            [
+                'userid' => 'privacy:metadata:google_drive:userid',
+            ],
+            'privacy:metadata:google_drive'
+        );
+
+        $collection->add_external_location_link(
+            'google_calendar',
+            [
+                'userid' => 'privacy:metadata:google_calendar:userid',
+            ],
+            'privacy:metadata:google_calendar'
         );
 
         return $collection;

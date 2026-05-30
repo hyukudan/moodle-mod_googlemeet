@@ -431,8 +431,9 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         if ($addmulti && !$days) {
             $errors['days'] = get_string('checkweekdays', 'googlemeet');
-        } else if ($addmulti && !$this->checkweekdays($data['eventdate'], $data['eventenddate'], $data['days'])) {
-            $errors['days'] = get_string('checkweekdays', 'googlemeet');
+        } else if ($addmulti && !$this->has_events_with_period($data)) {
+            // No events would be generated with the chosen days, period and date range.
+            $errors['days'] = get_string('noeventswithperiod', 'googlemeet');
         }
 
         if ($addmulti && ceil(($data['eventenddate'] - $data['eventdate']) / YEARSECS) > 1) {
@@ -488,48 +489,99 @@ class mod_googlemeet_mod_form extends moodleform_mod {
     }
 
     /**
-     * Check weekdays function.
-     * @param int $eventdate
-     * @param int $eventenddate
-     * @param array $days
-     * @return bool
+     * Simulate the same event-generation loop used by
+     * googlemeet_construct_events_data_for_add() and return true if at least
+     * one event would be produced with the submitted configuration (respecting
+     * period, selected weekdays, and holiday exclusions built from the form data).
+     *
+     * This replaces the old checkweekdays() helper which iterated every day in
+     * the range without honouring the "repeat every N weeks" period, causing
+     * false positives when period > (enddate - startdate) / WEEKSECS.
+     *
+     * @param array $data Validated form data.
+     * @return bool True if at least one event would be created.
      */
-    private function checkweekdays($eventdate, $eventenddate, $days) {
-        $found = false;
+    private function has_events_with_period(array $data): bool {
+        global $CFG;
 
-        if (!$days) {
+        if (empty($data['days'])) {
             return false;
         }
 
-        $daysofweek = [
-            0 => "Sun",
-            1 => "Mon",
-            2 => "Tue",
-            3 => "Wed",
-            4 => "Thu",
-            5 => "Fri",
-            6 => "Sat"
-        ];
+        $starthour   = (int)($data['starthour']   ?? 0);
+        $startminute = (int)($data['startminute'] ?? 0);
+        $endhour     = (int)($data['endhour']     ?? 0);
+        $endminute   = (int)($data['endminute']   ?? 0);
+        $period      = (int)($data['period']      ?? 1);
+        if ($period < 1) {
+            $period = 1;
+        }
 
-        $start = new DateTime(date("Y-m-d", $eventdate));
-        $interval = new DateInterval('P1D');
-        $end = new DateTime(date("Y-m-d", $eventenddate));
-        $end->add(new DateInterval('P1D'));
+        $eventstarttime = $starthour * HOURSECS + $startminute * MINSECS;
+        $eventendtime   = $endhour   * HOURSECS + $endminute   * MINSECS;
+        $eventdate      = $data['eventdate'] + $eventstarttime;
+        $enddate        = $data['eventenddate'] + $eventendtime;
 
-        $period = new DatePeriod($start, $interval, $end);
-        foreach ($period as $date) {
-            if (!$found) {
-                foreach ($days as $day => $value) {
-                    $key = array_search($day, $daysofweek);
-                    if ($date->format("w") == $key) {
-                        $found = true;
-                        break;
-                    }
+        // Build a lightweight in-memory holiday list from the submitted form data
+        // (mirrors what googlemeet_get_holidays() would return from the DB).
+        $holidays = [];
+        if (!empty($data['holiday_repeats'])) {
+            for ($i = 0; $i < $data['holiday_repeats']; $i++) {
+                $hstart = $data["holidaystartdate[$i]"] ?? 0;
+                $hend   = $data["holidayenddate[$i]"]   ?? 0;
+                if ($hstart && $hend && $hend >= $hstart) {
+                    $h            = new stdClass();
+                    $h->startdate = (int)$hstart;
+                    $h->enddate   = (int)$hend;
+                    $holidays[]   = $h;
                 }
             }
         }
 
-        return $found;
+        // --- Check the first event (eventdate itself) ---
+        if (!googlemeet_is_holiday($eventdate, $holidays)) {
+            return true;
+        }
+
+        // --- Mirror the recurrence loop from googlemeet_construct_events_data_for_add() ---
+        $wdaydesc = [0 => 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        $sdate   = $eventdate + DAYSECS;
+        $dayinfo = usergetdate($sdate);
+        if ($CFG->calendar_startwday === '0') {
+            $startweek = $sdate - $dayinfo['wday'] * DAYSECS;
+        } else {
+            $wday      = $dayinfo['wday'] === 0 ? 7 : $dayinfo['wday'];
+            $startweek = $sdate - ($wday - 1) * DAYSECS;
+        }
+
+        // Convert the submitted days array to an object for property_exists() checks
+        // (same access pattern used in googlemeet_construct_events_data_for_add).
+        $daysobj = (object)$data['days'];
+
+        while ($sdate < $enddate) {
+            if ($sdate < $startweek + WEEKSECS) {
+                $dayinfo = usergetdate($sdate);
+                if (property_exists($daysobj, $wdaydesc[$dayinfo['wday']])) {
+                    $eventtime = make_timestamp(
+                        $dayinfo['year'],
+                        $dayinfo['mon'],
+                        $dayinfo['mday'],
+                        $starthour,
+                        $startminute
+                    );
+                    if (!googlemeet_is_holiday($eventtime, $holidays)) {
+                        return true;
+                    }
+                }
+                $sdate += DAYSECS;
+            } else {
+                $startweek += WEEKSECS * $period;
+                $sdate = $startweek;
+            }
+        }
+
+        return false;
     }
 
     /**

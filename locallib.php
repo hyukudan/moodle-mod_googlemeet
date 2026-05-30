@@ -211,6 +211,105 @@ function googlemeet_set_events($googlemeet, $events) {
 }
 
 /**
+ * Incrementally merge the regenerated events with the existing ones.
+ *
+ * Unlike googlemeet_set_events() (used on add), which wipes and recreates every event row, this
+ * function preserves rows whose eventdate still matches one of the regenerated events. Preserving
+ * the row keeps its id intact, which in turn preserves:
+ *   - the `autosynced` timestamp (so an already auto-synced session is not re-processed), and
+ *   - the related googlemeet_notify_done rows (so already-sent notifications are not re-sent).
+ *
+ * Only genuinely new dates are inserted, and only dates that no longer exist are deleted. Events
+ * are matched by eventdate (the start timestamp), which uniquely identifies a session for an
+ * instance. When a persisting event's duration changes, the row and its calendar mirror are
+ * updated in place without touching its id, autosynced or notify_done.
+ *
+ * @param stdClass $googlemeet moodleform
+ * @param array $events list of regenerated events (output of googlemeet_construct_events_data_for_add)
+ * @return void
+ */
+function googlemeet_merge_events($googlemeet, $events) {
+    global $DB;
+
+    $googlemeetid = $googlemeet->id;
+
+    // Load existing events keyed by eventdate for O(1) matching.
+    $existingevents = $DB->get_records('googlemeet_events', ['googlemeetid' => $googlemeetid]);
+    $existingbydate = [];
+    foreach ($existingevents as $existing) {
+        // In the unlikely case of duplicate dates, keep the first; extras are treated as stale.
+        if (!isset($existingbydate[$existing->eventdate])) {
+            $existingbydate[$existing->eventdate] = $existing;
+        }
+    }
+
+    // Track which existing event ids are still wanted, so the rest can be removed.
+    $keptids = [];
+
+    foreach ($events as $event) {
+        if (isset($existingbydate[$event->eventdate])) {
+            // Same date already exists: preserve the row (id, autosynced, notify_done).
+            $existing = $existingbydate[$event->eventdate];
+            $keptids[$existing->id] = true;
+
+            // Update duration in place only if it actually changed; keep autosynced untouched.
+            if ((int) $existing->duration !== (int) $event->duration) {
+                $update = new stdClass();
+                $update->id = $existing->id;
+                $update->duration = $event->duration;
+                $update->timemodified = time();
+                $DB->update_record('googlemeet_events', $update);
+
+                // Refresh the calendar mirror for this date so its duration stays in sync.
+                $DB->delete_records('event', [
+                    'modulename' => 'googlemeet',
+                    'instance' => $googlemeetid,
+                    'eventtype' => helper::GOOGLEMEET_EVENT_START,
+                    'timestart' => $event->eventdate,
+                ]);
+                $calendarevent = clone $event;
+                $calendarevent->id = $existing->id;
+                helper::create_calendar_event($googlemeet, $calendarevent);
+            }
+        } else {
+            // Brand new date: insert event + calendar mirror.
+            $event->id = $DB->insert_record('googlemeet_events', $event);
+            helper::create_calendar_event($googlemeet, $event);
+        }
+    }
+
+    // Delete existing events whose date is no longer scheduled, along with their dependents.
+    $deleteids = [];
+    foreach ($existingevents as $existing) {
+        if (empty($keptids[$existing->id])) {
+            $deleteids[] = $existing->id;
+        }
+    }
+
+    if (!empty($deleteids)) {
+        list($insql, $params) = $DB->get_in_or_equal($deleteids);
+
+        // Remove notify_done rows for removed events.
+        $DB->delete_records_select('googlemeet_notify_done', "eventid $insql", $params);
+
+        // Remove the calendar mirrors for the removed dates.
+        foreach ($existingevents as $existing) {
+            if (empty($keptids[$existing->id])) {
+                $DB->delete_records('event', [
+                    'modulename' => 'googlemeet',
+                    'instance' => $googlemeetid,
+                    'eventtype' => helper::GOOGLEMEET_EVENT_START,
+                    'timestart' => $existing->eventdate,
+                ]);
+            }
+        }
+
+        // Remove the event rows themselves.
+        $DB->delete_records_select('googlemeet_events', "id $insql", $params);
+    }
+}
+
+/**
  * This creates new events given as timeopen and timeclose by googlemeet.
  *
  * @param object $googlemeet

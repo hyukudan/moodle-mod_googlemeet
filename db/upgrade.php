@@ -308,5 +308,23 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026051200, 'googlemeet');
     }
 
+    if ($oldversion < 2026053000) {
+        // Auto-sync retry bookkeeping used by the process_autosync task. These columns were
+        // referenced by the task code before the schema existed, which made the task crash.
+        $table = new xmldb_table('googlemeet_events');
+
+        $field = new xmldb_field('syncattempts', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'autosynced');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('nextsyncattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'syncattempts');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026053000, 'googlemeet');
+    }
+
     return true;
 }

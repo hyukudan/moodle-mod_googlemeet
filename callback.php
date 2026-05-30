@@ -30,6 +30,11 @@ require_once(__DIR__ . '/lib.php');
 
 require_login();
 
+// The OAuth return URL built in client::get_user_oauth_client() embeds the user's sesskey, which
+// Google round-trips back here on redirect. Confirm it so this token-exchange endpoint cannot be
+// driven by a forged cross-site request.
+require_sesskey();
+
 // Headers to make it not cacheable.
 header('Cache-Control: no-cache, must-revalidate');
 header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');

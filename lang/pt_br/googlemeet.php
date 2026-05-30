@@ -197,3 +197,26 @@ $string['ai_subtitles_unavailable'] = 'Não foram encontradas legendas geradas a
 $string['ai_transcribe_from_video'] = 'Transcrever a partir do vídeo';
 $string['ai_transcribe_from_video_desc'] = 'Baixa a gravação completa do Google Drive e deixa o Gemini gerar a transcrição. Pode demorar vários minutos e usar até vários GB de espaço temporário em disco.';
 $string['ai_transcribe_from_video_confirm'] = 'Isto irá baixar o vídeo completo (pode ocupar vários GB). Deseja continuar?';
+
+// Tratamento de erros e privacidade (revisão de segurança/qualidade 2026-05-30).
+$string['ai_error_generic'] = 'Erro ao gerar a análise. Tente novamente mais tarde ou contate o administrador.';
+$string['ai_invalid_analysis'] = 'A IA retornou uma análise que não pôde ser processada: {$a}';
+$string['ai_video_not_public'] = 'Não é possível baixar a gravação para a análise de vídeo completo. Essa opção exige que a gravação esteja compartilhada publicamente ("Qualquer pessoa com o link"), o que é controlado pela configuração "Tornar gravações públicas", ou que haja legendas geradas automaticamente disponíveis. O conteúdo baixado era uma página de erro, não um vídeo.';
+$string['makerecordingspublic'] = 'Tornar as gravações acessíveis publicamente';
+$string['makerecordingspublic_desc'] = 'Quando ativado, as gravações sincronizadas recebem acesso de leitura "qualquer pessoa com o link" no Google Drive para que os estudantes inscritos (que não são os proprietários no Drive) possam reproduzir a gravação incorporada. Desativar isso melhora a privacidade, mas impede a reprodução para todos, exceto a conta do Google proprietária das gravações.';
+$string['noeventswithperiod'] = 'Com os dias selecionados e o período de "Repetir a cada N semanas", nenhum evento seria gerado no intervalo de datas. Reduza o período ou estenda a data de término.';
+$string['privacy:metadata:core_oauth2'] = 'A atividade Google Meet utiliza o subsistema OAuth 2 para autenticar os usuários nos serviços do Google.';
+$string['privacy:metadata:googlemeet'] = 'Informações sobre as instâncias da atividade Google Meet.';
+$string['privacy:metadata:googlemeet:creatoremail'] = 'O endereço de e-mail da conta Google usada para criar a sala do Meet. Identifica o criador, mas é armazenado como propriedade da atividade, não vinculado a uma conta de usuário do Moodle.';
+$string['privacy:metadata:googlemeet_ai_analysis'] = 'Análise gerada por IA das gravações. A transcrição pode conter incidentalmente os nomes ou as vozes dos participantes da sessão. Esses dados estão associados a uma gravação, não a um usuário específico do Moodle.';
+$string['privacy:metadata:googlemeet_ai_analysis:summary'] = 'Um resumo do conteúdo da gravação gerado por IA.';
+$string['privacy:metadata:googlemeet_ai_analysis:keypoints'] = 'Pontos-chave extraídos do conteúdo da gravação gerados por IA.';
+$string['privacy:metadata:googlemeet_ai_analysis:topics'] = 'Tópicos abordados no conteúdo da gravação gerados por IA.';
+$string['privacy:metadata:googlemeet_ai_analysis:transcript'] = 'Uma transcrição da gravação, que pode conter os nomes ou as vozes dos participantes da sessão.';
+$string['privacy:metadata:google_gemini'] = 'As transcrições das gravações e, como alternativa, o vídeo completo da gravação são enviados à API do Google Gemini para gerar a análise. Podem conter dados pessoais como nomes e vozes dos participantes.';
+$string['privacy:metadata:google_gemini:transcript'] = 'O texto da transcrição da gravação enviado para análise.';
+$string['privacy:metadata:google_gemini:video'] = 'O arquivo de vídeo completo da gravação, enviado para análise quando não há transcrição disponível.';
+$string['privacy:metadata:google_drive'] = 'As gravações são lidas do Google Drive do usuário em seu nome usando a autorização OAuth 2.';
+$string['privacy:metadata:google_drive:userid'] = 'A identidade do usuário autenticado é enviada ao Google Drive para acessar suas gravações.';
+$string['privacy:metadata:google_calendar'] = 'Os eventos de calendário e a sala do Meet são criados e lidos no Google Calendar do usuário em seu nome usando a autorização OAuth 2.';
+$string['privacy:metadata:google_calendar:userid'] = 'A identidade do usuário autenticado é enviada ao Google Calendar para gerenciar seus eventos e a sala do Meet.';

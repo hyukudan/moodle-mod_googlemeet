@@ -25,18 +25,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $functions = array(
-    'mod_googlemeet_sync_recordings' => array(
-        'classname' => 'mod_googlemeet_external',
-        'methodname' => 'sync_recordings',
-        'description' => '',
-        'type' => 'write',
-        'ajax' => true,
-        'capabilities' => 'googlemeet:syncgoogledrive',
-    ),
     'mod_googlemeet_recording_edit_name' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'recording_edit_name',
-        'description' => '',
+        'description' => 'Edit the name of a recording',
         'type' => 'write',
         'ajax' => true,
         'capabilities' => 'googlemeet:editrecording',
@@ -44,7 +36,7 @@ $functions = array(
     'mod_googlemeet_showhide_recording' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'showhide_recording',
-        'description' => '',
+        'description' => 'Toggle the visibility of a recording',
         'type' => 'write',
         'ajax' => true,
         'capabilities' => 'googlemeet:editrecording',
@@ -52,7 +44,7 @@ $functions = array(
     'mod_googlemeet_delete_all_recordings' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'delete_all_recordings',
-        'description' => '',
+        'description' => 'Delete all recordings of a Google Meet activity',
         'type' => 'write',
         'ajax' => true,
         'capabilities' => 'googlemeet:removerecording',

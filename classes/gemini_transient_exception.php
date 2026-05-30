@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die();
  * atrapan moodle_exception o \Exception sigan funcionando sin cambios.
  *
  * @package     mod_googlemeet
- * @copyright   2024 Your Name
+ * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class gemini_transient_exception extends \moodle_exception {
