@@ -322,3 +322,5 @@ $string['privacy:metadata:google_drive'] = 'Recordings are read from the user'."
 $string['privacy:metadata:google_drive:userid'] = 'The identity of the authenticated user is sent to Google Drive to access their recordings.';
 $string['privacy:metadata:google_calendar'] = 'Calendar events and the Meet room are created and read in the user'."'".'s Google Calendar on their behalf using their OAuth 2 authorisation.';
 $string['privacy:metadata:google_calendar:userid'] = 'The identity of the authenticated user is sent to Google Calendar to manage their events and Meet room.';
+$string['subtitlelanguage'] = 'Subtitle language';
+$string['subtitlelanguage_desc'] = 'Language code used when extracting auto-generated subtitles from Google Drive recordings (e.g. es, en, pt-BR). Defaults to es.';

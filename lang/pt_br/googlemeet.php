@@ -220,3 +220,5 @@ $string['privacy:metadata:google_drive'] = 'As gravações são lidas do Google 
 $string['privacy:metadata:google_drive:userid'] = 'A identidade do usuário autenticado é enviada ao Google Drive para acessar suas gravações.';
 $string['privacy:metadata:google_calendar'] = 'Os eventos de calendário e a sala do Meet são criados e lidos no Google Calendar do usuário em seu nome usando a autorização OAuth 2.';
 $string['privacy:metadata:google_calendar:userid'] = 'A identidade do usuário autenticado é enviada ao Google Calendar para gerenciar seus eventos e a sala do Meet.';
+$string['subtitlelanguage'] = 'Idioma das legendas';
+$string['subtitlelanguage_desc'] = 'Código de idioma usado ao extrair as legendas geradas automaticamente das gravações do Google Drive (ex.: es, en, pt-BR). O padrão é es.';

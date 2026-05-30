@@ -65,6 +65,9 @@ class gemini_client {
     /** @var string|null The model actually used by the last successful API call */
     private $lastusedmodel = null;
 
+    /** @var model_policy The model selection / fallback policy. */
+    private $modelpolicy;
+
     /**
      * Constructor.
      */
@@ -72,6 +75,12 @@ class gemini_client {
         $this->enabled = (bool) get_config('googlemeet', 'enableai');
         $this->apikey = get_config('googlemeet', 'geminiapikey');
         $this->model = get_config('googlemeet', 'aimodel') ?: self::DEFAULT_MODEL;
+
+        // The model/fallback policy (primary configured model → FALLBACK_MODEL).
+        // Centralising it here keeps the fallback decision in one cohesive,
+        // extensible place; the request/parse logic below merely follows the
+        // attempt chain it produces.
+        $this->modelpolicy = new model_policy($this->model, self::FALLBACK_MODEL);
     }
 
     /**
@@ -201,15 +210,24 @@ PROMPT;
      * @throws moodle_exception If both primary and fallback API calls fail
      */
     private function call_api(string $prompt): string {
-        try {
-            return $this->call_api_with_model($prompt, $this->model);
-        } catch (moodle_exception $e) {
-            if ($this->model === self::FALLBACK_MODEL) {
-                throw $e;
+        $chain = $this->modelpolicy->get_attempt_chain();
+        $lastexception = null;
+        foreach ($chain as $model) {
+            try {
+                return $this->call_api_with_model($prompt, $model);
+            } catch (moodle_exception $e) {
+                $lastexception = $e;
+                // If the policy offers a further model, log the fallback and
+                // continue; otherwise rethrow the failure to the caller.
+                if (!$this->modelpolicy->has_fallback_after($model)) {
+                    throw $e;
+                }
+                $this->log_fallback($model, $e);
             }
-            $this->log_fallback($this->model, $e);
-            return $this->call_api_with_model($prompt, self::FALLBACK_MODEL);
         }
+        // Unreachable in practice (the chain is never empty and the loop either
+        // returns or rethrows), but kept for completeness/static analysis.
+        throw $lastexception;
     }
 
     /**
@@ -225,7 +243,7 @@ PROMPT;
      */
     private function log_fallback(string $failedmodel, \Throwable $e): void {
         $message = "Gemini: model '{$failedmodel}' failed ({$e->getMessage()}); "
-            . "falling back to '" . self::FALLBACK_MODEL . "'";
+            . "falling back to '" . $this->modelpolicy->get_fallback() . "'";
         if (function_exists('mtrace')) {
             mtrace($message);
         }
@@ -703,16 +721,22 @@ PROMPT;
             throw new moodle_exception('ai_not_configured', 'googlemeet');
         }
 
-        try {
-            return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, $this->model);
-        } catch (moodle_exception $e) {
-            if ($this->model === self::FALLBACK_MODEL) {
-                throw $e;
+        $chain = $this->modelpolicy->get_attempt_chain();
+        $lastexception = null;
+        foreach ($chain as $model) {
+            try {
+                return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, $model);
+            } catch (moodle_exception $e) {
+                $lastexception = $e;
+                if (!$this->modelpolicy->has_fallback_after($model)) {
+                    throw $e;
+                }
+                debugging("Gemini model {$model} failed for video analysis: " . $e->getMessage()
+                    . ". Falling back to " . $this->modelpolicy->get_fallback(), DEBUG_DEVELOPER);
             }
-            debugging("Gemini model {$this->model} failed for video analysis: " . $e->getMessage()
-                . ". Falling back to " . self::FALLBACK_MODEL, DEBUG_DEVELOPER);
-            return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, self::FALLBACK_MODEL);
         }
+        // Unreachable in practice (chain non-empty; loop returns or rethrows).
+        throw $lastexception;
     }
 
     /**
