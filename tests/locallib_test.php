@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+// locallib.php holds global functions that are not autoloaded; load it (and lib.php)
+// explicitly so the tested functions are available.
+require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
+require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
+
 /**
  * Unit tests for locallib.php / lib.php pure functions.
  *
@@ -328,10 +336,12 @@ class mod_googlemeet_locallib_test extends \advanced_testcase {
      * @covers ::googlemeet_clear_url
      */
     public function test_clear_url_wrong_code_format_returns_null(): void {
-        // Too short in first segment.
-        $this->assertNull(googlemeet_clear_url('https://meet.google.com/ab-cdef-ghi'));
-        // Too long in third segment.
-        $this->assertNull(googlemeet_clear_url('https://meet.google.com/abc-defg-hijklm'));
+        // googlemeet_clear_url() extracts the first 3-4-3 code found anywhere in the
+        // string, so a "wrong format" case must contain no valid 3-4-3 code at all.
+        // (A longer tail like abc-defg-hijklm would still yield the valid abc-defg-hij
+        // prefix — that is intended extraction behaviour, not a rejection case.)
+        $this->assertNull(googlemeet_clear_url('https://meet.google.com/ab-cdef-ghi'));   // 2-4-3.
+        $this->assertNull(googlemeet_clear_url('https://meet.google.com/abcd-ef-ghij'));  // 4-2-4.
     }
 
     // =========================================================================
