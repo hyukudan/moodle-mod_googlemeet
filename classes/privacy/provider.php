@@ -101,6 +101,22 @@ class provider implements
             'privacy:metadata:googlemeet_ai_analysis'
         );
 
+        // The googlemeet_recordings table stores, per recording, the Drive file/link identifiers
+        // and the original Google Meet transcript text. The transcript may contain the names and
+        // speech of session participants. The table is keyed only to a recording (no userid
+        // column), so this data is not associated with an individual Moodle user and cannot be
+        // exported or deleted per user; it is declared here for transparency.
+        $collection->add_database_table(
+            'googlemeet_recordings',
+            [
+                'name' => 'privacy:metadata:googlemeet_recordings:name',
+                'webviewlink' => 'privacy:metadata:googlemeet_recordings:webviewlink',
+                'transcripttext' => 'privacy:metadata:googlemeet_recordings:transcripttext',
+                'transcriptfileid' => 'privacy:metadata:googlemeet_recordings:transcriptfileid',
+            ],
+            'privacy:metadata:googlemeet_recordings'
+        );
+
         // Recording transcripts and, as a last-resort fallback, the full recording video are
         // sent to the Google Gemini API for analysis. These may contain personal data such as
         // the names and voices of session participants.

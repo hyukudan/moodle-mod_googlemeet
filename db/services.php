@@ -31,7 +31,7 @@ $functions = array(
         'description' => 'Edit the name of a recording',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:editrecording',
+        'capabilities' => 'mod/googlemeet:editrecording',
     ),
     'mod_googlemeet_showhide_recording' => array(
         'classname' => 'mod_googlemeet_external',
@@ -39,7 +39,7 @@ $functions = array(
         'description' => 'Toggle the visibility of a recording',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:editrecording',
+        'capabilities' => 'mod/googlemeet:editrecording',
     ),
     'mod_googlemeet_delete_all_recordings' => array(
         'classname' => 'mod_googlemeet_external',
@@ -47,7 +47,7 @@ $functions = array(
         'description' => 'Delete all recordings of a Google Meet activity',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:removerecording',
+        'capabilities' => 'mod/googlemeet:removerecording',
     ),
     'mod_googlemeet_generate_ai_analysis' => array(
         'classname' => 'mod_googlemeet_external',
@@ -55,7 +55,7 @@ $functions = array(
         'description' => 'Generate AI analysis for a recording',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:generateai',
+        'capabilities' => 'mod/googlemeet:generateai',
     ),
     'mod_googlemeet_get_ai_analysis' => array(
         'classname' => 'mod_googlemeet_external',
@@ -63,7 +63,7 @@ $functions = array(
         'description' => 'Get AI analysis for a recording',
         'type' => 'read',
         'ajax' => true,
-        'capabilities' => 'googlemeet:view',
+        'capabilities' => 'mod/googlemeet:view',
     ),
     'mod_googlemeet_save_ai_analysis' => array(
         'classname' => 'mod_googlemeet_external',
@@ -71,7 +71,7 @@ $functions = array(
         'description' => 'Save AI analysis manually for a recording',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:editrecording',
+        'capabilities' => 'mod/googlemeet:editrecording',
     ),
     'mod_googlemeet_analyze_transcript' => array(
         'classname' => 'mod_googlemeet_external',
@@ -79,6 +79,6 @@ $functions = array(
         'description' => 'Analyze a pasted transcript using Gemini AI',
         'type' => 'write',
         'ajax' => true,
-        'capabilities' => 'googlemeet:editrecording',
+        'capabilities' => 'mod/googlemeet:editrecording',
     ),
 );

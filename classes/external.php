@@ -397,6 +397,11 @@ class mod_googlemeet_external extends external_api {
         self::validate_context($context);
         require_capability('mod/googlemeet:view', $context);
 
+        // The full transcript is only shown in the UI to users who can edit recordings. Mirror
+        // that here so web service / mobile clients cannot read the transcript with mere view
+        // capability (it can contain participant names/speech).
+        $cantranscript = has_capability('mod/googlemeet:editrecording', $context);
+
         // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
         $DB->get_record('googlemeet_recordings',
             ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
@@ -429,7 +434,7 @@ class mod_googlemeet_external extends external_api {
             'summary' => $analysis->summary ?? '',
             'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
             'topics' => is_array($analysis->topics) ? $analysis->topics : [],
-            'transcript' => $analysis->transcript ?? '',
+            'transcript' => $cantranscript ? ($analysis->transcript ?? '') : '',
             'language' => $analysis->language ?? 'es',
             'status' => $analysis->status,
             'error' => $analysis->error ?? '',

@@ -88,6 +88,13 @@ function googlemeet_add_instance($googlemeet, $mform = null) {
         $googlemeet->creatoremail = $calendarevent->creator->email;
     }
 
+    // originalname is NOT NULL. Only the logged-in branch above sets it (from the calendar
+    // event); when creating an activity without a Google login it would be unset and the
+    // insert would fail on strict DBs. Default it to the activity name.
+    if (empty($googlemeet->originalname)) {
+        $googlemeet->originalname = $googlemeet->name;
+    }
+
     if (isset($googlemeet->days)) {
         $googlemeet->days = json_encode($googlemeet->days);
     }

@@ -326,5 +326,18 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026053000, 'googlemeet');
     }
 
+    if ($oldversion < 2026060100) {
+        // The originalname column is NOT NULL but had no default, so creating an activity
+        // without a Google login (the only path that sets originalname) failed the insert
+        // on strict DBs. Give it an empty-string default so inserts always succeed.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('originalname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '', 'name');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_default($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026060100, 'googlemeet');
+    }
+
     return true;
 }

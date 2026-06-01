@@ -17,6 +17,8 @@
 namespace mod_googlemeet\task;
 
 use mod_googlemeet\gemini_client;
+use mod_googlemeet\gemini_transient_exception;
+use mod_googlemeet\ai_service;
 use mod_googlemeet\subtitle_extractor;
 use core\task\adhoc_task;
 use stdClass;
@@ -105,10 +107,14 @@ class process_video_analysis extends adhoc_task {
                     $result = $this->analyze_with_video($client, $recording);
                 } else {
                     // Default: do not auto-download the video. Mark as failed with a stable
-                    // error code so the UI can offer the "Transcribe from video" opt-in.
+                    // error code so the UI can offer the "Transcribe from video" opt-in. This is a
+                    // terminal state awaiting user action, NOT a transient error: clear nextretry
+                    // so the scheduled retry selection does not re-pick it every tick (it would,
+                    // if this row was previously in a transient-retry state with nextretry > 0).
                     mtrace("Subtitle extraction failed and forcedownload=false. Aborting without video download.");
                     $analysis->status = 'failed';
                     $analysis->error = 'ai_subtitles_unavailable';
+                    $analysis->nextretry = 0;
                     $analysis->timemodified = time();
                     $DB->update_record('googlemeet_ai_analysis', $analysis);
                     return;
@@ -124,19 +130,28 @@ class process_video_analysis extends adhoc_task {
             $analysis->status = 'completed';
             $analysis->error = null;
             $analysis->aimodel = $client->get_last_used_model() ?? $client->get_model();
+            // Clear the retry bookkeeping now the analysis has succeeded.
+            $analysis->retrycount = 0;
+            $analysis->nextretry = 0;
             $analysis->timemodified = time();
             $DB->update_record('googlemeet_ai_analysis', $analysis);
 
             mtrace("Analysis saved successfully.");
 
+        } catch (gemini_transient_exception $e) {
+            // Transient error (rate limit / overload): schedule a bounded retry with back-off
+            // instead of marking it permanently failed. The scheduled process_ai_analysis task
+            // re-picks the row once nextretry elapses (until MAX_TRANSIENT_RETRIES is reached).
+            mtrace("Transient error: " . $e->getMessage() . " (scheduling retry if attempts remain).");
+            $aiservice = new ai_service();
+            $aiservice->record_transient_failure($analysisid, (int) ($analysis->retrycount ?? 0), $e->getMessage());
+
         } catch (\Exception $e) {
             mtrace("Error: " . $e->getMessage());
 
-            // Update analysis with error status.
-            $analysis->status = 'failed';
-            $analysis->error = $e->getMessage();
-            $analysis->timemodified = time();
-            $DB->update_record('googlemeet_ai_analysis', $analysis);
+            // Permanent error: mark failed and do not retry automatically.
+            $aiservice = new ai_service();
+            $aiservice->record_permanent_failure($analysisid, $e->getMessage());
         }
     }
 
@@ -214,13 +229,21 @@ class process_video_analysis extends adhoc_task {
             );
             mtrace("Analysis completed.");
 
-            // Clean up: delete the file from Gemini.
-            $client->delete_file($filedata->name);
-            mtrace("Cleaned up Gemini file.");
-
             return $result;
 
         } finally {
+            // Delete the uploaded Gemini file regardless of whether analysis succeeded — it is
+            // retained server-side and must not leak if wait_for_file_processing() or
+            // analyze_video_with_file() threw. $filedata is only set once the upload succeeded.
+            if ($filedata && !empty($filedata->name)) {
+                try {
+                    $client->delete_file($filedata->name);
+                    mtrace("Cleaned up Gemini file.");
+                } catch (\Throwable $e) {
+                    mtrace("Warning: could not delete Gemini file {$filedata->name}: " . $e->getMessage());
+                }
+            }
+
             // Clean up: delete the temp file.
             if ($tempfile && file_exists($tempfile)) {
                 unlink($tempfile);

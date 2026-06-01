@@ -692,24 +692,26 @@ function googlemeet_get_messagehtml($user, $event) {
     $url = "<a href=\"{$CFG->wwwroot}/mod/googlemeet/view.php?id={$event->cmid}\">
         {$CFG->wwwroot}/mod/googlemeet/view.php?id={$event->cmid}</a>";
 
+    // User- and teacher-controlled values (names, course/activity titles) are escaped with s()
+    // before being spliced into the admin's HTML email template, otherwise a crafted value
+    // injects HTML/script into the notification body. $url is built by us (cmid is an int) and is
+    // deliberately HTML; the date/time/timezone values come from Moodle formatters and are safe.
     $templatevars = [
-        '/%userfirstname%/' => $user->firstname,
-        '/%userlastname%/' => $user->lastname,
-        '/%coursename%/' => $event->coursename,
-        '/%googlemeetname%/' => $event->googlemeetname,
-        '/%eventdate%/' => $startdate,
-        '/%duration%/' => $starttime . ' – ' . $endtime,
-        '/%timezone%/' => usertimezone($user->timezone),
-        '/%url%/' => $url,
-        '/%cmid%/' => $event->cmid,
+        '%userfirstname%' => s($user->firstname),
+        '%userlastname%' => s($user->lastname),
+        '%coursename%' => s($event->coursename),
+        '%googlemeetname%' => s($event->googlemeetname),
+        '%eventdate%' => $startdate,
+        '%duration%' => $starttime . ' – ' . $endtime,
+        '%timezone%' => usertimezone($user->timezone),
+        '%url%' => $url,
+        '%cmid%' => (int) $event->cmid,
     ];
 
-    $patterns = array_keys($templatevars); // The placeholders which are to be replaced.
-
-    $replacements = array_values($templatevars); // The values which are to be templated in for the placeholders.
-
-    // Replace %variable% with relevant value everywhere it occurs.
-    $emailcontent = preg_replace($patterns, $replacements, $config->emailcontent);
+    // Use str_replace (literal), not preg_replace: replacement values can legitimately contain
+    // regex backreference sequences such as $0 or \1 (e.g. in a user's name), which preg_replace
+    // would interpret and corrupt.
+    $emailcontent = str_replace(array_keys($templatevars), array_values($templatevars), $config->emailcontent);
 
     return $emailcontent;
 }

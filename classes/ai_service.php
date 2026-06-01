@@ -31,6 +31,15 @@ use moodle_exception;
  */
 class ai_service {
 
+    /** @var int Max transient retries before giving up (mirrors cli/process_transcripts.php). */
+    const MAX_TRANSIENT_RETRIES = 4;
+
+    /** @var int retrycount sentinel meaning "permanent failure, never retry". */
+    const PERMANENT_RETRYCOUNT = 99;
+
+    /** @var int[] Back-off schedule in seconds, indexed by (retrycount - 1): 2h, 4h, 8h, 24h. */
+    const TRANSIENT_BACKOFF = [7200, 14400, 28800, 86400];
+
     /** @var gemini_client The Gemini API client */
     private $client;
 
@@ -124,6 +133,13 @@ class ai_service {
         $analysis->status = 'processing';
         $analysis->error = null;
         $analysis->timemodified = time();
+        // A fresh (re)generation request (not an automatic claimed retry) resets the retry
+        // budget so the row gets the full transient-retry allowance again. The claimed-retry
+        // path below must NOT reset it, so it can keep counting across automatic retries.
+        if (!$alreadyclaimed) {
+            $analysis->retrycount = 0;
+            $analysis->nextretry = 0;
+        }
 
         if ($existing) {
             $analysis->id = $existing->id;
@@ -277,23 +293,125 @@ class ai_service {
 
         $now = time();
 
-        // Conditional update: only succeeds while the row is still 'pending'.
-        // $DB->execute() does not report affected rows portably, so we issue the
-        // guarded UPDATE and then re-read the row to confirm WE are the owner.
+        // Conditional update: succeeds while the row is still 'pending', OR while it is a
+        // transient-failure row whose back-off has elapsed (status 'failed', 0 < retrycount <
+        // MAX, nextretry due). $DB->execute() does not report affected rows portably, so we
+        // issue the guarded UPDATE and then re-read the row to confirm WE are the owner.
         $sql = "UPDATE {googlemeet_ai_analysis}
                    SET status = 'processing', timemodified = :now
-                 WHERE id = :id AND status = 'pending'";
-        $DB->execute($sql, ['now' => $now, 'id' => $analysisid]);
+                 WHERE id = :id
+                   AND (status = 'pending'
+                        OR (status = 'failed'
+                            AND retrycount > 0
+                            AND retrycount < :maxretries
+                            AND nextretry > 0
+                            AND nextretry <= :now2))";
+        $DB->execute($sql, [
+            'now' => $now,
+            'id' => $analysisid,
+            'maxretries' => self::MAX_TRANSIENT_RETRIES,
+            'now2' => $now,
+        ]);
 
-        // Re-read and verify. If the row now reads 'processing' with the timestamp
-        // we just wrote, the claim was ours. A concurrent winner would have set its
-        // own (different) timestamp, so we treat a mismatch as "not claimed by us".
+        // Re-read and verify. If the row now reads 'processing' with the timestamp we just
+        // wrote, the claim was ours. NOTE: this verify-by-timestamp is correct only because the
+        // sole caller (process_pending) runs under the 'mod_googlemeet_ai_analysis' cron lock,
+        // so two claims can never race within the same second. Do not call claim_pending() from
+        // an unlocked context without strengthening this ownership token.
         $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, timemodified');
         if (!$row) {
             return false;
         }
 
         return $row->status === 'processing' && (int) $row->timemodified === $now;
+    }
+
+    /**
+     * Record a transient (retryable) failure with bounded back-off.
+     *
+     * Used by the background AI pipeline so that rate limits / overloads are retried instead of
+     * becoming permanent failures. Mirrors the policy in cli/process_transcripts.php: after
+     * {@see self::MAX_TRANSIENT_RETRIES} attempts the row is left 'failed' with no further
+     * nextretry (so the due-selection no longer picks it up).
+     *
+     * @param int $analysisid The analysis row id.
+     * @param int $previousretrycount The retrycount BEFORE this attempt.
+     * @param string $message The error message to store.
+     * @return void
+     */
+    public function record_transient_failure(int $analysisid, int $previousretrycount, string $message): void {
+        global $DB;
+
+        $now = time();
+        $newrc = $previousretrycount + 1;
+
+        if ($newrc >= self::MAX_TRANSIENT_RETRIES) {
+            // Retries exhausted. Cap retrycount and clear nextretry so it is not retried again.
+            $newrc = self::MAX_TRANSIENT_RETRIES;
+            $nextretry = 0;
+        } else {
+            $backoff = self::TRANSIENT_BACKOFF[$newrc - 1] ?? 86400;
+            $nextretry = $now + $backoff;
+        }
+
+        $DB->update_record('googlemeet_ai_analysis', (object) [
+            'id' => $analysisid,
+            'status' => 'failed',
+            'error' => $message,
+            'retrycount' => $newrc,
+            'nextretry' => $nextretry,
+            'timemodified' => $now,
+        ]);
+    }
+
+    /**
+     * Record a permanent (non-retryable) failure.
+     *
+     * @param int $analysisid The analysis row id.
+     * @param string $message The error message to store.
+     * @return void
+     */
+    public function record_permanent_failure(int $analysisid, string $message): void {
+        global $DB;
+
+        $DB->update_record('googlemeet_ai_analysis', (object) [
+            'id' => $analysisid,
+            'status' => 'failed',
+            'error' => $message,
+            'retrycount' => self::PERMANENT_RETRYCOUNT,
+            'nextretry' => 0,
+            'timemodified' => time(),
+        ]);
+    }
+
+    /**
+     * Get analyses that are due for processing: fresh 'pending' rows plus transient-failure
+     * rows whose back-off has elapsed.
+     *
+     * @param int $limit Maximum number to return.
+     * @return array Array of analysis records.
+     */
+    public function get_due_analyses(int $limit = 10): array {
+        global $DB;
+
+        $now = time();
+        $sql = "SELECT *
+                  FROM {googlemeet_ai_analysis}
+                 WHERE status = :pending
+                    OR (status = :failed
+                        AND retrycount > 0
+                        AND retrycount < :maxretries
+                        AND nextretry > 0
+                        AND nextretry <= :now)
+              ORDER BY timecreated ASC";
+        $params = [
+            'pending' => 'pending',
+            'failed' => 'failed',
+            'maxretries' => self::MAX_TRANSIENT_RETRIES,
+            'now' => $now,
+        ];
+
+        return $DB->get_records_sql($sql, $params, 0, $limit);
     }
 
     /**
@@ -402,7 +520,7 @@ class ai_service {
     public function process_pending(int $limit = 5): int {
         global $DB;
 
-        $pending = $this->get_pending_analyses($limit);
+        $pending = $this->get_due_analyses($limit);
         $processed = 0;
 
         foreach ($pending as $analysis) {
@@ -419,12 +537,12 @@ class ai_service {
                 $this->generate_analysis($analysis->recordingid, true, false, true);
                 $processed++;
             } catch (\Exception $e) {
-                // Make sure a row we claimed never gets stuck in 'processing'. If enqueuing
-                // failed, mark it 'failed' so the UI reflects it (and it is not retried in a
-                // loop). Errors are also logged inside generate_analysis where applicable.
-                $DB->set_field('googlemeet_ai_analysis', 'status', 'failed', ['id' => $analysis->id]);
-                $DB->set_field('googlemeet_ai_analysis', 'error', $e->getMessage(), ['id' => $analysis->id]);
-                $DB->set_field('googlemeet_ai_analysis', 'timemodified', time(), ['id' => $analysis->id]);
+                // Make sure a row we claimed never gets stuck in 'processing'. Enqueuing failed,
+                // which is not a transient API condition, so record it as a permanent failure
+                // (retrycount=99, nextretry=0). Using record_permanent_failure() — rather than only
+                // flipping status — is important: a row that was a due transient retry would
+                // otherwise keep retrycount>0 and a due nextretry, and get reselected every tick.
+                $this->record_permanent_failure($analysis->id, $e->getMessage());
                 continue;
             }
         }
