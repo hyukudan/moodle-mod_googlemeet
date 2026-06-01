@@ -339,5 +339,39 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026060100, 'googlemeet');
     }
 
+    if ($oldversion < 2026060101) {
+        // Reconcile pre-existing schema drift flagged by check_database_schema.php on installs that
+        // were upgraded (rather than freshly installed) across earlier versions.
+
+        // 1) googlemeet_notify_done: the composite UNIQUE (eventid, userid) index from install.xml
+        //    was never added by an upgrade step (only the single-column indexes were), so upgraded
+        //    sites lack it. Remove any duplicate (eventid, userid) rows first — keeping the lowest
+        //    id — so the unique index can be created safely, then add it if missing.
+        $DB->execute("DELETE FROM {googlemeet_notify_done}
+                       WHERE id NOT IN (
+                           SELECT minid FROM (
+                               SELECT MIN(id) AS minid
+                                 FROM {googlemeet_notify_done}
+                             GROUP BY eventid, userid
+                           ) keepers
+                       )");
+
+        $table = new xmldb_table('googlemeet_notify_done');
+        $index = new xmldb_index('eventid_userid', XMLDB_INDEX_UNIQUE, ['eventid', 'userid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // 2) googlemeet_events.syncattempts: align the integer length with install.xml (10) on
+        //    sites where it was created narrower.
+        $table = new xmldb_table('googlemeet_events');
+        $field = new xmldb_field('syncattempts', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'autosynced');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026060101, 'googlemeet');
+    }
+
     return true;
 }
