@@ -97,14 +97,14 @@
 
           <div class="googlemeet-recording-content">
             <div class="googlemeet-recording-icon">
-              <a href="{{webviewlink}}" target="_blank" class="googlemeet-play-btn" title="{{# str }} recording_watch, mod_googlemeet {{/ str }}">
+              <a href="{{huburl}}" class="googlemeet-play-btn" title="{{# str }} recording_watch, mod_googlemeet {{/ str }}">
                 {{# pix }} play, mod_googlemeet {{/ pix }}
               </a>
             </div>
 
             <div class="googlemeet-recording-info">
               <div class="googlemeet-recording-name">
-                <span class="recording-name-text">{{name}}</span>
+                <a href="{{huburl}}" class="recording-name-text">{{name}}</a>
                 {{#hasai}}
                   <span class="googlemeet-ai-badge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -131,6 +131,9 @@
             </div>
 
             <div class="googlemeet-recording-actions">
+              <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}" title="{{# str }} openindrive, mod_googlemeet {{/ str }}">
+                {{# pix }} i/externallink, core, {{# str }} openindrive, mod_googlemeet {{/ str }} {{/ pix }}
+              </a>
               {{#hascapability}}
                 <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}">
                   {{#visible}}

@@ -161,6 +161,54 @@ class gemini_client {
     }
 
     /**
+     * Generate single-answer multichoice questions from a transcript.
+     *
+     * @param string $transcript Transcript text.
+     * @param int $count Number of questions requested.
+     * @param string $lang Target language code.
+     * @return array
+     * @throws moodle_exception If generation or parsing fails.
+     */
+    public function generate_questions(string $transcript, int $count, string $lang): array {
+        if (!$this->is_configured()) {
+            throw new moodle_exception('ai_not_configured', 'googlemeet');
+        }
+        if (trim($transcript) === '') {
+            throw new moodle_exception('question_no_transcript_error', 'googlemeet');
+        }
+
+        $count = max(1, min(20, $count));
+        $prompt = <<<PROMPT
+You are an expert teacher creating exam-practice questions from a class transcript.
+
+Write in this language whenever possible: {$lang}.
+Focus only on educational, assessable content. Ignore greetings, admin chatter, and off-topic discussion.
+Create {$count} single-answer multiple-choice questions.
+
+Return STRICT JSON only, no markdown and no code fences. The top-level value MUST be an array. Each item MUST have:
+{
+  "stem": "question text",
+  "options": ["answer A", "answer B", "answer C", "answer D"],
+  "correctindex": 0,
+  "explanation": "why the correct answer is correct",
+  "citation": "article/norm/topic or timestamp mm:ss, or null"
+}
+
+Rules:
+- options must contain exactly 4 plausible strings.
+- correctindex must be an integer from 0 to 3.
+- explanation must justify the answer.
+- citation should identify the reference, topic, regulation, article, or class timestamp when available; use null if not detected.
+
+Transcript:
+{$transcript}
+PROMPT;
+
+        $response = $this->call_api($prompt);
+        return $this->parse_questions_response($response);
+    }
+
+    /**
      * Build the full analysis prompt.
      *
      * @param string $videoname The video name
@@ -429,6 +477,72 @@ PROMPT;
         $result->language = is_string($analysis->language ?? null) ? $analysis->language : 'es';
 
         return $result;
+    }
+
+    /**
+     * Parse Gemini question-generation JSON.
+     *
+     * @param string $response Raw API response.
+     * @return array
+     * @throws moodle_exception
+     */
+    private function parse_questions_response(string $response): array {
+        $decoded = json_decode($response);
+
+        if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
+        }
+
+        $text = trim($decoded->candidates[0]->content->parts[0]->text);
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/', $text, $matches)) {
+            $text = trim($matches[1]);
+        }
+        if (preg_match('/(\[[\s\S]*\])/', $text, $matches)) {
+            $text = trim($matches[1]);
+        }
+
+        $items = json_decode($text, true);
+        if (!is_array($items)) {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', json_last_error_msg());
+        }
+
+        $questions = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $stem = trim((string)($item['stem'] ?? ''));
+            $options = array_values($item['options'] ?? []);
+            $correctindex = $item['correctindex'] ?? null;
+            if ($stem === '' || count($options) !== 4 || !is_numeric($correctindex)) {
+                continue;
+            }
+            $correctindex = (int)$correctindex;
+            if ($correctindex < 0 || $correctindex > 3) {
+                continue;
+            }
+            $cleanoptions = [];
+            foreach ($options as $option) {
+                $option = trim((string)$option);
+                if ($option === '') {
+                    continue 2;
+                }
+                $cleanoptions[] = $option;
+            }
+            $questions[] = [
+                'stem' => $stem,
+                'options' => $cleanoptions,
+                'correctindex' => $correctindex,
+                'explanation' => trim((string)($item['explanation'] ?? '')),
+                'citation' => isset($item['citation']) ? trim((string)$item['citation']) : null,
+            ];
+        }
+
+        if (empty($questions)) {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'No valid questions in response');
+        }
+
+        return $questions;
     }
 
     /**

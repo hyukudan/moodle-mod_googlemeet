@@ -265,6 +265,68 @@ class ai_service {
     }
 
     /**
+     * Queue AI question generation for a recording.
+     *
+     * @param int $recordingid Recording id.
+     * @param int $cmid Course module id.
+     * @param int $count Number of questions requested.
+     * @param int $userid User who requested generation.
+     * @return void
+     */
+    public function queue_question_generation(int $recordingid, int $cmid, int $count, int $userid): void {
+        $task = new \mod_googlemeet\task\generate_questions();
+        $task->set_custom_data([
+            'recordingid' => $recordingid,
+            'cmid' => $cmid,
+            'count' => max(1, min(20, $count)),
+            'userid' => $userid,
+        ]);
+        $task->set_userid($userid);
+        \core\task\manager::queue_adhoc_task($task, true);
+    }
+
+    /**
+     * Generate questions from an existing recording transcript and insert them as draft bank questions.
+     *
+     * @param int $recordingid Recording id.
+     * @param int $count Number of questions requested.
+     * @return int Number of questions created.
+     * @throws moodle_exception
+     */
+    public function generate_questions_for_recording(int $recordingid, int $count = 10): int {
+        global $DB;
+
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $recording->googlemeetid], '*', MUST_EXIST);
+        $cm = get_coursemodule_from_instance('googlemeet', $googlemeet->id, $googlemeet->course, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+
+        $analysis = $this->get_analysis($recordingid);
+        $transcript = '';
+        if ($analysis && !empty($analysis->transcript) && $analysis->status === 'completed') {
+            $transcript = $analysis->transcript;
+        } else if (!empty($recording->transcripttext)) {
+            $transcript = $recording->transcripttext;
+        }
+
+        if (trim($transcript) === '') {
+            throw new moodle_exception('question_no_transcript_error', 'googlemeet');
+        }
+
+        $lang = ($analysis && !empty($analysis->language)) ? $analysis->language : current_language();
+        $questions = $this->client->generate_questions($transcript, max(1, min(20, $count)), $lang);
+        $questionservice = new question_service();
+        $created = 0;
+
+        foreach ($questions as $questiondata) {
+            $questionservice->create_draft_multichoice($googlemeet, $cm, $context, $recordingid, $questiondata);
+            $created++;
+        }
+
+        return $created;
+    }
+
+    /**
      * Get all pending analyses that need processing.
      *
      * @param int $limit Maximum number to return

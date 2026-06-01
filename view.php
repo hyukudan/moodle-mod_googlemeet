@@ -32,6 +32,7 @@ $config = get_config('googlemeet');
 
 $id = optional_param('id', 0, PARAM_INT);
 $g = optional_param('g', 0, PARAM_INT);
+$recordingid = optional_param('recording', 0, PARAM_INT);
 
 if ($id) {
     $cm = get_coursemodule_from_id('googlemeet', $id, 0, false, MUST_EXIST);
@@ -49,7 +50,11 @@ require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
 require_capability('mod/googlemeet:view', $context);
 
-$PAGE->set_url('/mod/googlemeet/view.php', array('id' => $cm->id));
+$pageparams = ['id' => $cm->id];
+if ($recordingid > 0) {
+    $pageparams['recording'] = $recordingid;
+}
+$PAGE->set_url('/mod/googlemeet/view.php', $pageparams);
 $PAGE->set_context($context);
 
 // Process the view write actions (logout / sync). The handler enforces the
@@ -73,6 +78,17 @@ googlemeet_print_header($googlemeet, $cm, $course);
 // Note: In Moodle 4.0+, the activity header automatically displays
 // the title and description, so we don't call googlemeet_print_heading
 // or googlemeet_print_intro to avoid duplication.
+
+if ($recordingid > 0) {
+    $recording = $DB->get_record('googlemeet_recordings',
+        ['id' => $recordingid, 'googlemeetid' => $googlemeet->id], '*', MUST_EXIST);
+    if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+        throw new moodle_exception('invalidrecord', 'error');
+    }
+    googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording);
+    echo $OUTPUT->footer();
+    exit;
+}
 
 echo html_writer::link($googlemeet->url,
     get_string('entertheroom', 'googlemeet'),
