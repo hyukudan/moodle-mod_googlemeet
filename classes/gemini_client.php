@@ -231,14 +231,14 @@ Please analyze this video and provide the following in a structured JSON format:
 
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
-3. **Topics**: A list of main topics/themes covered in the video — in the language of the video
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
     "summary": "Resumen completo aquí (en el idioma del vídeo)...",
     "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
-    "topics": ["Tema 1", "Tema 2", "Tema 3", ...],
+    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
     "transcript": "Transcripción condensada o 'No disponible'...",
     "language": "detected language code (e.g., es, en, fr)"
 }
@@ -802,14 +802,14 @@ Based ONLY on the educational content, provide in JSON format:
 
 1. **Summary**: Summary of the educational content covered (2-3 paragraphs) — MUST be in the same language as the transcript
 2. **Key Points**: 5-10 key learning points from the lesson — MUST be in the same language as the transcript
-3. **Topics**: Educational topics/themes covered — MUST be in the same language as the transcript
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the transcript. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
 
 Respond ONLY with valid JSON (no markdown):
 {
     "summary": "Resumen educativo aquí (en el idioma de la transcripción)...",
     "keypoints": ["Punto clave 1", "Punto clave 2", ...],
-    "topics": ["Tema 1", "Tema 2", ...],
+    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
     "language": "es"
 }
 PROMPT;
@@ -886,14 +886,14 @@ Please analyze this video and provide the following in a structured JSON format:
 
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
-3. **Topics**: A list of main topics/themes covered in the video — in the language of the video
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Transcript Summary**: Provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
     "summary": "Resumen completo aquí (en el idioma del vídeo)...",
     "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
-    "topics": ["Tema 1", "Tema 2", "Tema 3", ...],
+    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
     "transcript": "Transcripción condensada del vídeo...",
     "language": "detected language code (e.g., es, en, fr)"
 }
