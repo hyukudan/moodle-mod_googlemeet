@@ -139,18 +139,19 @@ if ($ADMIN->fulltree) {
     // The list must stay in sync with gemini_client::DEFAULT_MODEL / FALLBACK_MODEL,
     // otherwise the configured model never matches what the code actually requests.
     $aimodels = [
-        'gemini-3.1-flash-preview' => 'Gemini 3.1 Flash (Preview, default)',
+        'gemini-3.5-flash' => 'Gemini 3.5 Flash (Stable, default)',
+        'gemini-3.1-flash-lite' => 'Gemini 3.1 Flash Lite (Stable, cheap/fast, fallback)',
+        'gemini-3.1-pro-preview' => 'Gemini 3.1 Pro (Preview, most capable)',
         'gemini-3-flash-preview' => 'Gemini 3 Flash (Preview)',
-        'gemini-2.5-flash' => 'Gemini 2.5 Flash (Fast, fallback)',
+        'gemini-2.5-flash' => 'Gemini 2.5 Flash (Fast)',
         'gemini-2.5-pro' => 'Gemini 2.5 Pro (More capable)',
-        'gemini-2.0-flash-exp' => 'Gemini 2.0 Flash (Experimental)',
     ];
 
     $settings->add(new admin_setting_configselect(
         'googlemeet/aimodel',
         get_string('aimodel', 'googlemeet'),
         get_string('aimodel_desc', 'googlemeet'),
-        'gemini-3.1-flash-preview',
+        'gemini-3.5-flash',
         $aimodels
     ));
 

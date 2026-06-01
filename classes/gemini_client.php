@@ -54,10 +54,10 @@ class gemini_client {
     private $model;
 
     /** @var string The default primary model when none is configured */
-    private const DEFAULT_MODEL = 'gemini-3.1-flash-preview';
+    private const DEFAULT_MODEL = 'gemini-3.5-flash';
 
     /** @var string Fallback model when primary fails */
-    private const FALLBACK_MODEL = 'gemini-2.5-flash';
+    private const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 
     /** @var bool Whether AI features are enabled */
     private $enabled;
