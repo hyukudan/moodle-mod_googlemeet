@@ -402,7 +402,7 @@ function googlemeet_merge_events($googlemeet, $events) {
  * @param string|null $orderoverride Optional order override from URL parameter.
  * @return void
  */
-function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null) {
+function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null, $query = '', $topic = '') {
     global $CFG, $DB, $PAGE, $OUTPUT, $USER;
 
     $config = get_config('googlemeet');
@@ -433,20 +433,27 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $order = $orderoverride !== null ? $orderoverride : ($googlemeet->recordingsorder ?? 'DESC');
     $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
 
-    // Calculate offset.
     $page = max(0, (int) $page);
-    $offset = $page * $maxrecordings;
 
-    // Get total count for pagination.
-    $totalrecordings = googlemeet_count_recordings($params);
+    // Fetch ALL recordings (no SQL limit) so search/topic filters apply before pagination.
+    $allrecordings = googlemeet_list_recordings($params, $aienabled, $order, 0, 0);
 
-    // Calculate pagination info.
-    $totalpages = ceil($totalrecordings / $maxrecordings);
+    // Distinct topics for the filter chips come from the UNFILTERED set.
+    $alltopics = googlemeet_collect_topics($allrecordings);
+
+    // Apply filters in PHP (topics are stored as JSON; this stays DB-portable).
+    if (trim((string)$query) !== '') {
+        $allrecordings = googlemeet_filter_recordings_by_query($allrecordings, (string)$query);
+    }
+    if (trim((string)$topic) !== '') {
+        $allrecordings = googlemeet_filter_recordings_by_topic($allrecordings, (string)$topic);
+    }
+
+    $totalrecordings = count($allrecordings);
+    $totalpages = max(1, (int)ceil($totalrecordings / $maxrecordings));
     $page = min($page, max(0, $totalpages - 1)); // Ensure page is within bounds.
     $offset = $page * $maxrecordings;
-
-    // Include AI data when fetching recordings if AI is enabled.
-    $recordings = googlemeet_list_recordings($params, $aienabled, $order, $maxrecordings, $offset);
+    $recordings = array_slice($allrecordings, $offset, $maxrecordings);
     foreach ($recordings as $recording) {
         $urlparams = ['id' => $cm->id, 'recording' => $recording->id];
         if ($page > 0) {
@@ -459,6 +466,15 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     foreach ($recordings as $recording) {
         $recording->showdategroup = ($recording->dategroup !== $prevgroup);
         $prevgroup = $recording->dategroup;
+    }
+    $topicchips = [];
+    foreach ($alltopics as $t) {
+        $topicchips[] = [
+            'text' => $t,
+            'url' => (new moodle_url('/mod/googlemeet/view.php',
+                ['id' => $cm->id, 'topic' => $t, 'rorder' => $order]))->out(false),
+            'active' => ($t === $topic),
+        ];
     }
     $cansubscriberecordings = has_capability('mod/googlemeet:subscriberecordings', $context);
     $issubscribed = $cansubscriberecordings && $DB->record_exists(
@@ -513,6 +529,12 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'currentorder' => $order,
         'isorderdesc' => ($order === 'DESC'),
         'isorderasc' => ($order === 'ASC'),
+        // Filter data.
+        'recordingquery' => s($query),
+        'selectedtopic' => s($topic),
+        'alltopics' => $topicchips,
+        'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== ''),
+        'clearfiltersurl' => (new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]))->out(false),
     ]);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));

@@ -108,7 +108,9 @@ echo $OUTPUT->render_from_template('mod_googlemeet/upcomingevents', googlemeet_g
 // Get pagination and order parameters.
 $recordingspage = optional_param('rpage', 0, PARAM_INT);
 $recordingsorder = optional_param('rorder', null, PARAM_ALPHA);
+$recordingquery = optional_param('rq', '', PARAM_TEXT);
+$recordingtopic = optional_param('topic', '', PARAM_TEXT);
 
-googlemeet_print_recordings($googlemeet, $cm, $context, $recordingspage, $recordingsorder);
+googlemeet_print_recordings($googlemeet, $cm, $context, $recordingspage, $recordingsorder, $recordingquery, $recordingtopic);
 
 echo $OUTPUT->footer();
