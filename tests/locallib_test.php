@@ -560,6 +560,30 @@ class locallib_test extends \advanced_testcase {
         $this->assertNotContains('Wed', $eventdates, 'Wednesday event must not appear.');
     }
 
+    // =========================================================================
+    // googlemeet_truncate_summary()
+    // =========================================================================
+
+    public function test_truncate_summary_short_text_unchanged(): void {
+        $this->assertSame('hola', googlemeet_truncate_summary('hola', 200));
+    }
+
+    public function test_truncate_summary_adds_ellipsis_when_cut(): void {
+        $text = str_repeat('a', 250);
+        $out = googlemeet_truncate_summary($text, 200);
+        $this->assertSame(201, \core_text::strlen($out)); // 200 chars + ellipsis.
+        $this->assertStringEndsWith('…', $out);
+    }
+
+    public function test_truncate_summary_does_not_split_multibyte(): void {
+        // 201 'é' (2 bytes each in UTF-8). A byte-based substr(0,200) would split the 100th char.
+        $text = str_repeat('é', 201);
+        $out = googlemeet_truncate_summary($text, 200);
+        $this->assertSame(201, \core_text::strlen($out));
+        // No U+FFFD replacement char from a broken byte sequence.
+        $this->assertStringNotContainsString("\xEF\xBF\xBD", $out);
+    }
+
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *
