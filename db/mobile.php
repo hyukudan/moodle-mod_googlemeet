@@ -45,7 +45,14 @@ $addons = [
             ['from', 'googlemeet'],
             ['to', 'googlemeet'],
             ['at', 'googlemeet'],
-            ['recordings', 'googlemeet']
+            ['recordings', 'googlemeet'],
+            ['practice_check', 'googlemeet'],
+            ['practice_correct', 'googlemeet'],
+            ['practice_correct_answer', 'googlemeet'],
+            ['practice_incorrect', 'googlemeet'],
+            ['practice_next', 'googlemeet'],
+            ['practice_retry', 'googlemeet'],
+            ['practice_title', 'googlemeet']
         ]
     ]
 ];

@@ -132,6 +132,91 @@
               <ion-icon slot="start" name="play"></ion-icon>
               <%duration%>
             </ion-button>
+            <%#haspracticequestions%>
+              <ion-list class="ion-margin-top">
+                <ion-list-header lines="full">
+                  <ion-label>
+                    {{ 'plugin.mod_googlemeet.practice_title' | translate }}
+                  </ion-label>
+                </ion-list-header>
+                <%#practicequestions%>
+                  <div *ngIf="googlemeetPractice[<% id %>].index === <% index %>">
+                    <ion-item lines="none">
+                      <ion-label>
+                        <p class="item-heading">
+                          {{ 'plugin.mod_googlemeet.practice_title' | translate }}
+                          <%position%>/<%practicequestioncount%>
+                        </p>
+                        <p><%stem%></p>
+                      </ion-label>
+                    </ion-item>
+                    <ion-radio-group [(ngModel)]="googlemeetPractice[<% id %>].selected[<% questionid %>]">
+                      <%#options%>
+                        <ion-item lines="full">
+                          <ion-radio slot="start" [value]="<% answerid %>"></ion-radio>
+                          <ion-label><%text%></ion-label>
+                        </ion-item>
+                      <%/options%>
+                    </ion-radio-group>
+                    <ion-item lines="none">
+                      <ion-label>
+                        <ion-button
+                          expand="block"
+                          core-site-plugins-call-ws
+                          name="mod_googlemeet_check_practice_answer"
+                          [params]="{
+                            recordingid: <% id %>,
+                            coursemoduleid: <% cmid %>,
+                            questionid: <% questionid %>,
+                            answerid: googlemeetPractice[<% id %>].selected[<% questionid %>]
+                          }"
+                          [preSets]="{getFromCache: 0, saveToCache: 0}"
+                          [disabled]="!googlemeetPractice[<% id %>].selected[<% questionid %>] || googlemeetPractice[<% id %>].checked[<% questionid %>]"
+                          (onSuccess)="googlemeetPractice[<% id %>].checked[<% questionid %>] = true; googlemeetPractice[<% id %>].answer[<% questionid %>] = $event">
+                          {{ 'plugin.mod_googlemeet.practice_check' | translate }}
+                        </ion-button>
+                      </ion-label>
+                    </ion-item>
+                    <ion-item *ngIf="googlemeetPractice[<% id %>].checked[<% questionid %>]" lines="none">
+                      <ion-label>
+                        <p>
+                          <ion-text [color]="googlemeetPractice[<% id %>].answer[<% questionid %>].correct ? 'success' : 'danger'">
+                            <strong>
+                              {{ googlemeetPractice[<% id %>].answer[<% questionid %>].correct ? ('plugin.mod_googlemeet.practice_correct' | translate) : ('plugin.mod_googlemeet.practice_incorrect' | translate) }}
+                            </strong>
+                          </ion-text>
+                        </p>
+                        <%#options%>
+                          <p *ngIf="googlemeetPractice[<% id %>].answer[<% questionid %>].correctanswerid === <% answerid %>">
+                            <strong>{{ 'plugin.mod_googlemeet.practice_correct_answer' | translate }}</strong>
+                            <%text%>
+                          </p>
+                        <%/options%>
+                        <div [innerHTML]="googlemeetPractice[<% id %>].answer[<% questionid %>].explanation"></div>
+                      </ion-label>
+                    </ion-item>
+                    <ion-item *ngIf="googlemeetPractice[<% id %>].checked[<% questionid %>]" lines="none">
+                      <ion-label>
+                        <ion-button
+                          *ngIf="<%position%> < <%practicequestioncount%>"
+                          expand="block"
+                          fill="outline"
+                          (click)="googlemeetPractice[<% id %>].index = <% index %> + 1">
+                          {{ 'plugin.mod_googlemeet.practice_next' | translate }}
+                        </ion-button>
+                        <ion-button
+                          *ngIf="<%position%> === <%practicequestioncount%>"
+                          expand="block"
+                          fill="outline"
+                          (click)="googlemeetPractice[<% id %>].index = 0; googlemeetPractice[<% id %>].selected = {}; googlemeetPractice[<% id %>].checked = {}; googlemeetPractice[<% id %>].answer = {}">
+                          {{ 'plugin.mod_googlemeet.practice_retry' | translate }}
+                        </ion-button>
+                      </ion-label>
+                    </ion-item>
+                  </div>
+                <%/practicequestions%>
+              </ion-list>
+            <%/haspracticequestions%>
             <%#aisummary%>
               <ion-card class="ion-no-margin ion-margin-top">
                 <ion-card-header>

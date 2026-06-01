@@ -600,9 +600,15 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     if ($rorder) {
         $backparams['rorder'] = $rorder;
     }
+    $activetab = optional_param('tab', '', PARAM_ALPHA);
+
+    $materials = googlemeet_get_recording_materials($context, $recording->id);
+    $hasmaterials = !empty($materials);
+    $showmaterials = $hasmaterials || $caneditrecording;
 
     $hasstudentsummary = $analysis && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
-    $summaryactive = $canmanagequestions || $hasstudentsummary;
+    $materialsactive = $showmaterials && $activetab === 'materials';
+    $summaryactive = !$materialsactive && ($canmanagequestions || $hasstudentsummary);
 
     $templatecontext = [
         'cmid' => $cm->id,
@@ -633,11 +639,56 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'hasdrafts' => $draftcount > 0,
         'generationqueued' => $questionservice->is_generation_queued($recording->id),
         'summaryactive' => $summaryactive,
-        'questionsactive' => !$summaryactive,
+        'questionsactive' => !$summaryactive && !$materialsactive,
+        'showmaterials' => $showmaterials,
+        'materialsactive' => $materialsactive,
+        'materials' => $materials,
+        'hasmaterials' => $hasmaterials,
+        'materialcount' => count($materials),
+        'managematerialsurl' => (new moodle_url('/mod/googlemeet/material.php',
+            ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
     ];
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
+}
+
+/**
+ * Get downloadable material files for a recording.
+ *
+ * @param context_module $context Module context.
+ * @param int $recordingid Recording ID.
+ * @return array
+ */
+function googlemeet_get_recording_materials(context_module $context, int $recordingid): array {
+    $fs = get_file_storage();
+    $files = $fs->get_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recordingid, 'filename', false);
+    $materials = [];
+
+    foreach ($files as $file) {
+        if ($file->is_directory()) {
+            continue;
+        }
+
+        $filepath = $file->get_filepath();
+        $materials[] = [
+            'name' => $file->get_filename(),
+            'size' => display_size($file->get_filesize()),
+            'modified' => userdate($file->get_timemodified(), get_string('strftimedatetimeshort')),
+            'filepath' => ($filepath !== '/' && $filepath !== '') ? trim($filepath, '/') : '',
+            'url' => moodle_url::make_pluginfile_url(
+                $context->id,
+                'mod_googlemeet',
+                'recordingmaterial',
+                $recordingid,
+                $filepath,
+                $file->get_filename(),
+                true
+            )->out(false),
+        ];
+    }
+
+    return $materials;
 }
 
 /**

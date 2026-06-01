@@ -49,6 +49,14 @@
         {{/canmanagequestions}}
       </button>
     </li>
+    {{#showmaterials}}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{#materialsactive}}active{{/materialsactive}}" id="googlemeet-materials-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-materials-panel" type="button" role="tab" aria-controls="googlemeet-materials-panel" aria-selected="{{#materialsactive}}true{{/materialsactive}}{{^materialsactive}}false{{/materialsactive}}">
+        {{# str }} hub_tab_materials, mod_googlemeet {{/ str }}
+        {{#materialcount}}<span class="badge bg-secondary ms-1">{{materialcount}}</span>{{/materialcount}}
+      </button>
+    </li>
+    {{/showmaterials}}
     {{#caneditrecording}}
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="googlemeet-transcript-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-transcript-panel" type="button" role="tab" aria-controls="googlemeet-transcript-panel" aria-selected="false">
@@ -181,6 +189,38 @@
         {{/hasquestions}}
       {{/canmanagequestions}}
     </div>
+
+    {{#showmaterials}}
+    <div class="tab-pane fade {{#materialsactive}}show active{{/materialsactive}}" id="googlemeet-materials-panel" role="tabpanel" aria-labelledby="googlemeet-materials-tab">
+      {{#caneditrecording}}{{#hasmaterials}}
+        <div class="d-flex justify-content-end mb-3">
+          <a href="{{managematerialsurl}}" class="btn btn-primary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}</a>
+        </div>
+      {{/hasmaterials}}{{/caneditrecording}}
+      {{#hasmaterials}}
+        <ul class="list-group">
+          {{#materials}}
+            <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div class="me-auto" style="min-width:0;">
+                <div class="text-break">{{name}}</div>
+                <div class="small text-muted">{{size}} &middot; {{modified}}{{#filepath}} &middot; {{filepath}}{{/filepath}}</div>
+              </div>
+              <a href="{{url}}" class="btn btn-outline-secondary btn-sm flex-shrink-0" aria-label="{{# str }} download {{/ str }}: {{name}}">{{# str }} download {{/ str }}</a>
+            </li>
+          {{/materials}}
+        </ul>
+      {{/hasmaterials}}
+      {{^hasmaterials}}
+        {{#caneditrecording}}
+          <div class="alert alert-secondary">{{# str }} materials_empty_teacher, mod_googlemeet {{/ str }}</div>
+          <a href="{{managematerialsurl}}" class="btn btn-primary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}</a>
+        {{/caneditrecording}}
+        {{^caneditrecording}}
+          <div class="alert alert-secondary">{{# str }} materials_none, mod_googlemeet {{/ str }}</div>
+        {{/caneditrecording}}
+      {{/hasmaterials}}
+    </div>
+    {{/showmaterials}}
 
     {{#caneditrecording}}
     <div class="tab-pane fade" id="googlemeet-transcript-panel" role="tabpanel" aria-labelledby="googlemeet-transcript-tab">

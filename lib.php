@@ -56,6 +56,61 @@ function googlemeet_supports($feature) {
 }
 
 /**
+ * Serve recording material files.
+ *
+ * @package  mod_googlemeet
+ * @category files
+ * @param stdClass $course Course object.
+ * @param stdClass $cm Course module object.
+ * @param context $context Context object.
+ * @param string $filearea File area.
+ * @param array $args Extra path arguments.
+ * @param bool $forcedownload Whether to force download.
+ * @param array $options Additional file serving options.
+ * @return bool False if file is not found or access is denied.
+ */
+function googlemeet_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    global $DB;
+
+    if ($context->contextlevel != CONTEXT_MODULE) {
+        return false;
+    }
+
+    require_login($course, true, $cm);
+    if (!has_capability('mod/googlemeet:view', $context)) {
+        return false;
+    }
+
+    if ($filearea !== 'recordingmaterial') {
+        return false;
+    }
+
+    $recordingid = (int)array_shift($args);
+    if ($recordingid <= 0) {
+        return false;
+    }
+
+    $recording = $DB->get_record('googlemeet_recordings',
+        ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id, visible');
+    if (!$recording) {
+        return false;
+    }
+
+    if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+        return false;
+    }
+
+    $fs = get_file_storage();
+    $relativepath = implode('/', $args);
+    $fullpath = "/$context->id/mod_googlemeet/recordingmaterial/$recordingid/$relativepath";
+    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+        return false;
+    }
+
+    send_stored_file($file, 0, 0, $forcedownload, $options);
+}
+
+/**
  * Saves a new instance of the mod_googlemeet into the database.
  *
  * Given an object containing all the necessary data, (defined by the form
