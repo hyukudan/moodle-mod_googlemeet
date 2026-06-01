@@ -602,10 +602,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     }
 
     $hasstudentsummary = $analysis && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
-    // Default everyone to the Summary tab in Phase 1. The student practice player arrives in
-    // Phase 2, so defaulting students to the Questions tab would dead-end them on a placeholder.
-    // $hasstudentsummary is retained for the Summary empty-state messaging.
-    $summaryactive = true;
+    $summaryactive = $canmanagequestions || $hasstudentsummary;
 
     $templatecontext = [
         'cmid' => $cm->id,

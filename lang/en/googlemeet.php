@@ -331,6 +331,17 @@ $string['question_student_phase1'] = 'Questions have been published. The student
 $string['question_unpublish'] = 'Unpublish';
 $string['question_ai_draft_note'] = 'Generated with AI, pending review';
 $string['question_ai_reviewed_note'] = 'Generated with AI, reviewed by teaching staff';
+$string['practice_check'] = 'Check';
+$string['practice_correct'] = 'Correct';
+$string['practice_correct_answer'] = 'Correct answer:';
+$string['practice_finish'] = 'Finish';
+$string['practice_finished'] = 'Practice complete';
+$string['practice_incorrect'] = 'Incorrect';
+$string['practice_loading'] = 'Loading questions...';
+$string['practice_next'] = 'Next';
+$string['practice_retry'] = 'Retry';
+$string['practice_title'] = 'Practice questions';
+$string['practice_progress'] = 'Question {$a->current} of {$a->total}';
 $string['showhide'] = 'Show/hide';
 
 // Error handling and privacy (security/quality review 2026-05-30).

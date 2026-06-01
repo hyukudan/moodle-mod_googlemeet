@@ -1133,4 +1133,136 @@ class mod_googlemeet_external extends external_api {
             ])),
         ]);
     }
+
+    /**
+     * Parameters for get_practice_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function get_practice_questions_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+        ]);
+    }
+
+    /**
+     * Return ready practice questions without correctness information.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @return array
+     */
+    public static function get_practice_questions($recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_practice_questions_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+        ]);
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:view', $context);
+
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id], 'id,visible', MUST_EXIST);
+        if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $service = new \mod_googlemeet\question_service();
+        return [
+            'questions' => $service->get_ready_practice_questions($googlemeet, $cm, $context, $params['recordingid']),
+        ];
+    }
+
+    /**
+     * Return description for get_practice_questions.
+     *
+     * @return external_single_structure
+     */
+    public static function get_practice_questions_returns() {
+        return new external_single_structure([
+            'questions' => new external_multiple_structure(new external_single_structure([
+                'questionid' => new external_value(PARAM_INT, 'Question ID'),
+                'stem' => new external_value(PARAM_RAW, 'Formatted question stem HTML'),
+                'options' => new external_multiple_structure(new external_single_structure([
+                    'answerid' => new external_value(PARAM_INT, 'Answer ID'),
+                    'text' => new external_value(PARAM_RAW, 'Formatted answer HTML'),
+                ])),
+            ])),
+        ]);
+    }
+
+    /**
+     * Parameters for check_practice_answer.
+     *
+     * @return external_function_parameters
+     */
+    public static function check_practice_answer_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'questionid' => new external_value(PARAM_INT, 'Question ID'),
+            'answerid' => new external_value(PARAM_INT, 'Answer ID'),
+        ]);
+    }
+
+    /**
+     * Check one formative practice answer.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param int $questionid Question ID.
+     * @param int $answerid Answer ID.
+     * @return array
+     */
+    public static function check_practice_answer($recordingid, $coursemoduleid, $questionid, $answerid) {
+        global $DB;
+
+        $params = self::validate_parameters(self::check_practice_answer_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'questionid' => $questionid,
+            'answerid' => $answerid,
+        ]);
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:view', $context);
+
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id], 'id,visible', MUST_EXIST);
+        if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $service = new \mod_googlemeet\question_service();
+        return $service->validate_practice_answer(
+            $googlemeet,
+            $cm,
+            $context,
+            $params['recordingid'],
+            $params['questionid'],
+            $params['answerid']
+        );
+    }
+
+    /**
+     * Return description for check_practice_answer.
+     *
+     * @return external_single_structure
+     */
+    public static function check_practice_answer_returns() {
+        return new external_single_structure([
+            'correct' => new external_value(PARAM_BOOL, 'Whether the selected answer is correct'),
+            'correctanswerid' => new external_value(PARAM_INT, 'Correct answer ID'),
+            'explanation' => new external_value(PARAM_RAW, 'Formatted general feedback HTML'),
+        ]);
+    }
 }

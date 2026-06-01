@@ -129,4 +129,20 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:managequestions',
     ),
+    'mod_googlemeet_get_practice_questions' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'get_practice_questions',
+        'description' => 'Get ready Google Meet recording questions for student practice',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+    ),
+    'mod_googlemeet_check_practice_answer' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'check_practice_answer',
+        'description' => 'Check a Google Meet recording student practice answer',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+    ),
 );

@@ -152,7 +152,29 @@
       {{/canmanagequestions}}
       {{^canmanagequestions}}
         {{#hasquestions}}
-          <div class="alert alert-info">{{# str }} question_student_phase1, mod_googlemeet {{/ str }}</div>
+          <div class="googlemeet-practice-player" data-loaded="0" data-progress-tpl="{{# str }} practice_progress, mod_googlemeet {{/ str }}">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <h5 class="mb-0">{{# str }} practice_title, mod_googlemeet {{/ str }}</h5>
+              <span class="badge bg-secondary googlemeet-practice-progress" aria-live="polite"></span>
+            </div>
+            <div class="googlemeet-practice-loading alert alert-info">{{# str }} practice_loading, mod_googlemeet {{/ str }}</div>
+            <div class="googlemeet-practice-error alert alert-danger d-none" role="alert"></div>
+            <div class="googlemeet-practice-question d-none">
+              <fieldset class="border rounded p-3 mb-3">
+                <legend class="googlemeet-practice-stem h6 mb-3"></legend>
+                <div class="googlemeet-practice-options"></div>
+              </fieldset>
+              <div class="googlemeet-practice-feedback d-none mb-3" aria-live="polite"></div>
+              <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-primary googlemeet-practice-check" disabled>{{# str }} practice_check, mod_googlemeet {{/ str }}</button>
+                <button type="button" class="btn btn-secondary googlemeet-practice-next d-none">{{# str }} practice_next, mod_googlemeet {{/ str }}</button>
+              </div>
+            </div>
+            <div class="googlemeet-practice-complete alert alert-success d-none">
+              <div class="fw-bold mb-2">{{# str }} practice_finished, mod_googlemeet {{/ str }}</div>
+              <button type="button" class="btn btn-outline-primary btn-sm googlemeet-practice-retry">{{# str }} practice_retry, mod_googlemeet {{/ str }}</button>
+            </div>
+          </div>
         {{/hasquestions}}
         {{^hasquestions}}
           <div class="alert alert-secondary">{{# str }} question_empty_student, mod_googlemeet {{/ str }}</div>
@@ -319,5 +341,152 @@ require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notifica
     }
   });
   {{/caneditrecording}}
+
+  {{^canmanagequestions}}
+  {{#hasquestions}}
+  var practice = {
+    questions: [],
+    index: 0,
+    checked: false
+  };
+  var player = $('.googlemeet-practice-player');
+
+  function findCorrectOption(question, answerid) {
+    for (var i = 0; i < question.options.length; i++) {
+      if (parseInt(question.options[i].answerid, 10) === parseInt(answerid, 10)) {
+        return question.options[i];
+      }
+    }
+    return null;
+  }
+
+  function renderPracticeQuestion() {
+    var question = practice.questions[practice.index];
+    practice.checked = false;
+    $('.googlemeet-practice-loading, .googlemeet-practice-complete, .googlemeet-practice-error').addClass('d-none');
+    $('.googlemeet-practice-question').removeClass('d-none');
+    var progresscur = practice.index + 1;
+    var progresstotal = practice.questions.length;
+    $('.googlemeet-practice-progress')
+      .text(progresscur + ' / ' + progresstotal)
+      .attr('aria-label', (player.attr('data-progress-tpl') || (progresscur + ' / ' + progresstotal))
+        .replace('{$a->current}', progresscur).replace('{$a->total}', progresstotal));
+    $('.googlemeet-practice-stem').html(question.stem);
+    $('.googlemeet-practice-feedback').addClass('d-none').removeClass('alert alert-success alert-warning').empty();
+    $('.googlemeet-practice-check').prop('disabled', true).removeClass('d-none');
+    $('.googlemeet-practice-next').addClass('d-none');
+
+    var optionshtml = '';
+    $.each(question.options, function(i, option) {
+      var inputid = 'googlemeet-practice-' + question.questionid + '-' + option.answerid;
+      optionshtml += '<div class="form-check mb-2">' +
+        '<input class="form-check-input googlemeet-practice-answer" type="radio" name="googlemeet-practice-answer" id="' + inputid + '" value="' + option.answerid + '">' +
+        '<label class="form-check-label" for="' + inputid + '">' + option.text + '</label>' +
+        '</div>';
+    });
+    $('.googlemeet-practice-options').html(optionshtml);
+  }
+
+  function showPracticeComplete() {
+    $('.googlemeet-practice-question, .googlemeet-practice-loading, .googlemeet-practice-error').addClass('d-none');
+    $('.googlemeet-practice-progress').text(practice.questions.length + ' / ' + practice.questions.length);
+    $('.googlemeet-practice-complete').removeClass('d-none');
+  }
+
+  function loadPracticeQuestions() {
+    if (player.attr('data-loaded') === '1') {
+      return;
+    }
+    player.attr('data-loaded', '1');
+    Ajax.call([{
+      methodname: 'mod_googlemeet_get_practice_questions',
+      args: {recordingid: recordingid, coursemoduleid: cmid}
+    }])[0].then(function(response) {
+      practice.questions = response.questions || [];
+      practice.index = 0;
+      if (!practice.questions.length) {
+        $('.googlemeet-practice-loading').removeClass('alert-info').addClass('alert-secondary')
+          .text('{{# str }} question_empty_student, mod_googlemeet {{/ str }}');
+        return;
+      }
+      renderPracticeQuestion();
+    }).fail(function(error) {
+      $('.googlemeet-practice-loading').addClass('d-none');
+      $('.googlemeet-practice-error').removeClass('d-none').text(error.message || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
+    });
+  }
+
+  $('#googlemeet-questions-tab').on('shown.bs.tab', loadPracticeQuestions);
+  if ($('#googlemeet-questions-panel').hasClass('active')) {
+    loadPracticeQuestions();
+  }
+
+  player.on('change', '.googlemeet-practice-answer', function() {
+    $('.googlemeet-practice-check').prop('disabled', false);
+  });
+
+  $('.googlemeet-practice-check').on('click', function() {
+    if (practice.checked) {
+      return;
+    }
+    var question = practice.questions[practice.index];
+    var answerid = parseInt($('.googlemeet-practice-answer:checked').val(), 10);
+    if (!answerid) {
+      return;
+    }
+    $('.googlemeet-practice-error').addClass('d-none');
+    $('.googlemeet-practice-check').prop('disabled', true);
+    Ajax.call([{
+      methodname: 'mod_googlemeet_check_practice_answer',
+      args: {recordingid: recordingid, coursemoduleid: cmid, questionid: question.questionid, answerid: answerid}
+    }])[0].then(function(response) {
+      practice.checked = true;
+      $('.googlemeet-practice-answer').prop('disabled', true);
+      $('.googlemeet-practice-answer').each(function() {
+        var $wrap = $(this).closest('.form-check');
+        if (parseInt($(this).val(), 10) === parseInt(response.correctanswerid, 10)) {
+          $wrap.addClass('text-success fw-bold');
+        } else if ($(this).is(':checked') && !response.correct) {
+          $wrap.addClass('text-danger text-decoration-line-through');
+        }
+      });
+      var correctoption = findCorrectOption(question, response.correctanswerid);
+      var correcttext = correctoption ? correctoption.text : '';
+      var feedbackclass = response.correct ? 'alert-success' : 'alert-warning';
+      var statustext = response.correct ? '{{# str }} practice_correct, mod_googlemeet {{/ str }}' : '{{# str }} practice_incorrect, mod_googlemeet {{/ str }}';
+      var icon = response.correct ? '&#10003;' : '!';
+      $('.googlemeet-practice-feedback')
+        .removeClass('d-none alert-success alert-warning')
+        .addClass('alert ' + feedbackclass)
+        .html('<div class="fw-bold"><span aria-hidden="true">' + icon + '</span> ' + statustext + '</div>' +
+          '<div class="mt-2"><strong>{{# str }} practice_correct_answer, mod_googlemeet {{/ str }}</strong> ' + correcttext + '</div>' +
+          '<div class="mt-2">' + response.explanation + '</div>');
+      $('.googlemeet-practice-next').removeClass('d-none').text(
+        practice.index + 1 >= practice.questions.length
+          ? '{{# str }} practice_finish, mod_googlemeet {{/ str }}'
+          : '{{# str }} practice_next, mod_googlemeet {{/ str }}'
+      ).focus();
+    }).fail(function(error) {
+      $('.googlemeet-practice-check').prop('disabled', false);
+      $('.googlemeet-practice-error').removeClass('d-none').text(error.message || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
+    });
+  });
+
+  $('.googlemeet-practice-next').on('click', function() {
+    practice.index++;
+    if (practice.index >= practice.questions.length) {
+      showPracticeComplete();
+    } else {
+      renderPracticeQuestion();
+      $('.googlemeet-practice-stem').attr('tabindex', '-1').focus();
+    }
+  });
+
+  $('.googlemeet-practice-retry').on('click', function() {
+    practice.index = 0;
+    renderPracticeQuestion();
+  });
+  {{/hasquestions}}
+  {{/canmanagequestions}}
 });
 {{/js}}

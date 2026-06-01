@@ -265,6 +265,96 @@ class question_service {
     }
 
     /**
+     * Return ready questions for the student practice player without correctness data.
+     *
+     * @param stdClass $googlemeet Activity record.
+     * @param stdClass $cm Course-module record.
+     * @param \context_module $context Module context.
+     * @param int $recordingid Recording id.
+     * @return array
+     */
+    public function get_ready_practice_questions(
+        stdClass $googlemeet,
+        stdClass $cm,
+        \context_module $context,
+        int $recordingid
+    ): array {
+        $questions = $this->get_questions($googlemeet, $cm, $context, $recordingid, true);
+        $practicequestions = [];
+
+        foreach ($questions as $question) {
+            $answers = [];
+            foreach ($question['answers'] as $answer) {
+                $answers[] = [
+                    'answerid' => (int)$answer['id'],
+                    'text' => $answer['text'],
+                ];
+            }
+
+            $practicequestions[] = [
+                'questionid' => (int)$question['id'],
+                'stem' => $question['stem'],
+                'options' => $answers,
+            ];
+        }
+
+        return $practicequestions;
+    }
+
+    /**
+     * Validate a practice answer against a ready recording-scoped question.
+     *
+     * @param stdClass $googlemeet Activity record.
+     * @param stdClass $cm Course-module record.
+     * @param \context_module $context Module context.
+     * @param int $recordingid Recording id.
+     * @param int $questionid Question id.
+     * @param int $answerid Answer id.
+     * @return array
+     */
+    public function validate_practice_answer(
+        stdClass $googlemeet,
+        stdClass $cm,
+        \context_module $context,
+        int $recordingid,
+        int $questionid,
+        int $answerid
+    ): array {
+        global $DB;
+
+        $rows = $this->require_questions_for_recording($googlemeet, $cm, $context, $recordingid, [$questionid], true);
+        $row = reset($rows);
+        if (!$row || $row->qtype !== 'multichoice') {
+            throw new moodle_exception('invalidrecord', 'error');
+        }
+
+        $answers = $DB->get_records('question_answers', ['question' => $questionid], 'id ASC',
+            'id, answer, answerformat, fraction');
+        if (empty($answers) || !isset($answers[$answerid])) {
+            throw new moodle_exception('invalidrecord', 'error');
+        }
+
+        $correctanswer = null;
+        foreach ($answers as $answer) {
+            if ((float)$answer->fraction > 0) {
+                $correctanswer = $answer;
+                break;
+            }
+        }
+        if (!$correctanswer) {
+            throw new moodle_exception('invalidrecord', 'error');
+        }
+
+        $question = $DB->get_record('question', ['id' => $questionid], 'generalfeedback,generalfeedbackformat', MUST_EXIST);
+
+        return [
+            'correct' => (float)$answers[$answerid]->fraction > 0,
+            'correctanswerid' => (int)$correctanswer->id,
+            'explanation' => format_text($question->generalfeedback, $question->generalfeedbackformat, ['context' => $context]),
+        ];
+    }
+
+    /**
      * Check that each question belongs to this recording and return its rows.
      *
      * @param stdClass $googlemeet Activity record.
@@ -272,6 +362,7 @@ class question_service {
      * @param \context_module $context Module context.
      * @param int $recordingid Recording id.
      * @param array $questionids Question ids.
+     * @param bool $readyonly Require ready status.
      * @return array
      */
     public function require_questions_for_recording(
@@ -279,7 +370,8 @@ class question_service {
         stdClass $cm,
         \context_module $context,
         int $recordingid,
-        array $questionids
+        array $questionids,
+        bool $readyonly = false
     ): array {
         global $DB;
 
@@ -297,6 +389,11 @@ class question_service {
             'itemtype' => 'question',
             'tagname' => \core_text::strtolower(self::tag_for_recording($recordingid)),
         ];
+        $statussql = '';
+        if ($readyonly) {
+            $statussql = ' AND qv.status = :readystatus';
+            $params['readystatus'] = question_version_status::QUESTION_STATUS_READY;
+        }
 
         $sql = "SELECT q.id, q.qtype, qv.id AS versionid, qv.status
                   FROM {question} q
@@ -308,7 +405,8 @@ class question_service {
                    AND qbe.questioncategoryid = :categoryid
                    AND ti.component = :component
                    AND ti.itemtype = :itemtype
-                   AND t.name = :tagname";
+                   AND t.name = :tagname
+                   {$statussql}";
         $records = $DB->get_records_sql($sql, $params);
         if (count($records) !== count($questionids)) {
             throw new moodle_exception('invalidrecord', 'error');
