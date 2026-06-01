@@ -583,10 +583,12 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         }
     }
 
-    $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id, 'status' => 'completed']);
+    $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
+    $analysiscompleted = $analysis && $analysis->status === 'completed';
+    $statusflags = googlemeet_ai_status_flags($analysis->status ?? null);
     $keypoints = [];
     $topics = [];
-    if ($analysis) {
+    if ($analysiscompleted) {
         $keypoints = json_decode($analysis->keypoints) ?: [];
         $topics = json_decode($analysis->topics) ?: [];
     }
@@ -606,7 +608,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $hasmaterials = !empty($materials);
     $showmaterials = $hasmaterials || $caneditrecording;
 
-    $hasstudentsummary = $analysis && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
+    $hasstudentsummary = $analysiscompleted && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
     $materialsactive = $showmaterials && $activetab === 'materials';
     $summaryactive = !$materialsactive && ($canmanagequestions || $hasstudentsummary);
 
@@ -622,15 +624,19 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'canmanagequestions' => $canmanagequestions,
         'aienabled' => $aienabled,
         'sesskey' => sesskey(),
-        'hasanalysis' => (bool)$analysis,
-        'summary' => $analysis ? format_text($analysis->summary, FORMAT_PLAIN, ['context' => $context]) : '',
+        'hasanalysis' => $analysiscompleted,
+        'aistatusisprocessing' => $statusflags['aistatusisprocessing'],
+        'aistatusispending' => $statusflags['aistatusispending'],
+        'aistatusisfailed' => $statusflags['aistatusisfailed'],
+        'aierror' => ($caneditrecording && $analysis && !empty($analysis->error)) ? s($analysis->error) : '',
+        'summary' => $analysiscompleted ? format_text($analysis->summary, FORMAT_PLAIN, ['context' => $context]) : '',
         'keypoints' => array_map(static function($point) {
             return ['text' => s($point)];
         }, $keypoints),
         'topics' => array_map(static function($topic) {
             return ['text' => s($topic)];
         }, $topics),
-        'transcript' => $analysis ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
+        'transcript' => $analysiscompleted ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
         'questions' => $questions,
         'hasquestions' => !empty($questions),
         'draftcount' => $draftcount,
