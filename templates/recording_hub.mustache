@@ -87,8 +87,13 @@
         {{/topics.0}}
       {{/hasanalysis}}
       {{^hasanalysis}}
-        {{#aienabled}}<div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>{{/aienabled}}
-        {{^aienabled}}<div class="alert alert-secondary">{{# str }} ai_notconfigured, mod_googlemeet {{/ str }}</div>{{/aienabled}}
+        {{#aistatusisprocessing}}<div class="alert alert-info">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</div>{{/aistatusisprocessing}}
+        {{#aistatusispending}}<div class="alert alert-info">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</div>{{/aistatusispending}}
+        {{#aistatusisfailed}}<div class="alert alert-warning">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}{{#aierror}}<div class="small text-muted mt-1">{{aierror}}</div>{{/aierror}}</div>{{/aistatusisfailed}}
+        {{^aistatusisprocessing}}{{^aistatusispending}}{{^aistatusisfailed}}
+          {{#aienabled}}<div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>{{/aienabled}}
+          {{^aienabled}}<div class="alert alert-secondary">{{# str }} ai_notconfigured, mod_googlemeet {{/ str }}</div>{{/aienabled}}
+        {{/aistatusisfailed}}{{/aistatusispending}}{{/aistatusisprocessing}}
       {{/hasanalysis}}
     </div>
 
