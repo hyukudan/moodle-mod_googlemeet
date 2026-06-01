@@ -1516,11 +1516,32 @@
    block child after each list item, so it spans the full width when opened
    (its grid-column:1/-1 is simply ignored outside a grid).
    =========================================== */
+/* View toggle (Tarjetas/Lista): core pix icons are dark grey by default, which is
+   illegible on the active (dark/primary) button — force the active label + icon white. */
+.googlemeet-view-toggle .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.googlemeet-view-toggle .btn img {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+.googlemeet-view-toggle .btn.active,
+.googlemeet-view-toggle .btn.active:hover,
+.googlemeet-view-toggle .btn.active:focus {
+    color: #fff;
+}
+.googlemeet-view-toggle .btn.active img {
+    filter: brightness(0) invert(1);
+}
+
 .googlemeet-recordings-listview {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     align-items: stretch;
+    width: 100%;
 }
 .googlemeet-recordings-listview .googlemeet-recordings-group {
     grid-column: auto;
@@ -1529,9 +1550,10 @@
 .googlemeet-recording-listitem {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
-    min-height: 72px;
-    padding: 0.5rem 0.85rem;
+    gap: 1rem;
+    width: 100%;
+    min-height: 76px;
+    padding: 0.7rem 1.1rem;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     background: #fff;
@@ -1584,6 +1606,16 @@
     background: #f1f3f4; color: #3c4043; border: 1px solid #e0e0e0; font-weight: 500;
     max-width: 11rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.googlemeet-listitem-summary {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: #5f6368;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+.dark .googlemeet-listitem-summary { color: #c4c7c5; }
 .googlemeet-listitem-actions {
     flex: 0 0 auto;
     display: flex;
