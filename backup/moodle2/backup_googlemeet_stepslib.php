@@ -66,24 +66,35 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         ]);
 
         $events = new backup_nested_element('events');
+        // Include the auto-sync bookkeeping so a restored activity does not treat already-synced
+        // events as never synced (which would re-trigger auto-sync against old sessions).
         $event = new backup_nested_element('event', ['id'], [
             'eventdate',
             'duration',
-            'timemodified'
+            'timemodified',
+            'autosynced',
+            'syncattempts',
+            'nextsyncattempt'
         ]);
 
-        $recordings = new backup_nested_element('recordings');
-        $recording = new backup_nested_element('recording', ['id'], [
+        // The recording transcript is participant-derived personal data, so it is only included
+        // when the backup carries user information. Non-personal fields are always included.
+        $recordingfields = [
             'recordingid',
             'name',
             'createdtime',
             'duration',
             'webviewlink',
-            'transcripttext',
-            'transcriptfileid',
             'visible',
             'timemodified'
-        ]);
+        ];
+        if ($userinfo) {
+            $recordingfields[] = 'transcripttext';
+            $recordingfields[] = 'transcriptfileid';
+        }
+
+        $recordings = new backup_nested_element('recordings');
+        $recording = new backup_nested_element('recording', ['id'], $recordingfields);
 
         $aianalysis = new backup_nested_element('aianalysis', ['id'], [
             'summary',
@@ -121,7 +132,11 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         $googlemeet->add_child($recordings);
         $recordings->add_child($recording);
-        $recording->add_child($aianalysis);
+        // AI analysis includes a transcript (participant-derived personal data): only back it up
+        // when the backup carries user information.
+        if ($userinfo) {
+            $recording->add_child($aianalysis);
+        }
 
         $googlemeet->add_child($holidays);
         $holidays->add_child($holiday);
@@ -136,7 +151,9 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         $recording->set_source_table('googlemeet_recordings', ['googlemeetid' => backup::VAR_PARENTID]);
 
-        $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
+        if ($userinfo) {
+            $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
+        }
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
 

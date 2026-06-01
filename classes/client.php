@@ -667,10 +667,13 @@ class client {
         // Get the base name without extension.
         $basename = pathinfo($videoname, PATHINFO_FILENAME);
 
-        // Search for transcript files (sbv, vtt, txt) with similar name.
+        // Search for transcript files (sbv, vtt, txt) with similar name. When no Meet Recordings
+        // folder was found ($parents empty), search all of Drive instead of emitting an invalid
+        // "() and ..." parent clause (which silently returns nothing), mirroring the all-Drive
+        // fallback used for the recording search.
+        $parentclause = !empty($parents) ? '(' . $parents . ') and ' : '';
         $transcriptparams = [
-            'q' => '('.$parents.') and
-                    trashed = false and
+            'q' => $parentclause . 'trashed = false and
                     "me" in owners and
                     (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
                     name contains "'.$this->drive_quote($basename).'"',

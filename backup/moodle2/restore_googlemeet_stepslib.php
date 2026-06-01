@@ -28,6 +28,9 @@
  */
 class restore_googlemeet_activity_structure_step extends restore_activity_structure_step {
 
+    /** @var bool Whether this restore includes user information. */
+    protected $userinfo = false;
+
     /**
      * Defines the structure to be restored.
      *
@@ -36,6 +39,7 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
     protected function define_structure() {
         $paths = array();
         $userinfo = $this->get_setting_value('userinfo');
+        $this->userinfo = (bool) $userinfo;
 
         $paths[] = new restore_path_element('googlemeet', '/activity/googlemeet');
 
@@ -45,8 +49,13 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $paths[] = new restore_path_element('googlemeet_recording',
             '/activity/googlemeet/recordings/recording');
 
-        $paths[] = new restore_path_element('googlemeet_aianalysis',
-            '/activity/googlemeet/recordings/recording/aianalysis');
+        // AI analysis carries a transcript (participant-derived personal data): only restore it
+        // when restoring with user information. This gates legacy backups that still contain the
+        // aianalysis subtree (current backups omit it entirely when userinfo is off).
+        if ($userinfo) {
+            $paths[] = new restore_path_element('googlemeet_aianalysis',
+                '/activity/googlemeet/recordings/recording/aianalysis');
+        }
 
         $paths[] = new restore_path_element('googlemeet_holiday',
             '/activity/googlemeet/holidays/holiday');
@@ -116,6 +125,13 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
 
         $data->googlemeetid = $this->get_new_parentid('googlemeet');
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        // Strip participant-derived transcript data from legacy backups when restoring without
+        // user information (current backups already omit these fields when userinfo is off).
+        if (!$this->userinfo) {
+            unset($data->transcripttext);
+            unset($data->transcriptfileid);
+        }
 
         $newitemid = $DB->insert_record('googlemeet_recordings', $data);
         $this->set_mapping('googlemeet_recording', $oldid, $newitemid);

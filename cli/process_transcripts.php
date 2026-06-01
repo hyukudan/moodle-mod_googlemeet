@@ -163,13 +163,15 @@ foreach ($recordings as $recording) {
     // Get base URL (strip track-specific params).
     $baseurl = preg_replace('/&type=track.*$/', '', $timedtexturl);
 
-    // Download in fmt=1 format (simple XML with timestamps).
-    $suburl = $baseurl . '&type=track&lang=es&kind=asr&fmt=1';
+    // Download in fmt=1 format (simple XML with timestamps). Honour the resolved $language
+    // (CLI flag > site setting > 'es') instead of hard-coding Spanish.
+    $langparam = rawurlencode($language);
+    $suburl = $baseurl . '&type=track&lang=' . $langparam . '&kind=asr&fmt=1';
     $subxml = $extractor->download_subtitle($suburl);
 
     if (empty($subxml)) {
         // Try the named track "1" as fallback.
-        $suburl = $baseurl . '&type=track&lang=es&name=1&fmt=1';
+        $suburl = $baseurl . '&type=track&lang=' . $langparam . '&name=1&fmt=1';
         $subxml = $extractor->download_subtitle($suburl);
     }
 

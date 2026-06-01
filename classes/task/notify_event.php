@@ -51,20 +51,41 @@ class notify_event extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
-        $events = googlemeet_get_future_events();
-
-        if ($events) {
-            foreach ($events as $event) {
-                $users = googlemeet_get_users_to_notify($event->id);
-
-                foreach ($users as $user) {
-                    googlemeet_send_notification($user, $event);
-
-                    googlemeet_notify_done($user->id, $event->id);
-                }
-            }
+        // Guard against overlapping runs (or a run that outlives the 5-minute interval) both
+        // selecting the same not-yet-notified user before either records notify_done, which would
+        // double-send and then collide on the (eventid, userid) unique index. If another run
+        // holds the lock, skip this tick rather than wait.
+        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet_notify');
+        $lock = $lockfactory->get_lock('notify_event', 0);
+        if (!$lock) {
+            mtrace('mod_googlemeet notify: another run holds the lock; skipping this tick.');
+            return;
         }
 
-        googlemeet_remove_notify_done_from_old_events();
+        try {
+            $events = googlemeet_get_future_events();
+
+            if ($events) {
+                foreach ($events as $event) {
+                    $users = googlemeet_get_users_to_notify($event->id);
+
+                    foreach ($users as $user) {
+                        // get_users_to_notify() already excludes users with a notify_done row, and
+                        // the lock prevents a concurrent run from selecting the same user, so the
+                        // unique (eventid, userid) index is never violated here. Send first, then
+                        // record: a crash between the two re-sends next run (a rare duplicate),
+                        // which is preferable to recording first and losing the reminder if the
+                        // send fails.
+                        googlemeet_send_notification($user, $event);
+
+                        googlemeet_notify_done($user->id, $event->id);
+                    }
+                }
+            }
+
+            googlemeet_remove_notify_done_from_old_events();
+        } finally {
+            $lock->release();
+        }
     }
 }
