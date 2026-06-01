@@ -23,6 +23,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 ### Recording Management
 - **Custom recording filter** to specify the exact name pattern to search in Google Drive
 - **Sync feedback** showing how many recordings were added, updated, or removed
+- **Automatic recording sync** a configurable number of hours after a session ends, with bounded retries and back-off (`process_autosync` scheduled task)
 - **Pagination** with configurable recordings per page
 - **Sorting options** (newest/oldest first)
 
@@ -37,8 +38,9 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Preview cards** showing AI summary and topics directly in recording list
 - **Teacher-only generation** - professors generate analysis once, students view without API calls
 - **Background processing** with scheduled task for queued analyses
+- **Resilient retries** - transient Gemini errors (rate limits / overload) are retried automatically with exponential back-off instead of failing permanently
 - **CLI bulk processing** for batch transcript extraction and analysis
-- **Default model: Gemini 3 Flash Preview** (latest Google AI model)
+- **Default model: Gemini 3 Flash Preview** with automatic fallback to Gemini 2.5 Flash
 
 ## Requirements
 
@@ -111,11 +113,36 @@ php admin/cli/process_transcripts.php --googlemeetid=1 --recordingid=4
 
 # Extract subtitles only (skip Gemini analysis)
 php admin/cli/process_transcripts.php --googlemeetid=1 --skip-gemini
+
+# Force a specific subtitle language (overrides the site setting; default 'es')
+php admin/cli/process_transcripts.php --googlemeetid=1 --language=en
 ```
+
+Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguage` site setting > `es`.
 
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.11.1
+- **Schema reconciliation** - added the composite `UNIQUE (eventid, userid)` index on `googlemeet_notify_done` (deduping any existing rows first) and aligned the `syncattempts` column length, clearing all `check_database_schema.php` discrepancies.
+
+### Version 2.11.0
+- **Security & robustness pass** from an independent code audit (codex + gemini, adjudicated and verified):
+  - **Transient Gemini errors** (rate limits / overload) now retry with bounded exponential back-off instead of being marked permanently failed
+  - Fixed **HTML injection** in notification emails (values escaped with `s()`, literal `str_replace`)
+  - Uploaded **Gemini files are always cleaned up**, even when analysis fails mid-pipeline
+  - **Backup/restore** now honours the "include user data" setting for transcripts and AI analysis
+  - **Privacy provider** declares recording transcript/Drive metadata
+  - AI **transcript in the web service** is restricted to users who can edit recordings (matching the UI)
+  - Fixed activity creation **without a Google login** (`originalname` default)
+  - Corrected web-service capability names, CLI subtitle language handling, transcript Drive-search fallback, and added a cron lock to the notification task
+
+### Version 2.10.x
+- **Automatic recording auto-sync** N hours after a session ends, with bounded retries/back-off (`process_autosync` task and `autosynchours` setting)
+- **Security & quality hardening** - capability and ownership (IDOR) checks on all web services, sesskey on the OAuth callback, SSRF-safe subtitle extraction, generic client-facing AI error messages
+- **Visible Gemini model fallback** (primary → `gemini-2.5-flash`) and a configurable subtitle language setting
+- **PHPUnit test suite** (`tests/`)
 
 ### Version 2.8.0
 - **Automatic subtitle extraction** from Google Drive recordings using yt-dlp
