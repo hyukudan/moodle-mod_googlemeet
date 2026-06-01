@@ -393,6 +393,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $recording->aikeypoints = json_decode($ai->keypoints) ?: [];
             $recording->aikeypointscount = count($recording->aikeypoints);
             $recording->aitopics = json_decode($ai->topics) ?: [];
+            $tp = googlemeet_topic_preview($recording->aitopics, 3);
+            $recording->aitopicsvisible = $tp['visible'];
+            $recording->aitopicsoverflow = $tp['overflow'];
             $recording->aimodel = $ai->aimodel;
             $recording->aidate = userdate($ai->timemodified, get_string('strftimedmy', 'googlemeet'));
         } else {
@@ -402,6 +405,8 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $recording->aikeypoints = [];
             $recording->aikeypointscount = 0;
             $recording->aitopics = [];
+            $recording->aitopicsvisible = [];
+            $recording->aitopicsoverflow = 0;
             $recording->aimodel = '';
             $recording->aidate = '';
         }
@@ -548,6 +553,18 @@ function googlemeet_collect_topics(array $recordings): array {
     $topics = array_keys($seen);
     sort($topics, SORT_NATURAL | SORT_FLAG_CASE);
     return $topics;
+}
+
+/**
+ * Split a topic list into a small visible set plus an overflow count for card previews.
+ *
+ * @param array $topics Full topic list.
+ * @param int $max Maximum visible topics.
+ * @return array ['visible' => string[], 'overflow' => int]
+ */
+function googlemeet_topic_preview(array $topics, int $max = 3): array {
+    $visible = array_slice(array_values($topics), 0, $max);
+    return ['visible' => $visible, 'overflow' => max(0, count($topics) - count($visible))];
 }
 
 /**
