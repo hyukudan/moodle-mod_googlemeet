@@ -266,4 +266,5 @@ $string['recording_play_aria'] = 'Reproducir clase';
 $string['recordings_search_label'] = 'Buscar clases';
 $string['recordings_search_placeholder'] = 'Buscar por título, tema o resumen…';
 $string['recordings_filter_clear'] = 'Quitar filtros';
+$string['recordings_filter_all_topics'] = 'Todos los temas';
 $string['strftimedm'] = '%d %b';

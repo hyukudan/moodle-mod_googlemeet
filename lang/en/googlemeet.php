@@ -403,3 +403,4 @@ $string['recording_play_aria'] = 'Play class';
 $string['recordings_search_label'] = 'Search classes';
 $string['recordings_search_placeholder'] = 'Search by title, topic or summary…';
 $string['recordings_filter_clear'] = 'Clear filters';
+$string['recordings_filter_all_topics'] = 'All topics';
