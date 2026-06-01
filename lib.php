@@ -430,6 +430,25 @@ function googlemeet_truncate_summary(string $text, int $length = 200): string {
 }
 
 /**
+ * Build template booleans for an AI analysis status.
+ *
+ * @param string|null $status One of pending|processing|completed|failed, or null when no row exists.
+ * @return array Associative array of status flags.
+ */
+function googlemeet_ai_status_flags(?string $status): array {
+    $valid = ['pending', 'processing', 'completed', 'failed'];
+    $status = in_array($status, $valid, true) ? $status : null;
+    return [
+        'aistatus' => $status ?? '',
+        'hasanalysisrow' => $status !== null,
+        'aistatusiscompleted' => $status === 'completed',
+        'aistatusisprocessing' => $status === 'processing',
+        'aistatusispending' => $status === 'pending',
+        'aistatusisfailed' => $status === 'failed',
+    ];
+}
+
+/**
  * Get icon mapping for font-awesome.
  */
 function mod_googlemeet_get_fontawesome_icon_map() {
