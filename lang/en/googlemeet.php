@@ -258,6 +258,7 @@ $string['ai_status_processing'] = 'Processing';
 $string['ai_status_completed'] = 'Completed';
 $string['ai_status_failed'] = 'Failed';
 $string['ai_noanalysis'] = 'No AI analysis available yet.';
+$string['ai_notconfigured'] = 'AI analysis is not enabled for this site.';
 $string['ai_noanalysis_hint'] = 'Click the button above to generate an AI summary, key points, and transcript.';
 $string['ai_error'] = 'Error generating analysis: {$a}';
 $string['ai_not_configured'] = 'AI features are not configured. Please contact your administrator.';
