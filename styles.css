@@ -1340,3 +1340,104 @@
 .dark .googlemeet-ai-statuschip-pending { background: #1f2a3d; color: #aac6ff; border-color: #2c3e5c; }
 .dark .googlemeet-ai-statuschip-failed { background: #3b1f1d; color: #f3aaa3; border-color: #5c2c28; }
 .dark .googlemeet-ai-statuschip-muted { background: #2a2c2e; color: #c4c7c5; }
+
+/* ===========================================
+   Card Grid (Tasks 2.4 / 2.5)
+   =========================================== */
+.googlemeet-recordings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+}
+.googlemeet-recordings-group {
+    grid-column: 1 / -1;
+    margin: 0.5rem 0 0;
+    color: #5f6368;
+    text-transform: capitalize;
+}
+.googlemeet-recording-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.googlemeet-recording-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.10); transform: translateY(-2px); }
+.googlemeet-card-media {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 88px;
+    padding: 0 0.75rem;
+    background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+    color: #fff;
+    text-decoration: none;
+}
+.googlemeet-card-play {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    flex: 0 0 auto;
+}
+.googlemeet-card-play .icon { width: 22px; height: 22px; margin: 0; }
+.googlemeet-card-date {
+    margin-left: 0.6rem;
+    font-size: 1.05rem; font-weight: 700; letter-spacing: 0.3px;
+    text-transform: capitalize;
+}
+.googlemeet-card-duration {
+    position: absolute; right: 8px; bottom: 6px;
+    background: rgba(0,0,0,0.55); color: #fff;
+    font-size: 0.72rem; padding: 0.05rem 0.4rem; border-radius: 4px;
+}
+.googlemeet-card-newbadge {
+    position: absolute; left: 8px; top: 8px;
+    background: #1e8e3e; color: #fff;
+    font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px;
+}
+.googlemeet-card-aibadge {
+    position: absolute; right: 8px; top: 8px;
+    background: rgba(255,255,255,0.92); color: #174ea6;
+    font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px;
+}
+.googlemeet-card-body { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.75rem; flex: 1 1 auto; }
+.googlemeet-card-title a.recording-name-text {
+    font-weight: 600; color: inherit; text-decoration: none;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.googlemeet-card-meta { font-size: 0.8rem; color: #5f6368; display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.googlemeet-card-summary {
+    font-size: 0.85rem; color: #3c4043; margin: 0;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.googlemeet-card-topics { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.googlemeet-card-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.5rem; }
+.googlemeet-card-actions { display: flex; align-items: center; gap: 0.35rem; padding-left: 0; }
+.googlemeet-card-summarylink { font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+.googlemeet-card-media:focus-visible,
+.googlemeet-card-cta:focus-visible,
+.googlemeet-drive-link:focus-visible,
+.googlemeet-ai-toggle-btn:focus-visible,
+.recordinghowhide:focus-visible,
+.recordingeditname:focus-visible,
+.googlemeet-pagination .page-link:focus-visible {
+    outline: 3px solid #1a73e8; outline-offset: 2px;
+}
+@media only screen and (min-width: 1280px) { .googlemeet-recordings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media only screen and (max-width: 600px) {
+    .googlemeet-recordings-grid { grid-template-columns: 1fr; }
+    .googlemeet-card-media { height: 72px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .googlemeet-recording-card { transition: none; }
+    .googlemeet-recording-card:hover { transform: none; }
+}
+.googlemeet-card-topics .googlemeet-ai-topic-tag {
+    background: #f1f3f4; color: #3c4043; border: 1px solid #e0e0e0; font-weight: 500;
+}
+.dark .googlemeet-recording-card { background: #1f1f1f; border-color: #3c4043; }
+.dark .googlemeet-card-summary { color: #c4c7c5; }
+.dark .googlemeet-card-topics .googlemeet-ai-topic-tag { background: #2a2c2e; color: #c4c7c5; border-color: #3c4043; }
