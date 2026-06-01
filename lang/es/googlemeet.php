@@ -194,6 +194,17 @@ $string['question_student_phase1'] = 'Hay preguntas publicadas. El reproductor d
 $string['question_unpublish'] = 'Despublicar';
 $string['question_ai_draft_note'] = 'Generado con IA, pendiente de revisión';
 $string['question_ai_reviewed_note'] = 'Generado con IA, revisado por el profesorado';
+$string['practice_check'] = 'Comprobar';
+$string['practice_correct'] = 'Correcto';
+$string['practice_correct_answer'] = 'Respuesta correcta:';
+$string['practice_finish'] = 'Finalizar';
+$string['practice_finished'] = 'Práctica completada';
+$string['practice_incorrect'] = 'Incorrecto';
+$string['practice_loading'] = 'Cargando preguntas...';
+$string['practice_next'] = 'Siguiente';
+$string['practice_retry'] = 'Reintentar';
+$string['practice_title'] = 'Preguntas de práctica';
+$string['practice_progress'] = 'Pregunta {$a->current} de {$a->total}';
 $string['showhide'] = 'Mostrar/ocultar';
 
 // Manejo de errores y privacidad (revisión seguridad/calidad 2026-05-30).
