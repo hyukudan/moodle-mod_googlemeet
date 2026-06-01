@@ -1437,6 +1437,12 @@
 }
 .googlemeet-card-topics .googlemeet-ai-topic-tag {
     background: #f1f3f4; color: #3c4043; border: 1px solid #e0e0e0; font-weight: 500;
+    /* Keep each chip on one bounded line so long legacy "topics" (full phrases) don't
+       wrap and inflate the card — the display adapts regardless of topic length. */
+    max-width: 13rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .dark .googlemeet-recording-card { background: #1f1f1f; border-color: #3c4043; }
 .dark .googlemeet-card-summary { color: #c4c7c5; }
