@@ -360,9 +360,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     $aidata = [];
     if ($includeai && !empty($recordingids)) {
         list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
-        $sql = "SELECT recordingid, summary, keypoints, topics, status, aimodel, timemodified
+        $sql = "SELECT recordingid, summary, keypoints, topics, status, error, aimodel, timemodified, retrycount, nextretry
                 FROM {googlemeet_ai_analysis}
-                WHERE recordingid $insql AND status = 'completed'";
+                WHERE recordingid $insql";
         $airecords = $DB->get_records_sql($sql, $inparams);
         foreach ($airecords as $ai) {
             $aidata[$ai->recordingid] = $ai;
@@ -373,15 +373,20 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     foreach ($recordings as $recording) {
         $recording->createdtimeformatted = userdate($recording->createdtime);
 
-        // Add AI data if available.
-        if (isset($aidata[$recording->id])) {
-            $ai = $aidata[$recording->id];
+        $ai = $aidata[$recording->id] ?? null;
+        $status = $ai->status ?? null;
+        $flags = googlemeet_ai_status_flags($status);
+        foreach ($flags as $key => $value) {
+            $recording->$key = $value;
+        }
+
+        // hasai keeps its existing meaning: a COMPLETED analysis with content.
+        $hascontent = $ai && $status === 'completed'
+            && (trim((string)$ai->summary) !== '' || ($ai->keypoints ?? '') !== '' || ($ai->topics ?? '') !== '');
+        if ($hascontent) {
             $recording->hasai = true;
             $recording->aisummary = $ai->summary;
-            // Truncate summary for preview (first 200 chars).
-            $recording->aisummarypreview = strlen($ai->summary) > 200
-                ? substr($ai->summary, 0, 200) . '...'
-                : $ai->summary;
+            $recording->aisummarypreview = googlemeet_truncate_summary((string)$ai->summary, 200);
             $recording->aikeypoints = json_decode($ai->keypoints) ?: [];
             $recording->aikeypointscount = count($recording->aikeypoints);
             $recording->aitopics = json_decode($ai->topics) ?: [];
