@@ -62,6 +62,35 @@ $PAGE->set_context($context);
 googlemeet_handle_view_actions($googlemeet, $cm, $course);
 googlemeet_handle_subscription_action($googlemeet, $cm);
 
+// Recordings view preference (cards|list). Setting it via the optional `rview`
+// GET param only updates the per-user preference, then redirects to a clean URL
+// (rview removed) preserving the content state params. No sesskey is required:
+// it only changes the user's own view preference and is idempotent. This must run
+// before any output is produced so redirect() is legal.
+$rview = optional_param('rview', '', PARAM_ALPHA);
+if ($rview === 'cards' || $rview === 'list') {
+    set_user_preference('mod_googlemeet_recordings_view', $rview);
+
+    $redirectparams = ['id' => $cm->id];
+    $rviewpage = optional_param('rpage', 0, PARAM_INT);
+    $rvieworder = optional_param('rorder', '', PARAM_ALPHA);
+    $rviewquery = optional_param('rq', '', PARAM_TEXT);
+    $rviewtopic = optional_param('topic', '', PARAM_TEXT);
+    if ($rviewpage > 0) {
+        $redirectparams['rpage'] = $rviewpage;
+    }
+    if ($rvieworder !== '') {
+        $redirectparams['rorder'] = $rvieworder;
+    }
+    if (trim($rviewquery) !== '') {
+        $redirectparams['rq'] = $rviewquery;
+    }
+    if (trim($rviewtopic) !== '') {
+        $redirectparams['topic'] = $rviewtopic;
+    }
+    redirect(new moodle_url('/mod/googlemeet/view.php', $redirectparams));
+}
+
 // Make sure URL exists before generating output - some older sites may contain empty urls
 // Do not use PARAM_URL here, it is too strict and does not support general URIs!
 $url = trim($googlemeet->url);

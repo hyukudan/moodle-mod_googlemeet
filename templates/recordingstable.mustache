@@ -76,6 +76,23 @@
           {{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}
         </a>
       </div>
+      <label class="ms-3 me-2 mb-0 small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</label>
+      <div class="btn-group btn-group-sm googlemeet-view-toggle" role="radiogroup" aria-label="{{# str }} recordings_view_label, mod_googlemeet {{/ str }}">
+        <a href="{{viewcardsurl}}" role="radio"
+           class="btn {{#isviewcards}}btn-primary active{{/isviewcards}}{{^isviewcards}}btn-outline-secondary{{/isviewcards}}"
+           aria-checked="{{#isviewcards}}true{{/isviewcards}}{{^isviewcards}}false{{/isviewcards}}"
+           {{#isviewcards}}aria-current="true"{{/isviewcards}}
+           aria-label="{{# str }} recordings_view_cards_aria, mod_googlemeet {{/ str }}">
+          {{# pix }} i/grades, core {{/ pix }} {{# str }} recordings_view_cards, mod_googlemeet {{/ str }}
+        </a>
+        <a href="{{viewlisturl}}" role="radio"
+           class="btn {{#isviewlist}}btn-primary active{{/isviewlist}}{{^isviewlist}}btn-outline-secondary{{/isviewlist}}"
+           aria-checked="{{#isviewlist}}true{{/isviewlist}}{{^isviewlist}}false{{/isviewlist}}"
+           {{#isviewlist}}aria-current="true"{{/isviewlist}}
+           aria-label="{{# str }} recordings_view_list_aria, mod_googlemeet {{/ str }}">
+          {{# pix }} i/menu, core {{/ pix }} {{# str }} recordings_view_list, mod_googlemeet {{/ str }}
+        </a>
+      </div>
       {{/hasrecordings}}
     </div>
   </div>
@@ -94,7 +111,7 @@
       {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
     </select>
     {{/alltopics.0}}
-    <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</button>
+    <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_button, mod_googlemeet {{/ str }}</button>
     {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
   </form>
   {{/hasrecordings}}
@@ -102,19 +119,22 @@
   {{#hasrecordings}}
   {{#haspagination}}
   <div class="googlemeet-recordings-info small text-muted mb-2">
-    {{# str }} recordings_showing, mod_googlemeet {{/ str }} {{start}} - {{end}} / {{totalrecordings}}
+    {{# str }} recordings_pagination_info, mod_googlemeet, {"start": "{{start}}", "end": "{{end}}", "total": "{{totalrecordings}}"} {{/ str }}
   </div>
   {{/haspagination}}
-  <div class="googlemeet-recordings-grid">
+  <div class="googlemeet-recordings-{{#isviewlist}}listview{{/isviewlist}}{{#isviewcards}}grid{{/isviewcards}}">
     {{#recordings}}
         {{#showdategroup}}<h5 class="googlemeet-recordings-group w-100">{{dategroup}}</h5>{{/showdategroup}}
+        {{#isviewcards}}
         <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}} {{#hasai}}googlemeet-recording-has-ai{{/hasai}}" data-recordingid="{{id}}">
           <a href="{{huburl}}" class="googlemeet-card-media" aria-label="{{# str }} recording_play_aria, mod_googlemeet {{/ str }}: {{name}}">
             <span class="googlemeet-card-play" aria-hidden="true">{{# pix }} play, mod_googlemeet {{/ pix }}</span>
             <span class="googlemeet-card-date" aria-hidden="true">{{createddateshort}}</span>
+            <span class="googlemeet-card-badges">
+              {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
+              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
+            </span>
             <span class="googlemeet-card-duration">{{duration}}</span>
-            {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
-            {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
           </a>
           <div class="googlemeet-card-body">
             <div class="googlemeet-card-title">
@@ -123,7 +143,7 @@
             </div>
             <div class="googlemeet-card-meta">
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
-              {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointscount}} {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>{{/hasai}}
+              {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
               {{^hasai}}
                 {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
                 {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
@@ -135,14 +155,14 @@
             </div>
             {{#hasai}}
             <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
-            {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
+            {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
             {{/hasai}}
             <div class="googlemeet-card-footer">
               <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
               <div class="googlemeet-card-actions googlemeet-recording-actions">
                 <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}">{{# pix }} i/externallink, core {{/ pix }}</a>
                 {{#hascapability}}
-                  <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{# str }} showhide, mod_googlemeet {{/ str }}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
+                  <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
                   <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>
                 {{/hascapability}}
                 {{#aienabled}}{{#hascapability}}
@@ -154,12 +174,73 @@
             </div>
           </div>
 
-          {{! Expandable AI Panel }}
+          {{! Student-only summary link stays inside the card. }}
           {{#aienabled}}
             {{^hascapability}}
               {{#hasai}}<a href="{{huburl}}" class="googlemeet-card-summarylink">{{# str }} recording_view_summary, mod_googlemeet {{/ str }} ›</a>{{/hasai}}
             {{/hascapability}}
+          {{/aienabled}}
+        </div>
+        {{/isviewcards}}
+
+        {{#isviewlist}}
+        {{! Compact two-line list row. Reuses the same per-recording fields as the card and
+            the same teacher controls, so the shared full-width AI panel row below works
+            identically (the toggle finds the panel by data-recordingid). }}
+        <div class="googlemeet-recording-listitem {{^visible}}googlemeet-recording-hidden{{/visible}} {{#hasai}}googlemeet-recording-has-ai{{/hasai}}" data-recordingid="{{id}}">
+          <div class="googlemeet-listitem-date" aria-hidden="true">{{createddateshort}}</div>
+          <div class="googlemeet-listitem-main">
+            <div class="googlemeet-listitem-title googlemeet-card-title">
+              <a href="{{huburl}}" class="recording-name-text">{{name}}</a>
+              {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
+              {{#hascapability}}{{^visible}}<span class="googlemeet-listitem-hidden-tag">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</span>{{/visible}}{{/hascapability}}
+              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
+              {{#hascapability}}<a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>{{/hascapability}}
+              <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
+            </div>
+            <div class="googlemeet-listitem-meta googlemeet-card-meta">
+              <span class="googlemeet-listitem-duration">{{duration}}</span>
+              {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
+              {{^hasai}}
+                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
+                {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
+                {{#aistatusisfailed}}
+                  {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                  {{^hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-muted">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                {{/aistatusisfailed}}
+              {{/hasai}}
+              {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
+            </div>
+          </div>
+          <div class="googlemeet-listitem-actions googlemeet-recording-actions">
+            <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
+            <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}">{{# pix }} i/externallink, core {{/ pix }}</a>
             {{#hascapability}}
+              <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
+              <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>
+            {{/hascapability}}
+            {{#aienabled}}{{#hascapability}}
+              <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
+              </a>
+            {{/hascapability}}{{/aienabled}}
+            {{#aienabled}}{{^hascapability}}
+              {{#hasai}}<a href="{{huburl}}" class="googlemeet-card-summarylink">{{# str }} recording_view_summary, mod_googlemeet {{/ str }} ›</a>{{/hasai}}
+            {{/hascapability}}{{/aienabled}}
+          </div>
+        </div>
+        {{/isviewlist}}
+
+        {{!
+          Expandable AI panel — rendered as a FULL-WIDTH sibling row AFTER the card
+          (not nested inside it), so expanding a middle card no longer leaves a grid hole.
+          The card keeps its normal single-column placement; this row spans grid-column: 1 / -1.
+          The structure is intentionally card-agnostic (keyed only by recording id) so the
+          upcoming list view can reuse the exact same panel row after a list item.
+        }}
+        {{#aienabled}}
+            {{#hascapability}}
+            <div class="googlemeet-ai-panel-row" data-recordingid="{{id}}">
             <div class="googlemeet-ai-panel" id="googlemeet-ai-panel-{{id}}" data-recordingid="{{id}}" style="display: none;">
             <div class="googlemeet-ai-header">
               <h5>{{# str }} ai_analysis, mod_googlemeet {{/ str }}</h5>
@@ -264,9 +345,9 @@
               </div>
             </div>
           </div>
+          </div>
             {{/hascapability}}
           {{/aienabled}}
-        </div>
     {{/recordings}}
   </div>
 
@@ -319,7 +400,13 @@
       <div class="googlemeet-no-recordings-icon">
         {{# pix }} i/empty, core {{/ pix }}
       </div>
-      <p>{{# str }} thereisnorecordingtoshow, mod_googlemeet {{/ str }}</p>
+      {{#hasactivefilters}}
+        <p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>
+        <a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>
+      {{/hasactivefilters}}
+      {{^hasactivefilters}}
+        <p>{{# str }} thereisnorecordingtoshow, mod_googlemeet {{/ str }}</p>
+      {{/hasactivefilters}}
     </div>
   {{/hasrecordings}}
 
@@ -474,7 +561,9 @@ require([
       $('.recordinghowhide').on('click', function() {
         var btn = $(this);
         var recordingid = btn.attr('data-id');
-        var card = btn.closest('.googlemeet-recording-card');
+        // Works in both views: card grid (.googlemeet-recording-card) and
+        // list view (.googlemeet-recording-listitem).
+        var card = btn.closest('.googlemeet-recording-card, .googlemeet-recording-listitem');
         var oldContent = btn.html();
 
         btn.html('{{# pix }} i/processing16, googlemeet, {{# str }} loading, mod_googlemeet {{/ str }} {{/ pix }}');
@@ -486,15 +575,28 @@ require([
             coursemoduleid: {{ coursemoduleid }}
           }
         }])[0].then(function(response) {
+          var isListRow = card.hasClass('googlemeet-recording-listitem');
           if (response.visible) {
             btn.html('{{# pix }} i/hide, core, {{# str }} hide, mod_googlemeet {{/ str }} {{/ pix }}');
+            btn.attr('aria-label', '{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}');
             card.removeClass('googlemeet-recording-hidden');
-            card.find('.googlemeet-recording-hidden-badge').remove();
+            if (isListRow) {
+              card.find('.googlemeet-listitem-hidden-tag').remove();
+            } else {
+              card.find('.googlemeet-recording-hidden-badge').remove();
+            }
           } else {
             btn.html('{{# pix }} i/show, core, {{# str }} show, mod_googlemeet {{/ str }} {{/ pix }}');
+            btn.attr('aria-label', '{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}');
             card.addClass('googlemeet-recording-hidden');
-            if (!card.find('.googlemeet-recording-hidden-badge').length) {
-              card.prepend('<div class="googlemeet-recording-hidden-badge">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</div>');
+            if (isListRow) {
+              if (!card.find('.googlemeet-listitem-hidden-tag').length) {
+                card.find('.googlemeet-listitem-title').prepend('<span class="googlemeet-listitem-hidden-tag">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</span>');
+              }
+            } else {
+              if (!card.find('.googlemeet-recording-hidden-badge').length) {
+                card.prepend('<div class="googlemeet-recording-hidden-badge">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</div>');
+              }
             }
           }
         }).fail(Notification.exception).fail(function() {
@@ -507,26 +609,32 @@ require([
       // Track loaded transcripts
       var loadedTranscripts = {};
 
-      // Toggle AI panel
+      // Toggle AI panel. The panel now lives in a full-width sibling row
+      // (.googlemeet-ai-panel-row) AFTER the card, keyed by recording id — not inside the
+      // card — so expanding a card no longer leaves a hole in the grid row.
       $('.googlemeet-ai-toggle-btn').on('click', function() {
         var btn = $(this);
         var recordingid = btn.attr('data-id');
         var hasai = btn.attr('data-hasai') === '1';
-        var panel = $('.googlemeet-ai-panel[data-recordingid="' + recordingid + '"]');
-        var card = btn.closest('.googlemeet-recording-card');
+        var panelRow = $('.googlemeet-ai-panel-row[data-recordingid="' + recordingid + '"]');
+        var panel = panelRow.find('.googlemeet-ai-panel');
 
         if (panel.is(':visible')) {
-          panel.slideUp(200);
-          card.removeClass('googlemeet-ai-expanded');
+          panel.slideUp(200, function() {
+            // Collapse the spanning row only after the panel finished animating closed.
+            panelRow.removeClass('googlemeet-ai-panel-row-open');
+          });
           btn.removeClass('expanded');
+          btn.attr('aria-expanded', 'false');
         } else {
           // Load transcript on demand if we have AI data but haven't loaded transcript yet
           if (hasai && !loadedTranscripts[recordingid]) {
             loadTranscript(recordingid);
           }
+          panelRow.addClass('googlemeet-ai-panel-row-open');
           panel.slideDown(200);
-          card.addClass('googlemeet-ai-expanded');
           btn.addClass('expanded');
+          btn.attr('aria-expanded', 'true');
         }
       });
 
@@ -575,7 +683,8 @@ require([
         forcedownload = !!forcedownload;
         var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
         var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
-        var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
+        var item = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"], ' +
+            '.googlemeet-recording-listitem[data-recordingid="' + recordingid + '"]');
         var loadingEl = content.find('.googlemeet-ai-loading');
 
         content.find('.googlemeet-ai-nodata').hide();
@@ -617,7 +726,7 @@ require([
           generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
 
           if (response.status === 'completed') {
-            displayAiAnalysis(recordingid, response, card, content);
+            displayAiAnalysis(recordingid, response, item, content);
           } else if (response.status === 'failed') {
             showAiError(recordingid, response.error || '{{# str }} ai_error_unknown, mod_googlemeet {{/ str }}');
           } else if (response.status === 'processing') {
@@ -655,10 +764,12 @@ require([
         });
       }
 
-      function displayAiAnalysis(recordingid, data, card, content) {
+      function displayAiAnalysis(recordingid, data, item, content) {
         content.find('.googlemeet-ai-nodata').hide();
         content.find('.googlemeet-ai-loading').hide();
         content.find('.googlemeet-ai-error').hide();
+        // Determine whether we matched a card or a list row for branched updates below.
+        var isListItem = item.hasClass('googlemeet-recording-listitem');
 
         // Create or update result section
         var result = content.find('.googlemeet-ai-result');
@@ -718,60 +829,101 @@ require([
         result.show();
         loadedTranscripts[recordingid] = true;
 
-        // Update card-level elements to reflect new AI data (new card-grid classes)
-        card.addClass('googlemeet-recording-has-ai');
-        var toggleBtn = card.find('.googlemeet-ai-toggle-btn');
+        // Update row-level elements to reflect new AI data — applies to whichever
+        // presentation is active (card grid or compact list row).
+        item.addClass('googlemeet-recording-has-ai');
+        var toggleBtn = item.find('.googlemeet-ai-toggle-btn');
         toggleBtn.addClass('googlemeet-ai-toggle-active');
         toggleBtn.attr('data-hasai', '1');
         content.attr('data-hasai', '1');
 
-        // Summary: update or create .googlemeet-card-summary inside .googlemeet-card-body
-        var summaryPreview = data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '';
-        var cardBody = card.find('.googlemeet-card-body');
-        var cardSummary = cardBody.find('.googlemeet-card-summary');
-        if (cardSummary.length) {
-          cardSummary.text(summaryPreview);
-        } else {
-          cardBody.append('<p class="googlemeet-card-summary">' + escapeHtml(summaryPreview) + '</p>');
-        }
-
-        // Topics: update or create .googlemeet-card-topics inside .googlemeet-card-body
-        if (data.topics && data.topics.length > 0) {
-          var topicsHtml = '<div class="googlemeet-card-topics">';
-          data.topics.slice(0, 3).forEach(function(topic) {
-            topicsHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
-          });
-          if (data.topics.length > 3) {
-            topicsHtml += '<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow">+' + (data.topics.length - 3) + '</span>';
-          }
-          topicsHtml += '</div>';
-          var cardTopics = cardBody.find('.googlemeet-card-topics');
-          if (cardTopics.length) {
-            cardTopics.replaceWith(topicsHtml);
-          } else {
-            cardBody.append(topicsHtml);
-          }
-        } else {
-          // No topics in the new analysis: drop any stale topic row.
-          cardBody.find('.googlemeet-card-topics').remove();
-        }
-
-        // Keypoints count: update or create .googlemeet-ai-keypoints-count inside .googlemeet-card-meta;
-        // also remove any status chip spans now that analysis is completed.
+        // Keypoints count: update or create .googlemeet-ai-keypoints-count inside the
+        // meta container (.googlemeet-card-meta / .googlemeet-listitem-meta); also remove
+        // any status chip spans now that analysis is completed.
         var keypointsCount = data.keypoints ? data.keypoints.length : 0;
-        var metaContainer = card.find('.googlemeet-card-meta');
+        // Localized singular/plural label, mirroring googlemeet_keypoints_label() in PHP.
+        // Both forms are rendered once with the count placeholder so we can substitute the
+        // live count client-side without concatenating a bare number.
+        var keypointsLabel = (keypointsCount === 1
+          ? '{{# str }} ai_keypoints_count, mod_googlemeet, {$a} {{/ str }}'
+          : '{{# str }} ai_keypoints_count_plural, mod_googlemeet, {$a} {{/ str }}'
+        ).replace('{$a}', keypointsCount);
+        var metaContainer = item.find('.googlemeet-card-meta, .googlemeet-listitem-meta');
         metaContainer.find('.googlemeet-ai-statuschip').remove();
         var keypointsEl = metaContainer.find('.googlemeet-ai-keypoints-count');
         if (keypointsEl.length) {
-          keypointsEl.text(keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}');
+          keypointsEl.text(keypointsLabel);
         } else {
-          metaContainer.append('<span class="googlemeet-ai-keypoints-count">' + keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>');
+          metaContainer.append('<span class="googlemeet-ai-keypoints-count"></span>');
+          metaContainer.find('.googlemeet-ai-keypoints-count').text(keypointsLabel);
         }
 
-        // AI badge: ensure .googlemeet-card-aibadge exists inside .googlemeet-card-media
-        var cardMedia = card.find('.googlemeet-card-media');
-        if (!cardMedia.find('.googlemeet-card-aibadge').length) {
-          cardMedia.append('<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>');
+        if (!isListItem) {
+          // --- CARD PATH ---
+          // Summary: update or create .googlemeet-card-summary inside .googlemeet-card-body
+          var summaryPreview = data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '';
+          var cardBody = item.find('.googlemeet-card-body');
+          var cardSummary = cardBody.find('.googlemeet-card-summary');
+          if (cardSummary.length) {
+            cardSummary.text(summaryPreview);
+          } else {
+            cardBody.append('<p class="googlemeet-card-summary">' + escapeHtml(summaryPreview) + '</p>');
+          }
+
+          // Topics: update or create .googlemeet-card-topics inside .googlemeet-card-body
+          if (data.topics && data.topics.length > 0) {
+            var topicsHtml = '<div class="googlemeet-card-topics">';
+            data.topics.slice(0, 2).forEach(function(topic) {
+              topicsHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
+            });
+            if (data.topics.length > 2) {
+              var overflowCount = data.topics.length - 2;
+              topicsHtml += '<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="+' + overflowCount + '" aria-label="+' + overflowCount + '">+' + overflowCount + '</span>';
+            }
+            topicsHtml += '</div>';
+            var cardTopics = cardBody.find('.googlemeet-card-topics');
+            if (cardTopics.length) {
+              cardTopics.replaceWith(topicsHtml);
+            } else {
+              cardBody.append(topicsHtml);
+            }
+          } else {
+            // No topics in the new analysis: drop any stale topic row.
+            cardBody.find('.googlemeet-card-topics').remove();
+          }
+
+          // AI badge: ensure .googlemeet-card-aibadge exists in the top-right
+          // .googlemeet-card-badges stack (NOT directly in .googlemeet-card-media,
+          // which is now a 2-column grid).
+          var cardMedia = item.find('.googlemeet-card-media');
+          var cardBadges = cardMedia.find('.googlemeet-card-badges');
+          if (!cardBadges.length) {
+            cardMedia.append('<span class="googlemeet-card-badges"></span>');
+            cardBadges = cardMedia.find('.googlemeet-card-badges');
+          }
+          if (!cardBadges.find('.googlemeet-card-aibadge').length) {
+            cardBadges.append('<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>');
+          }
+        } else {
+          // --- LIST ROW PATH ---
+          // Topics: append topic chips into .googlemeet-listitem-meta (after the keypoints span).
+          // Remove any stale chips first, then insert fresh ones.
+          metaContainer.find('.googlemeet-ai-topic-tag').remove();
+          if (data.topics && data.topics.length > 0) {
+            data.topics.slice(0, 2).forEach(function(topic) {
+              metaContainer.append('<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>');
+            });
+            if (data.topics.length > 2) {
+              var listOverflowCount = data.topics.length - 2;
+              metaContainer.append('<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="+' + listOverflowCount + '" aria-label="+' + listOverflowCount + '">+' + listOverflowCount + '</span>');
+            }
+          }
+
+          // AI badge: append into .googlemeet-listitem-title (line 1 of the list row).
+          var listTitle = item.find('.googlemeet-listitem-title');
+          if (!listTitle.find('.googlemeet-card-aibadge').length) {
+            listTitle.append('<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>');
+          }
         }
 
         // Rebind copy handler
@@ -872,13 +1024,14 @@ require([
           }
         }])[0].then(function(response) {
           var content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
-          var card = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"]');
+          var item = $('.googlemeet-recording-card[data-recordingid="' + recordingid + '"], ' +
+              '.googlemeet-recording-listitem[data-recordingid="' + recordingid + '"]');
           var generateBtn = $('.googlemeet-ai-generate-btn[data-id="' + recordingid + '"]');
 
           if (response.found && response.status === 'completed') {
             content.find('.googlemeet-ai-processing').hide();
             generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
-            displayAiAnalysis(recordingid, response, card, content);
+            displayAiAnalysis(recordingid, response, item, content);
           } else if (response.found && response.status === 'failed') {
             content.find('.googlemeet-ai-processing').hide();
             generateBtn.prop('disabled', false).text('{{# str }} ai_generate, mod_googlemeet {{/ str }}');

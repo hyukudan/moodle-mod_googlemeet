@@ -372,7 +372,12 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
         $recording->createdtimeformatted = userdate($recording->createdtime);
-        $recording->createddateshort = userdate($recording->createdtime, get_string('strftimedm', 'googlemeet'));
+        // Compact card date chip: lowercase + no trailing dot, so locale abbreviations
+        // like "Mié. 27 May." read as "mié 27 may" in the small chip. This normalization
+        // is ONLY applied to the chip field, never to full timestamps (createdtimeformatted).
+        $recording->createddateshort = googlemeet_format_date_chip(
+            userdate($recording->createdtime, get_string('strftimedm', 'googlemeet'))
+        );
         $recording->isnew = googlemeet_recording_is_new((int)$recording->createdtime, time(), 7);
         $recording->dategroup = googlemeet_recording_date_group((int)$recording->createdtime);
 
@@ -392,8 +397,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $recording->aisummarypreview = googlemeet_truncate_summary((string)$ai->summary, 200);
             $recording->aikeypoints = json_decode($ai->keypoints) ?: [];
             $recording->aikeypointscount = count($recording->aikeypoints);
+            $recording->aikeypointslabel = googlemeet_keypoints_label($recording->aikeypointscount);
             $recording->aitopics = json_decode($ai->topics) ?: [];
-            $tp = googlemeet_topic_preview($recording->aitopics, 3);
+            $tp = googlemeet_topic_preview($recording->aitopics, 2);
             $recording->aitopicsvisible = $tp['visible'];
             $recording->aitopicsoverflow = $tp['overflow'];
             $recording->aimodel = $ai->aimodel;
@@ -404,6 +410,7 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $recording->aisummarypreview = '';
             $recording->aikeypoints = [];
             $recording->aikeypointscount = 0;
+            $recording->aikeypointslabel = '';
             $recording->aitopics = [];
             $recording->aitopicsvisible = [];
             $recording->aitopicsoverflow = 0;
@@ -440,6 +447,34 @@ function googlemeet_truncate_summary(string $text, int $length = 200): string {
         return $text;
     }
     return core_text::substr($text, 0, $length) . '…';
+}
+
+/**
+ * Build a localized, correctly pluralized "N key points" label for a recording card.
+ *
+ * @param int $count Number of key points.
+ * @return string Localized label, e.g. "1 punto clave" / "3 puntos clave".
+ */
+function googlemeet_keypoints_label(int $count): string {
+    $key = $count === 1 ? 'ai_keypoints_count' : 'ai_keypoints_count_plural';
+    return get_string($key, 'googlemeet', $count);
+}
+
+/**
+ * Normalize a compact card date chip: lowercase and strip trailing dots.
+ *
+ * Locale month/weekday abbreviations (e.g. "Mié. 27 May.") read better as "mié 27 may"
+ * inside the small card chip. Applied ONLY to the chip field, never to full timestamps.
+ *
+ * @param string $date Formatted short date string.
+ * @return string Lowercased, trailing-dot-trimmed date string.
+ */
+function googlemeet_format_date_chip(string $date): string {
+    $date = core_text::strtolower($date);
+    // Remove any trailing dot left by abbreviations like "may." and tidy whitespace.
+    $date = trim($date);
+    $date = rtrim($date, '.');
+    return $date;
 }
 
 /**
