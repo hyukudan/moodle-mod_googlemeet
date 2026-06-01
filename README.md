@@ -13,7 +13,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Cancelled sessions** marking for individual dates with optional reason
 - **Upcoming events cards** showing session status (Live, Starting soon, Scheduled, Cancelled)
 - **Configurable event limit** to control how many upcoming events are displayed
-- **Recording management** with card-based UI for easy access to meeting recordings
+- **Recording management** with a switchable **card or list view** for easy access to meeting recordings
 - **Google Drive integration** to sync and display recordings automatically
 - **Visibility controls** for teachers to show/hide recordings from students
 - **Student notifications** before scheduled sessions
@@ -27,6 +27,9 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Recording-ready notifications** - learners can opt in to be notified when new recordings are added to the activity
 - **Pagination** with configurable recordings per page
 - **Sorting options** (newest/oldest first)
+- **Cards / List view toggle** - each user picks how recordings are displayed (compact list rows or cards); the choice is saved as a per-user preference and persists across sessions and devices
+- **Search & topic filter** - find recordings by title, topic or summary, or filter by an AI topic tag
+- **Expandable AI panel** - the teacher AI panel opens as a full-width row beneath the recording (in both card and list views), so it never leaves a gap in the grid
 
 ### AI-Powered Features (Gemini)
 - **Automatic subtitle extraction** from Google Drive recordings (no video download needed)

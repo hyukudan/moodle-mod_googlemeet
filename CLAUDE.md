@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Moodle activity module (`mod_googlemeet`) that creates Google Meet rooms from Moodle, syncs recordings from Google Drive, and runs AI analysis on recordings via Google Gemini. Fork of `ronefel/moodle-mod_googlemeet` modernized for Moodle 4.0+. Current version: `$plugin->release = '2.10.1'` / `$plugin->version = 2026053001` in `version.php`.
+A Moodle activity module (`mod_googlemeet`) that creates Google Meet rooms from Moodle, syncs recordings from Google Drive, and runs AI analysis on recordings via Google Gemini. Fork of `ronefel/moodle-mod_googlemeet` modernized for Moodle 4.0+. Current version: `$plugin->release = '2.17.6'` / `$plugin->version = 2026060123` in `version.php`.
 
 This directory is a Moodle plugin — it is expected to live at `{moodle_root}/mod/googlemeet/`. Many files (`view.php`, `callback.php`, `cli/process_transcripts.php`) `require` Moodle's `config.php` via `__DIR__ . '/../../config.php'`, so the plugin only functions inside a Moodle installation.
 
