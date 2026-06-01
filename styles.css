@@ -1701,22 +1701,30 @@
     color: #fff;
 }
 
-/* Filter bar: match the select / input / button to the control height + type. */
-.googlemeet-recordings-filterbar .form-control,
-.googlemeet-recordings-filterbar .form-select,
-.googlemeet-recordings-filterbar .form-control-sm,
-.googlemeet-recordings-filterbar .form-select-sm,
-.googlemeet-recordings-filterbar .btn {
+/* Filter bar: match the select / input / button to the control height + type.
+   The #id prefix + !important are required because RemUI styles form controls with
+   high specificity (its default select is 45px / 16px / 12px vertical padding, which
+   clipped the option text once the height was capped at 40px). */
+#googlemeet_recordings .googlemeet-recordings-filterbar .form-control,
+#googlemeet_recordings .googlemeet-recordings-filterbar .form-select,
+#googlemeet_recordings .googlemeet-recordings-filterbar .form-control-sm,
+#googlemeet_recordings .googlemeet-recordings-filterbar .form-select-sm {
+    height: 40px !important;
+    min-height: 40px;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    border: 1px solid #DADCE0;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #3C4043;
+}
+#googlemeet_recordings .googlemeet-recordings-filterbar .btn {
     height: 40px;
     min-height: 40px;
     font-size: 0.875rem;
     border-radius: 8px;
-}
-.googlemeet-recordings-filterbar .form-control,
-.googlemeet-recordings-filterbar .form-select {
-    border: 1px solid #DADCE0;
-    background-color: #fff;
-    color: #3C4043;
 }
 
 /* AI toggle icon: secondary by default (was a heavy filled blue circle for every
