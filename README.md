@@ -42,6 +42,13 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **CLI bulk processing** for batch transcript extraction and analysis
 - **Default model: Gemini 3 Flash Preview** with automatic fallback to Gemini 2.5 Flash
 
+### Per-recording hub, AI practice questions & materials
+- **Recording hub** - each recording opens its own view (video + tabs: AI summary · Questions · Transcript · Materials)
+- **AI-generated practice questions** from a recording's transcript, inserted into the Moodle **question bank** (reusable, tagged `googlemeet-rec-<id>`)
+- **Draft → teacher review → publish** workflow (questions are created as drafts; students only see published ones)
+- **One-at-a-time student practice** with immediate feedback, the correct answer and an explanation/citation (formative, no grade) — also available in the Moodle mobile app
+- **Materials per recording** - teachers attach files to a specific recording; learners download them from the Materials tab
+
 ## Requirements
 
 - Moodle 4.0 or higher
@@ -123,6 +130,20 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.14.0
+- **Materials per recording** - teachers attach files to a recording (own `pluginfile` file area, capability- and instance-scoped; backed up/restored). New "Materials" hub tab.
+- **Mobile practice** - the student practice player is now available in the Moodle app (one question at a time; server-side answer checking). *Needs real-device testing.*
+
+### Version 2.13.x
+- **Per-recording hub** at `view.php?id=&recording=` (video + tabs: AI summary · Questions · Transcript · Materials); the recordings list now opens the hub, with "Open in Drive" as a secondary action.
+- **AI practice questions** generated from a recording's transcript into the Moodle **question bank** as drafts, tagged `googlemeet-rec-<id>`; teacher **review → publish** flow (new capability `mod/googlemeet:managequestions`).
+- **Student practice player** - one question at a time with immediate feedback, correct answer and explanation (formative). Web services never expose the correct answer to the client.
+
+### Version 2.12.0
+- **Per-user "notify me" subscriptions** - learners opt in to be notified when new recordings are available (new table, capability, message provider, privacy + backup coverage).
+- **Auto-generate AI analysis on sync** - wires the `ai_autogenerate` setting so newly synced recordings are queued for analysis automatically.
+- **AI summaries in the mobile app**.
 
 ### Version 2.11.1
 - **Schema reconciliation** - added the composite `UNIQUE (eventid, userid)` index on `googlemeet_notify_done` (deduping any existing rows first) and aligned the `syncattempts` column length, clearing all `check_database_schema.php` discrepancies.
