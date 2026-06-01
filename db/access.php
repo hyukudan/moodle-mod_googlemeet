@@ -84,6 +84,17 @@ $capabilities = [
         ]
     ],
 
+    'mod/googlemeet:managequestions' => [
+        'riskbitmask' => RISK_SPAM,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'editingteacher' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ]
+    ],
+
     'mod/googlemeet:subscriberecordings' => [
         'riskbitmask' => 0,
         'captype' => 'write',

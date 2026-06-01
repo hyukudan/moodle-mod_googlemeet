@@ -759,4 +759,378 @@ class mod_googlemeet_external extends external_api {
             ]
         );
     }
+
+    /**
+     * Common parameters for question id list actions.
+     *
+     * @return external_function_parameters
+     */
+    public static function question_list_action_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'questionids' => new external_multiple_structure(new external_value(PARAM_INT, 'Question ID')),
+            'sesskey' => new external_value(PARAM_RAW, 'Session key'),
+        ]);
+    }
+
+    /**
+     * Parameters for publish_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function publish_questions_parameters() {
+        return self::question_list_action_parameters();
+    }
+
+    /**
+     * Parameters for unpublish_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function unpublish_questions_parameters() {
+        return self::question_list_action_parameters();
+    }
+
+    /**
+     * Parameters for discard_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function discard_questions_parameters() {
+        return self::question_list_action_parameters();
+    }
+
+    /**
+     * Validate question-management context and IDs.
+     *
+     * @param array $params Validated params.
+     * @return array [googlemeet, cm, context, question rows, question service]
+     */
+    private static function validate_question_action(array $params): array {
+        global $DB;
+
+        if (!confirm_sesskey($params['sesskey'])) {
+            throw new \moodle_exception('invalidsesskey');
+        }
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:managequestions', $context);
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+
+        $service = new \mod_googlemeet\question_service();
+        $rows = $service->require_questions_for_recording(
+            $googlemeet,
+            $cm,
+            $context,
+            (int)$params['recordingid'],
+            $params['questionids']
+        );
+
+        return [$googlemeet, $cm, $context, $rows, $service];
+    }
+
+    /**
+     * Publish draft questions.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param array $questionids Question IDs.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function publish_questions($recordingid, $coursemoduleid, $questionids, $sesskey) {
+        $params = self::validate_parameters(self::question_list_action_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'questionids' => $questionids,
+            'sesskey' => $sesskey,
+        ]);
+        [, , , $rows, $service] = self::validate_question_action($params);
+        return ['success' => true, 'count' => $service->set_status(
+            $rows,
+            \core_question\local\bank\question_version_status::QUESTION_STATUS_READY
+        )];
+    }
+
+    /**
+     * Unpublish ready questions.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param array $questionids Question IDs.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function unpublish_questions($recordingid, $coursemoduleid, $questionids, $sesskey) {
+        $params = self::validate_parameters(self::question_list_action_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'questionids' => $questionids,
+            'sesskey' => $sesskey,
+        ]);
+        [, , , $rows, $service] = self::validate_question_action($params);
+        return ['success' => true, 'count' => $service->set_status(
+            $rows,
+            \core_question\local\bank\question_version_status::QUESTION_STATUS_DRAFT
+        )];
+    }
+
+    /**
+     * Discard draft questions.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param array $questionids Question IDs.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function discard_questions($recordingid, $coursemoduleid, $questionids, $sesskey) {
+        $params = self::validate_parameters(self::question_list_action_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'questionids' => $questionids,
+            'sesskey' => $sesskey,
+        ]);
+        [, , , $rows, $service] = self::validate_question_action($params);
+        return ['success' => true, 'count' => $service->discard_drafts($rows)];
+    }
+
+    /**
+     * Common return shape for question write actions.
+     *
+     * @return external_single_structure
+     */
+    public static function question_write_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether the action succeeded'),
+            'count' => new external_value(PARAM_INT, 'Number of affected questions'),
+        ]);
+    }
+
+    /**
+     * Publish return description.
+     *
+     * @return external_single_structure
+     */
+    public static function publish_questions_returns() {
+        return self::question_write_returns();
+    }
+
+    /**
+     * Unpublish return description.
+     *
+     * @return external_single_structure
+     */
+    public static function unpublish_questions_returns() {
+        return self::question_write_returns();
+    }
+
+    /**
+     * Discard return description.
+     *
+     * @return external_single_structure
+     */
+    public static function discard_questions_returns() {
+        return self::question_write_returns();
+    }
+
+    /**
+     * Parameters for update_question.
+     *
+     * @return external_function_parameters
+     */
+    public static function update_question_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'questionid' => new external_value(PARAM_INT, 'Question ID'),
+            'stem' => new external_value(PARAM_RAW, 'Question stem'),
+            'options' => new external_multiple_structure(new external_value(PARAM_RAW, 'Option')),
+            'correctindex' => new external_value(PARAM_INT, 'Correct option index'),
+            'explanation' => new external_value(PARAM_RAW, 'Explanation'),
+            'citation' => new external_value(PARAM_RAW, 'Citation', VALUE_DEFAULT, ''),
+            'sesskey' => new external_value(PARAM_RAW, 'Session key'),
+        ]);
+    }
+
+    /**
+     * Update one question.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param int $questionid Question ID.
+     * @param string $stem Stem.
+     * @param array $options Options.
+     * @param int $correctindex Correct index.
+     * @param string $explanation Explanation.
+     * @param string $citation Citation.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function update_question($recordingid, $coursemoduleid, $questionid, $stem, $options,
+            $correctindex, $explanation, $citation, $sesskey) {
+        $params = self::validate_parameters(self::update_question_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'questionid' => $questionid,
+            'stem' => $stem,
+            'options' => $options,
+            'correctindex' => $correctindex,
+            'explanation' => $explanation,
+            'citation' => $citation,
+            'sesskey' => $sesskey,
+        ]);
+        $actionparams = [
+            'recordingid' => $params['recordingid'],
+            'coursemoduleid' => $params['coursemoduleid'],
+            'questionids' => [$params['questionid']],
+            'sesskey' => $params['sesskey'],
+        ];
+        [, , , $rows, $service] = self::validate_question_action($actionparams);
+        $service->update_question($rows, $params['stem'], $params['options'], $params['correctindex'],
+            $params['explanation'], $params['citation']);
+        return ['success' => true, 'count' => 1];
+    }
+
+    /**
+     * Return description for update_question.
+     *
+     * @return external_single_structure
+     */
+    public static function update_question_returns() {
+        return self::question_write_returns();
+    }
+
+    /**
+     * Parameters for queue_generate_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function queue_generate_questions_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'count' => new external_value(PARAM_INT, 'Question count', VALUE_DEFAULT, 10),
+            'sesskey' => new external_value(PARAM_RAW, 'Session key'),
+        ]);
+    }
+
+    /**
+     * Queue question generation.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param int $count Question count.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function queue_generate_questions($recordingid, $coursemoduleid, $count, $sesskey) {
+        global $DB, $USER;
+
+        $params = self::validate_parameters(self::queue_generate_questions_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'count' => $count,
+            'sesskey' => $sesskey,
+        ]);
+        if (!confirm_sesskey($params['sesskey'])) {
+            throw new \moodle_exception('invalidsesskey');
+        }
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:managequestions', $context);
+        $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+
+        $service = new \mod_googlemeet\ai_service();
+        if (!$service->is_available()) {
+            throw new \moodle_exception('ai_not_configured', 'googlemeet');
+        }
+        $service->queue_question_generation($params['recordingid'], $cm->id, $params['count'], $USER->id);
+
+        return ['success' => true, 'count' => 0];
+    }
+
+    /**
+     * Return description for queue_generate_questions.
+     *
+     * @return external_single_structure
+     */
+    public static function queue_generate_questions_returns() {
+        return self::question_write_returns();
+    }
+
+    /**
+     * Parameters for get_questions.
+     *
+     * @return external_function_parameters
+     */
+    public static function get_questions_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+        ]);
+    }
+
+    /**
+     * Return teacher question list.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @return array
+     */
+    public static function get_questions($recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_questions_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+        ]);
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:managequestions', $context);
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+        $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+
+        $service = new \mod_googlemeet\question_service();
+        return ['questions' => $service->get_questions($googlemeet, $cm, $context, $params['recordingid'], false)];
+    }
+
+    /**
+     * Return description for get_questions.
+     *
+     * @return external_single_structure
+     */
+    public static function get_questions_returns() {
+        return new external_single_structure([
+            'questions' => new external_multiple_structure(new external_single_structure([
+                'id' => new external_value(PARAM_INT, 'Question ID'),
+                'name' => new external_value(PARAM_RAW, 'Question name'),
+                'stem' => new external_value(PARAM_RAW, 'Question stem HTML'),
+                'stemplain' => new external_value(PARAM_RAW, 'Question stem plain text'),
+                'generalfeedback' => new external_value(PARAM_RAW, 'General feedback HTML'),
+                'generalfeedbackplain' => new external_value(PARAM_RAW, 'General feedback plain text'),
+                'correctindex' => new external_value(PARAM_INT, 'Correct answer index'),
+                'status' => new external_value(PARAM_TEXT, 'Question status'),
+                'isdraft' => new external_value(PARAM_BOOL, 'Draft'),
+                'isready' => new external_value(PARAM_BOOL, 'Ready'),
+                'statuslabel' => new external_value(PARAM_TEXT, 'Status label'),
+                'advancedurl' => new external_value(PARAM_RAW, 'Advanced edit URL'),
+                'answers' => new external_multiple_structure(new external_single_structure([
+                    'id' => new external_value(PARAM_INT, 'Answer ID'),
+                    'index' => new external_value(PARAM_INT, 'Answer index'),
+                    'text' => new external_value(PARAM_RAW, 'Answer HTML'),
+                    'plain' => new external_value(PARAM_RAW, 'Answer plain text'),
+                    'correct' => new external_value(PARAM_BOOL, 'Whether this answer is correct'),
+                ])),
+            ])),
+        ]);
+    }
 }

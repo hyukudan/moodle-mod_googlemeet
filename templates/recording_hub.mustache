@@ -1,0 +1,323 @@
+{{!
+  @template mod_googlemeet/recording_hub
+}}
+<div id="googlemeet-recording-hub" class="googlemeet-recording-hub" data-cmid="{{cmid}}" data-recordingid="{{recordingid}}">
+  <div class="mb-3">
+    <a href="{{backurl}}" class="btn btn-link px-0">&lsaquo; {{# str }} hub_back_to_recordings, mod_googlemeet {{/ str }}</a>
+  </div>
+
+  <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
+    <iframe src="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{name}}"></iframe>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="mb-1">
+        <span class="recording-name-text">{{name}}</span>
+        {{#caneditrecording}}
+          <a href="javascript:void(0);" role="button" class="recordingeditname googlemeet-edit-btn ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
+            {{# pix }} i/edit, core {{/ pix }}
+          </a>
+        {{/caneditrecording}}
+      </h3>
+      <div class="text-muted">{{duration}}</div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{{webviewlink}}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+        {{# pix }} i/externallink, core {{/ pix }} {{# str }} openindrive, mod_googlemeet {{/ str }}
+      </a>
+      {{#caneditrecording}}
+        <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}">
+          {{# str }} showhide, mod_googlemeet {{/ str }}
+        </a>
+      {{/caneditrecording}}
+    </div>
+  </div>
+
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{#summaryactive}}active{{/summaryactive}}" id="googlemeet-summary-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-summary-panel" type="button" role="tab" aria-controls="googlemeet-summary-panel" aria-selected="{{#summaryactive}}true{{/summaryactive}}{{^summaryactive}}false{{/summaryactive}}">
+        {{# str }} hub_tab_summary, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link {{#questionsactive}}active{{/questionsactive}}" id="googlemeet-questions-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-questions-panel" type="button" role="tab" aria-controls="googlemeet-questions-panel" aria-selected="{{#questionsactive}}true{{/questionsactive}}{{^questionsactive}}false{{/questionsactive}}">
+        {{# str }} hub_tab_questions, mod_googlemeet {{/ str }}
+        {{#canmanagequestions}}
+          {{#hasdrafts}}({{draftcount}} {{# str }} question_status_draft, mod_googlemeet {{/ str }}){{/hasdrafts}}
+          {{^hasdrafts}}{{#publishedcount}}({{publishedcount}}){{/publishedcount}}{{/hasdrafts}}
+        {{/canmanagequestions}}
+      </button>
+    </li>
+    {{#caneditrecording}}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="googlemeet-transcript-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-transcript-panel" type="button" role="tab" aria-controls="googlemeet-transcript-panel" aria-selected="false">
+        {{# str }} hub_tab_transcript, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    {{/caneditrecording}}
+  </ul>
+
+  <div class="tab-content pt-3">
+    <div class="tab-pane fade {{#summaryactive}}show active{{/summaryactive}}" id="googlemeet-summary-panel" role="tabpanel" aria-labelledby="googlemeet-summary-tab">
+      {{#hasanalysis}}
+        <div class="googlemeet-ai-section googlemeet-ai-summary">
+          <h5>{{# str }} ai_summary, mod_googlemeet {{/ str }}</h5>
+          <div>{{{summary}}}</div>
+        </div>
+        {{#keypoints.0}}
+        <div class="googlemeet-ai-section googlemeet-ai-keypoints mt-3">
+          <h5>{{# str }} ai_keypoints, mod_googlemeet {{/ str }}</h5>
+          <ul>{{#keypoints}}<li>{{text}}</li>{{/keypoints}}</ul>
+        </div>
+        {{/keypoints.0}}
+        {{#topics.0}}
+        <div class="googlemeet-ai-section googlemeet-ai-topics mt-3">
+          <h5>{{# str }} ai_topics, mod_googlemeet {{/ str }}</h5>
+          <div class="googlemeet-ai-topics-tags">{{#topics}}<span class="googlemeet-ai-topic-badge">{{text}}</span>{{/topics}}</div>
+        </div>
+        {{/topics.0}}
+      {{/hasanalysis}}
+      {{^hasanalysis}}
+        <div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>
+      {{/hasanalysis}}
+    </div>
+
+    <div class="tab-pane fade {{#questionsactive}}show active{{/questionsactive}}" id="googlemeet-questions-panel" role="tabpanel" aria-labelledby="googlemeet-questions-tab">
+      {{#canmanagequestions}}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <strong>{{questioncount}}</strong> {{# str }} hub_tab_questions, mod_googlemeet {{/ str }}
+            {{#draftcount}}<span class="badge bg-warning text-dark ms-1">{{draftcount}} {{# str }} question_status_draft, mod_googlemeet {{/ str }}</span>{{/draftcount}}
+            {{#publishedcount}}<span class="badge bg-success ms-1">{{publishedcount}} {{# str }} question_status_published, mod_googlemeet {{/ str }}</span>{{/publishedcount}}
+          </div>
+          {{#aienabled}}
+          <button type="button" class="btn btn-primary btn-sm googlemeet-question-generate" data-count="10" {{#generationqueued}}disabled{{/generationqueued}}>
+            {{#generationqueued}}{{# str }} question_generating, mod_googlemeet {{/ str }}{{/generationqueued}}
+            {{^generationqueued}}
+              {{#hasquestions}}{{# str }} question_generate_more, mod_googlemeet {{/ str }}{{/hasquestions}}
+              {{^hasquestions}}{{# str }} question_generate_ai, mod_googlemeet {{/ str }}{{/hasquestions}}
+            {{/generationqueued}}
+          </button>
+          {{/aienabled}}
+        </div>
+        {{#generationqueued}}
+          <div class="alert alert-info googlemeet-question-generating">{{# str }} question_generating, mod_googlemeet {{/ str }}</div>
+        {{/generationqueued}}
+        {{^hasquestions}}
+          <div class="alert alert-secondary">{{# str }} question_empty_teacher, mod_googlemeet {{/ str }}</div>
+        {{/hasquestions}}
+        {{#hasquestions}}
+          <div class="mb-3 d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-success btn-sm googlemeet-question-bulk-publish" disabled>{{# str }} question_bulk_publish, mod_googlemeet {{/ str }}</button>
+            <button type="button" class="btn btn-outline-danger btn-sm googlemeet-question-bulk-discard" disabled>{{# str }} question_bulk_discard, mod_googlemeet {{/ str }}</button>
+          </div>
+          <div class="googlemeet-question-list">
+            {{#questions}}
+              <div class="card mb-3 googlemeet-question-card" data-questionid="{{id}}">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="form-check">
+                      <input class="form-check-input googlemeet-question-select" type="checkbox" value="{{id}}" id="googlemeet-question-select-{{id}}">
+                      <label class="form-check-label fw-bold" for="googlemeet-question-select-{{id}}">{{{stem}}}</label>
+                    </div>
+                    <span class="badge {{#isready}}bg-success{{/isready}}{{#isdraft}}bg-warning text-dark{{/isdraft}}">{{statuslabel}}</span>
+                  </div>
+                  <ol class="mt-2">
+                    {{#answers}}
+                      <li class="{{#correct}}fw-bold text-success{{/correct}}">{{{text}}}</li>
+                    {{/answers}}
+                  </ol>
+                  <div class="border-top pt-2 small">{{{generalfeedback}}}</div>
+                  <div class="d-flex gap-2 flex-wrap mt-3">
+                    {{#isdraft}}<button type="button" class="btn btn-success btn-sm googlemeet-question-publish">{{# str }} question_publish, mod_googlemeet {{/ str }}</button>{{/isdraft}}
+                    {{#isready}}<button type="button" class="btn btn-outline-warning btn-sm googlemeet-question-unpublish">{{# str }} question_unpublish, mod_googlemeet {{/ str }}</button>{{/isready}}
+                    {{#isdraft}}<button type="button" class="btn btn-outline-danger btn-sm googlemeet-question-discard">{{# str }} question_discard, mod_googlemeet {{/ str }}</button>{{/isdraft}}
+                    <button type="button" class="btn btn-outline-secondary btn-sm googlemeet-question-edit"
+                      data-stem="{{stemplain}}"
+                      data-feedback="{{generalfeedbackplain}}"
+                      data-correctindex="{{correctindex}}"
+                      {{#answers}}
+                        data-answer{{index}}="{{plain}}"
+                      {{/answers}}>
+                      {{# str }} question_edit, mod_googlemeet {{/ str }}
+                    </button>
+                    <a href="{{advancedurl}}" class="btn btn-link btn-sm">{{# str }} question_advanced_edit, mod_googlemeet {{/ str }}</a>
+                  </div>
+                </div>
+              </div>
+            {{/questions}}
+          </div>
+        {{/hasquestions}}
+      {{/canmanagequestions}}
+      {{^canmanagequestions}}
+        {{#hasquestions}}
+          <div class="alert alert-info">{{# str }} question_student_phase1, mod_googlemeet {{/ str }}</div>
+        {{/hasquestions}}
+        {{^hasquestions}}
+          <div class="alert alert-secondary">{{# str }} question_empty_student, mod_googlemeet {{/ str }}</div>
+        {{/hasquestions}}
+      {{/canmanagequestions}}
+    </div>
+
+    {{#caneditrecording}}
+    <div class="tab-pane fade" id="googlemeet-transcript-panel" role="tabpanel" aria-labelledby="googlemeet-transcript-tab">
+      {{#hasanalysis}}<div class="googlemeet-ai-transcript-text">{{{transcript}}}</div>{{/hasanalysis}}
+      {{^hasanalysis}}<div class="alert alert-info">{{# str }} ai_transcript_loading, mod_googlemeet {{/ str }}</div>{{/hasanalysis}}
+    </div>
+    {{/caneditrecording}}
+  </div>
+
+  <div class="modal fade" id="googlemeet-question-edit-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{# str }} question_edit, mod_googlemeet {{/ str }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{# str }} closebuttontitle {{/ str }}"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="googlemeet-question-edit-id">
+          <div class="mb-2">
+            <label class="form-label" for="googlemeet-question-edit-stem">{{# str }} question_stem, mod_googlemeet {{/ str }}</label>
+            <textarea class="form-control" id="googlemeet-question-edit-stem" rows="3"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-2"><div class="input-group"><span class="input-group-text">A</span><input class="form-control googlemeet-question-edit-answer" data-index="0" aria-label="A"></div></div>
+            <div class="col-md-6 mb-2"><div class="input-group"><span class="input-group-text">B</span><input class="form-control googlemeet-question-edit-answer" data-index="1" aria-label="B"></div></div>
+            <div class="col-md-6 mb-2"><div class="input-group"><span class="input-group-text">C</span><input class="form-control googlemeet-question-edit-answer" data-index="2" aria-label="C"></div></div>
+            <div class="col-md-6 mb-2"><div class="input-group"><span class="input-group-text">D</span><input class="form-control googlemeet-question-edit-answer" data-index="3" aria-label="D"></div></div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="googlemeet-question-edit-correct">{{# str }} question_correct_answer, mod_googlemeet {{/ str }}</label>
+            <select class="form-select" id="googlemeet-question-edit-correct">
+              <option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="googlemeet-question-edit-feedback">{{# str }} question_explanation, mod_googlemeet {{/ str }}</label>
+            <textarea class="form-control" id="googlemeet-question-edit-feedback" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{# str }} cancel {{/ str }}</button>
+          <button type="button" class="btn btn-primary" id="googlemeet-question-edit-save">{{# str }} savechanges {{/ str }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{#js}}
+require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notification) {
+  var cmid = {{cmid}};
+  var recordingid = {{recordingid}};
+
+  function selectedIds() {
+    return $('.googlemeet-question-select:checked').map(function() {
+      return parseInt(this.value, 10);
+    }).get();
+  }
+
+  function call(methodname, args) {
+    return Ajax.call([{methodname: methodname, args: args}])[0]
+      .then(function() { window.location.reload(); })
+      .fail(Notification.exception);
+  }
+
+  $('.googlemeet-question-generate').on('click', function() {
+    $(this).prop('disabled', true).text('{{# str }} question_generating, mod_googlemeet {{/ str }}');
+    call('mod_googlemeet_queue_generate_questions', {
+      recordingid: recordingid,
+      coursemoduleid: cmid,
+      count: parseInt($(this).attr('data-count'), 10) || 10,
+      sesskey: '{{sesskey}}'
+    });
+  });
+
+  $('.googlemeet-question-publish').on('click', function() {
+    call('mod_googlemeet_publish_questions', {
+      recordingid: recordingid,
+      coursemoduleid: cmid,
+      questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
+      sesskey: '{{sesskey}}'
+    });
+  });
+
+  $('.googlemeet-question-unpublish').on('click', function() {
+    call('mod_googlemeet_unpublish_questions', {
+      recordingid: recordingid,
+      coursemoduleid: cmid,
+      questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
+      sesskey: '{{sesskey}}'
+    });
+  });
+
+  $('.googlemeet-question-discard').on('click', function() {
+    call('mod_googlemeet_discard_questions', {
+      recordingid: recordingid,
+      coursemoduleid: cmid,
+      questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
+      sesskey: '{{sesskey}}'
+    });
+  });
+
+  function refreshBulkState() {
+    var hasselection = selectedIds().length > 0;
+    $('.googlemeet-question-bulk-publish, .googlemeet-question-bulk-discard').prop('disabled', !hasselection);
+  }
+  $('.googlemeet-question-select').on('change', refreshBulkState);
+  refreshBulkState();
+
+  $('.googlemeet-question-bulk-publish').on('click', function() {
+    var ids = selectedIds();
+    if (!ids.length) { return; }
+    call('mod_googlemeet_publish_questions', {recordingid: recordingid, coursemoduleid: cmid, questionids: ids, sesskey: '{{sesskey}}'});
+  });
+
+  $('.googlemeet-question-bulk-discard').on('click', function() {
+    var ids = selectedIds();
+    if (!ids.length) { return; }
+    call('mod_googlemeet_discard_questions', {recordingid: recordingid, coursemoduleid: cmid, questionids: ids, sesskey: '{{sesskey}}'});
+  });
+
+  $('.googlemeet-question-edit').on('click', function() {
+    var btn = $(this);
+    $('#googlemeet-question-edit-id').val(btn.closest('.googlemeet-question-card').attr('data-questionid'));
+    $('#googlemeet-question-edit-stem').val(btn.attr('data-stem') || '');
+    $('#googlemeet-question-edit-feedback').val(btn.attr('data-feedback') || '');
+    $('#googlemeet-question-edit-correct').val(btn.attr('data-correctindex') || '0');
+    $('.googlemeet-question-edit-answer').each(function() {
+      $(this).val(btn.attr('data-answer' + $(this).attr('data-index')) || '');
+    });
+    $('#googlemeet-question-edit-modal').modal('show');
+  });
+
+  $('#googlemeet-question-edit-save').on('click', function() {
+    var options = $('.googlemeet-question-edit-answer').map(function() { return $(this).val(); }).get();
+    call('mod_googlemeet_update_question', {
+      recordingid: recordingid,
+      coursemoduleid: cmid,
+      questionid: parseInt($('#googlemeet-question-edit-id').val(), 10),
+      stem: $('#googlemeet-question-edit-stem').val(),
+      options: options,
+      correctindex: parseInt($('#googlemeet-question-edit-correct').val(), 10),
+      explanation: $('#googlemeet-question-edit-feedback').val(),
+      citation: '',
+      sesskey: '{{sesskey}}'
+    });
+  });
+
+  {{#caneditrecording}}
+  $('.recordinghowhide').on('click', function() {
+    call('mod_googlemeet_showhide_recording', {recordingid: recordingid, coursemoduleid: cmid});
+  });
+  $('.recordingeditname').on('click', function() {
+    var current = $('.recording-name-text').first().text().trim();
+    var name = window.prompt('{{# str }} name, mod_googlemeet {{/ str }}', current);
+    if (name) {
+      call('mod_googlemeet_recording_edit_name', {recordingid: recordingid, name: name, coursemoduleid: cmid});
+    }
+  });
+  {{/caneditrecording}}
+});
+{{/js}}

@@ -26,6 +26,7 @@ defined('MOODLE_INTERNAL') || die();
 
 use mod_googlemeet\client;
 use mod_googlemeet\helper;
+use mod_googlemeet\question_service;
 
 require_once("$CFG->dirroot/mod/googlemeet/lib.php");
 
@@ -446,6 +447,14 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     // Include AI data when fetching recordings if AI is enabled.
     $recordings = googlemeet_list_recordings($params, $aienabled, $order, $maxrecordings, $offset);
+    foreach ($recordings as $recording) {
+        $urlparams = ['id' => $cm->id, 'recording' => $recording->id];
+        if ($page > 0) {
+            $urlparams['rpage'] = $page;
+        }
+        $urlparams['rorder'] = $order;
+        $recording->huburl = (new moodle_url('/mod/googlemeet/view.php', $urlparams))->out(false);
+    }
     $cansubscriberecordings = has_capability('mod/googlemeet:subscriberecordings', $context);
     $issubscribed = $cansubscriberecordings && $DB->record_exists(
         'googlemeet_recording_subs',
@@ -544,6 +553,107 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $html .= '</div>';
 
     echo $html;
+}
+
+/**
+ * Print the per-recording hub.
+ *
+ * @param object $googlemeet Activity record.
+ * @param object $cm Course-module record.
+ * @param context_module $context Module context.
+ * @param object $recording Recording record scoped by the caller.
+ * @return void
+ */
+function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) {
+    global $CFG, $DB, $OUTPUT, $PAGE;
+
+    $caneditrecording = has_capability('mod/googlemeet:editrecording', $context);
+    $canmanagequestions = has_capability('mod/googlemeet:managequestions', $context);
+    $aiconfig = get_config('googlemeet');
+    $aienabled = !empty($aiconfig->enableai) && !empty($aiconfig->geminiapikey);
+    $questionservice = new question_service();
+    $questions = $questionservice->get_questions($googlemeet, $cm, $context, $recording->id, !$canmanagequestions);
+    $draftcount = 0;
+    $publishedcount = 0;
+    foreach ($questions as $question) {
+        if ($question['isready']) {
+            $publishedcount++;
+        } else if ($question['isdraft']) {
+            $draftcount++;
+        }
+    }
+
+    $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id, 'status' => 'completed']);
+    $keypoints = [];
+    $topics = [];
+    if ($analysis) {
+        $keypoints = json_decode($analysis->keypoints) ?: [];
+        $topics = json_decode($analysis->topics) ?: [];
+    }
+
+    $rpage = optional_param('rpage', 0, PARAM_INT);
+    $rorder = optional_param('rorder', null, PARAM_ALPHA);
+    $backparams = ['id' => $cm->id];
+    if ($rpage > 0) {
+        $backparams['rpage'] = $rpage;
+    }
+    if ($rorder) {
+        $backparams['rorder'] = $rorder;
+    }
+
+    $hasstudentsummary = $analysis && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
+    // Default everyone to the Summary tab in Phase 1. The student practice player arrives in
+    // Phase 2, so defaulting students to the Questions tab would dead-end them on a placeholder.
+    // $hasstudentsummary is retained for the Summary empty-state messaging.
+    $summaryactive = true;
+
+    $templatecontext = [
+        'cmid' => $cm->id,
+        'recordingid' => $recording->id,
+        'name' => format_string($recording->name),
+        'duration' => s($recording->duration),
+        'webviewlink' => $recording->webviewlink,
+        'embedurl' => googlemeet_get_recording_embed_url($recording->webviewlink),
+        'backurl' => (new moodle_url('/mod/googlemeet/view.php', $backparams))->out(false),
+        'caneditrecording' => $caneditrecording,
+        'canmanagequestions' => $canmanagequestions,
+        'aienabled' => $aienabled,
+        'sesskey' => sesskey(),
+        'hasanalysis' => (bool)$analysis,
+        'summary' => $analysis ? format_text($analysis->summary, FORMAT_PLAIN, ['context' => $context]) : '',
+        'keypoints' => array_map(static function($point) {
+            return ['text' => s($point)];
+        }, $keypoints),
+        'topics' => array_map(static function($topic) {
+            return ['text' => s($topic)];
+        }, $topics),
+        'transcript' => $analysis ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
+        'questions' => $questions,
+        'hasquestions' => !empty($questions),
+        'draftcount' => $draftcount,
+        'publishedcount' => $publishedcount,
+        'questioncount' => count($questions),
+        'hasdrafts' => $draftcount > 0,
+        'generationqueued' => $questionservice->is_generation_queued($recording->id),
+        'summaryactive' => $summaryactive,
+        'questionsactive' => !$summaryactive,
+    ];
+
+    $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
+    echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
+}
+
+/**
+ * Convert a Google Drive view URL to an embeddable preview URL when possible.
+ *
+ * @param string $webviewlink Drive web view URL.
+ * @return string
+ */
+function googlemeet_get_recording_embed_url(string $webviewlink): string {
+    if (preg_match('~/file/d/([^/]+)~', $webviewlink, $matches)) {
+        return 'https://drive.google.com/file/d/' . rawurlencode($matches[1]) . '/preview';
+    }
+    return $webviewlink;
 }
 
 /**
