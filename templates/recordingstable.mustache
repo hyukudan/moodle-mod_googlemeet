@@ -671,12 +671,19 @@ require([
             coursemoduleid: {{ coursemoduleid }}
           }
         }])[0].then(function(response) {
-          if (response.found && response.status === 'completed' && response.transcript) {
-            $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]').html(formatText(response.transcript));
+          var el = $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]');
+          if (response.found && response.transcript) {
+            el.html(formatText(response.transcript));
+            loadedTranscripts[recordingid] = true;
+          } else {
+            // Found analysis but no transcript stored anywhere — don't leave it stuck on "loading".
+            el.text('{{# str }} ai_transcript_unavailable, mod_googlemeet {{/ str }}');
             loadedTranscripts[recordingid] = true;
           }
         }).fail(function(ex) {
           console.error('Failed to load transcript:', ex);
+          $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]')
+            .text('{{# str }} ai_transcript_unavailable, mod_googlemeet {{/ str }}');
         });
       }
 

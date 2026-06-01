@@ -278,6 +278,7 @@ $string['ai_keypoints_short'] = 'key points';
 $string['ai_keypoints_count'] = '{$a} key point';
 $string['ai_keypoints_count_plural'] = '{$a} key points';
 $string['ai_transcript_loading'] = 'Loading transcript…';
+$string['ai_transcript_unavailable'] = 'No transcript available for this recording.';
 $string['ai_error_unknown'] = 'An unknown error occurred. Please try again.';
 $string['ai_subtitles_unavailable'] = 'No auto-generated subtitles were found for this recording. Click "Transcribe from video" to download the full recording and generate a transcript instead.';
 $string['ai_transcribe_from_video'] = 'Transcribe from video';

@@ -140,6 +140,7 @@ $string['ai_keypoints_short'] = 'puntos clave';
 $string['ai_keypoints_count'] = '{$a} punto clave';
 $string['ai_keypoints_count_plural'] = '{$a} puntos clave';
 $string['ai_transcript_loading'] = 'Cargando transcripción…';
+$string['ai_transcript_unavailable'] = 'Transcripción no disponible para esta grabación.';
 $string['ai_error_unknown'] = 'Ha ocurrido un error desconocido. Por favor, inténtalo de nuevo.';
 $string['ai_subtitles_unavailable'] = 'No se han encontrado subtítulos automáticos para esta grabación. Pulsa "Transcribir desde vídeo" para descargar el vídeo completo y generar la transcripción a partir del audio.';
 $string['ai_transcribe_from_video'] = 'Transcribir desde vídeo';
