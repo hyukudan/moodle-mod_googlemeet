@@ -355,37 +355,39 @@ class ai_service {
 
         $now = time();
 
-        // Conditional update: succeeds while the row is still 'pending', OR while it is a
-        // transient-failure row whose back-off has elapsed (status 'failed', 0 < retrycount <
-        // MAX, nextretry due). $DB->execute() does not report affected rows portably, so we
-        // issue the guarded UPDATE and then re-read the row to confirm WE are the owner.
-        $sql = "UPDATE {googlemeet_ai_analysis}
-                   SET status = 'processing', timemodified = :now
-                 WHERE id = :id
-                   AND (status = 'pending'
-                        OR (status = 'failed'
-                            AND retrycount > 0
-                            AND retrycount < :maxretries
-                            AND nextretry > 0
-                            AND nextretry <= :now2))";
-        $DB->execute($sql, [
-            'now' => $now,
-            'id' => $analysisid,
-            'maxretries' => self::MAX_TRANSIENT_RETRIES,
-            'now2' => $now,
-        ]);
-
-        // Re-read and verify. If the row now reads 'processing' with the timestamp we just
-        // wrote, the claim was ours. NOTE: this verify-by-timestamp is correct only because the
-        // sole caller (process_pending) runs under the 'mod_googlemeet_ai_analysis' cron lock,
-        // so two claims can never race within the same second. Do not call claim_pending() from
-        // an unlocked context without strengthening this ownership token.
-        $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, timemodified');
+        // Only a 'pending' row, or a transient-failure row whose back-off has elapsed (status
+        // 'failed', 0 < retrycount < MAX, nextretry due), is claimable. Read the current state
+        // first and bail out if it is not claimable (e.g. already 'processing' or 'completed').
+        // This makes re-claiming a non-claimable row reliably return false regardless of the
+        // 1-second timestamp granularity used by the ownership check below.
+        $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid],
+            'id, status, retrycount, nextretry');
         if (!$row) {
             return false;
         }
+        $claimable = $row->status === 'pending'
+            || ($row->status === 'failed'
+                && (int) $row->retrycount > 0
+                && (int) $row->retrycount < self::MAX_TRANSIENT_RETRIES
+                && (int) $row->nextretry > 0
+                && (int) $row->nextretry <= $now);
+        if (!$claimable) {
+            return false;
+        }
 
-        return $row->status === 'processing' && (int) $row->timemodified === $now;
+        // Conditional update guarded on the exact status we just observed: a concurrent claimer
+        // that already flipped the row matches zero rows here. $DB->execute() does not report
+        // affected rows portably, so we re-read and confirm ownership below.
+        $sql = "UPDATE {googlemeet_ai_analysis}
+                   SET status = 'processing', timemodified = :now
+                 WHERE id = :id AND status = :expected";
+        $DB->execute($sql, ['now' => $now, 'id' => $analysisid, 'expected' => $row->status]);
+
+        // Confirm we own it. The sole caller (process_pending) runs under the
+        // 'mod_googlemeet_ai_analysis' cron lock, so within the locked path the status-guarded
+        // UPDATE above makes this exact; the claimable pre-check handles the unlocked re-claim case.
+        $check = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, timemodified');
+        return $check && $check->status === 'processing' && (int) $check->timemodified === $now;
     }
 
     /**
