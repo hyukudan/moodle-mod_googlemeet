@@ -372,6 +372,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
         $recording->createdtimeformatted = userdate($recording->createdtime);
+        $recording->createddateshort = userdate($recording->createdtime, get_string('strftimedm', 'googlemeet'));
+        $recording->isnew = googlemeet_recording_is_new((int)$recording->createdtime, time(), 7);
+        $recording->dategroup = googlemeet_recording_date_group((int)$recording->createdtime);
 
         $ai = $aidata[$recording->id] ?? null;
         $status = $ai->status ?? null;

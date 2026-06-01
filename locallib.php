@@ -455,6 +455,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         $urlparams['rorder'] = $order;
         $recording->huburl = (new moodle_url('/mod/googlemeet/view.php', $urlparams))->out(false);
     }
+    $prevgroup = null;
+    foreach ($recordings as $recording) {
+        $recording->showdategroup = ($recording->dategroup !== $prevgroup);
+        $prevgroup = $recording->dategroup;
+    }
     $cansubscriberecordings = has_capability('mod/googlemeet:subscriberecordings', $context);
     $issubscribed = $cansubscriberecordings && $DB->record_exists(
         'googlemeet_recording_subs',
