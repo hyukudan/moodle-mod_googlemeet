@@ -1309,3 +1309,34 @@
         display: none;
     }
 }
+
+/* ===========================================
+   AI Status Chips (no-analysis states)
+   =========================================== */
+.googlemeet-ai-statuschip {
+    display: inline-block;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+.googlemeet-ai-statuschip-processing,
+.googlemeet-ai-statuschip-pending {
+    background: #e8f0fe;
+    color: #1a56c4;
+    border-color: #c6dafc;
+}
+.googlemeet-ai-statuschip-failed {
+    background: #fce8e6;
+    color: #b3261e;
+    border-color: #f6c7c2;
+}
+.googlemeet-ai-statuschip-muted {
+    background: #f1f3f4;
+    color: #5f6368;
+}
+.dark .googlemeet-ai-statuschip-processing,
+.dark .googlemeet-ai-statuschip-pending { background: #1f2a3d; color: #aac6ff; border-color: #2c3e5c; }
+.dark .googlemeet-ai-statuschip-failed { background: #3b1f1d; color: #f3aaa3; border-color: #5c2c28; }
+.dark .googlemeet-ai-statuschip-muted { background: #2a2c2e; color: #c4c7c5; }
