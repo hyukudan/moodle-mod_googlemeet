@@ -67,11 +67,11 @@
       {{#hasrecordings}}
       <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
       <div class="btn-group btn-group-sm" role="group">
-        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0"
+        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
            class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
           {{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}
         </a>
-        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0"
+        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
            class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
           {{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}
         </a>
@@ -79,6 +79,24 @@
       {{/hasrecordings}}
     </div>
   </div>
+
+  {{#hasrecordings}}
+  <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
+    <input type="hidden" name="id" value="{{coursemoduleid}}">
+    <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
+    <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
+           placeholder="{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}">
+    <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</button>
+    {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
+  </form>
+  {{#alltopics.0}}
+  <div class="googlemeet-recordings-topicfilter d-flex flex-wrap gap-1 mb-3">
+    {{#alltopics}}
+      <a href="{{url}}" class="googlemeet-ai-topic-tag {{#active}}googlemeet-topic-active{{/active}}">{{text}}</a>
+    {{/alltopics}}
+  </div>
+  {{/alltopics.0}}
+  {{/hasrecordings}}
 
   {{#hasrecordings}}
   {{#haspagination}}
@@ -256,7 +274,7 @@
     <ul class="pagination pagination-sm justify-content-center mb-0">
       {{#hasprevious}}
       <li class="page-item">
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{previouspage}}&rorder={{currentorder}}">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{previouspage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">
           &laquo; {{# str }} recordings_page_previous, mod_googlemeet {{/ str }}
         </a>
       </li>
@@ -273,14 +291,14 @@
         <span class="page-link">{{number}}</span>
         {{/active}}
         {{^active}}
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{page}}&rorder={{currentorder}}">{{number}}</a>
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{page}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">{{number}}</a>
         {{/active}}
       </li>
       {{/pages}}
 
       {{#hasnext}}
       <li class="page-item">
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{nextpage}}&rorder={{currentorder}}">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{nextpage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">
           {{# str }} recordings_page_next, mod_googlemeet {{/ str }} &raquo;
         </a>
       </li>

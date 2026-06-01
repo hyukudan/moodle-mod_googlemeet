@@ -1441,3 +1441,10 @@
 .dark .googlemeet-recording-card { background: #1f1f1f; border-color: #3c4043; }
 .dark .googlemeet-card-summary { color: #c4c7c5; }
 .dark .googlemeet-card-topics .googlemeet-ai-topic-tag { background: #2a2c2e; color: #c4c7c5; border-color: #3c4043; }
+
+/* ===========================================
+   Filter bar + topic chips (Task 3.3)
+   =========================================== */
+.googlemeet-ai-topic-tag.googlemeet-topic-active,
+.googlemeet-topic-active { background: #174ea6; color: #fff; }
+.googlemeet-recordings-topicfilter a { text-decoration: none; }
