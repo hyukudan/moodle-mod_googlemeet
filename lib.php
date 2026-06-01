@@ -203,6 +203,7 @@ function googlemeet_delete_instance($id) {
     }
 
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
+    $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $id]);
 
@@ -433,6 +434,7 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     if ($insertrecordings) {
+        $newrecordingids = [];
         foreach ($insertrecordings as $insertrecording) {
             $recording = new stdClass();
             $recording->googlemeetid = $googlemeetid;
@@ -449,9 +451,28 @@ function sync_recordings($googlemeetid, $files) {
                 $recording->transcriptfileid = $insertrecording->transcriptfileid ?? null;
             }
 
-            $DB->insert_record('googlemeet_recordings', $recording);
+            $newrecordingids[] = $DB->insert_record('googlemeet_recordings', $recording);
         }
         $stats['inserted'] = count($insertrecordings);
+
+        $aiautogenerate = !empty(get_config('googlemeet', 'ai_autogenerate'));
+        if ($aiautogenerate) {
+            $aiservice = new \mod_googlemeet\ai_service();
+            if ($aiservice->is_available()) {
+                foreach ($newrecordingids as $recordingid) {
+                    $aiservice->queue_for_analysis($recordingid);
+                }
+            }
+        }
+
+        if ($DB->record_exists('googlemeet_recording_subs', ['googlemeetid' => $googlemeetid])) {
+            $task = new \mod_googlemeet\task\notify_new_recordings();
+            $task->set_custom_data([
+                'googlemeetid' => $googlemeetid,
+                'newcount' => $stats['inserted'],
+            ]);
+            \core\task\manager::queue_adhoc_task($task);
+        }
     }
 
     // Always update lastsync timestamp (single query instead of 3 redundant queries).

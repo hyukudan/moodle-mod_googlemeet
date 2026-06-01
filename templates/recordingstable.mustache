@@ -45,8 +45,26 @@
       {{#totalrecordings}}<span class="badge bg-secondary ms-2">{{totalrecordings}}</span>{{/totalrecordings}}
     </h4>
 
-    {{#hasrecordings}}
     <div class="googlemeet-recordings-controls d-flex align-items-center">
+      {{#cansubscriberecordings}}
+      <form method="post" action="view.php" class="me-2 mb-0">
+        <input type="hidden" name="id" value="{{coursemoduleid}}">
+        <input type="hidden" name="sesskey" value="{{sesskey}}">
+        {{#issubscribed}}
+          <input type="hidden" name="subscribe" value="0">
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            {{# str }} unsubscriberecordings, mod_googlemeet {{/ str }}
+          </button>
+        {{/issubscribed}}
+        {{^issubscribed}}
+          <input type="hidden" name="subscribe" value="1">
+          <button type="submit" class="btn btn-outline-primary btn-sm">
+            {{# str }} subscriberecordings, mod_googlemeet {{/ str }}
+          </button>
+        {{/issubscribed}}
+      </form>
+      {{/cansubscriberecordings}}
+      {{#hasrecordings}}
       <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
       <div class="btn-group btn-group-sm" role="group">
         <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0"
@@ -58,8 +76,8 @@
           {{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}
         </a>
       </div>
+      {{/hasrecordings}}
     </div>
-    {{/hasrecordings}}
   </div>
 
   {{#hasrecordings}}

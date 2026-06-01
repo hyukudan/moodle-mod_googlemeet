@@ -132,6 +132,34 @@
               <ion-icon slot="start" name="play"></ion-icon>
               <%duration%>
             </ion-button>
+            <%#aisummary%>
+              <ion-card class="ion-no-margin ion-margin-top">
+                <ion-card-header>
+                  <ion-card-title>{{ 'plugin.mod_googlemeet.ai_summary' | translate }}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                  <p><%aisummarypreview%></p>
+                  <%#aitopics.0%>
+                    <%#aitopics%>
+                    <ion-chip>
+                      <ion-icon name="pricetag-outline"></ion-icon>
+                      <ion-label><%.%></ion-label>
+                    </ion-chip>
+                    <%/aitopics%>
+                  <%/aitopics.0%>
+                  <%#aikeypoints.0%>
+                    <ion-list lines="none">
+                      <%#aikeypoints%>
+                        <ion-item>
+                          <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+                          <ion-label><%.%></ion-label>
+                        </ion-item>
+                      <%/aikeypoints%>
+                    </ion-list>
+                  <%/aikeypoints.0%>
+                </ion-card-content>
+              </ion-card>
+            <%/aisummary%>
           </ion-label>
         </ion-item>
       <%/recording.recordings%>

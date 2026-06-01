@@ -90,6 +90,44 @@ function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
 }
 
 /**
+ * Handle the user's recording notification subscription toggle.
+ *
+ * @param object $googlemeet the googlemeet instance record
+ * @param object $cm the course module record
+ * @return void
+ */
+function googlemeet_handle_subscription_action($googlemeet, $cm) {
+    global $DB, $USER;
+
+    $subscribe = optional_param('subscribe', -1, PARAM_INT);
+    if ($subscribe === -1) {
+        return;
+    }
+
+    $context = context_module::instance($cm->id);
+    require_capability('mod/googlemeet:subscriberecordings', $context);
+    require_sesskey();
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        throw new moodle_exception('invalidrequest', 'error');
+    }
+
+    if ($subscribe) {
+        if (!$DB->record_exists('googlemeet_recording_subs', ['googlemeetid' => $googlemeet->id, 'userid' => $USER->id])) {
+            $record = new stdClass();
+            $record->googlemeetid = $googlemeet->id;
+            $record->userid = $USER->id;
+            $record->timecreated = time();
+            $DB->insert_record('googlemeet_recording_subs', $record);
+        }
+    } else {
+        $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $googlemeet->id, 'userid' => $USER->id]);
+    }
+
+    redirect(new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]));
+}
+
+/**
  * Print googlemeet heading.
  * @param object $googlemeet
  * @param object $cm
@@ -364,7 +402,7 @@ function googlemeet_merge_events($googlemeet, $events) {
  * @return void
  */
 function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null) {
-    global $CFG, $PAGE, $OUTPUT;
+    global $CFG, $DB, $PAGE, $OUTPUT, $USER;
 
     $config = get_config('googlemeet');
 
@@ -408,6 +446,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     // Include AI data when fetching recordings if AI is enabled.
     $recordings = googlemeet_list_recordings($params, $aienabled, $order, $maxrecordings, $offset);
+    $cansubscriberecordings = has_capability('mod/googlemeet:subscriberecordings', $context);
+    $issubscribed = $cansubscriberecordings && $DB->record_exists(
+        'googlemeet_recording_subs',
+        ['googlemeetid' => $googlemeet->id, 'userid' => $USER->id]
+    );
 
     // Pagination data.
     $haspagination = $totalpages > 1;
@@ -437,6 +480,9 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'hascapability' => $hascapability,
         'aienabled' => $aienabled,
         'cangenerateai' => $cangenerateai,
+        'cansubscriberecordings' => $cansubscriberecordings,
+        'issubscribed' => $issubscribed,
+        'sesskey' => sesskey(),
         // Pagination data.
         'haspagination' => $haspagination,
         'hasprevious' => $hasprevious,

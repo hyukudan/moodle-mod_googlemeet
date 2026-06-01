@@ -60,7 +60,8 @@ class mobile {
         $googlemeet = $DB->get_record('googlemeet', array('id' => $cm->instance), '*', MUST_EXIST);
         $course = $DB->get_record('course', array('id' => $args->courseid), '*', MUST_EXIST);
 
-        $recordings = googlemeet_list_recordings(['googlemeetid' => $googlemeet->id, 'visible' => true]);
+        $aienabled = !empty(get_config('googlemeet', 'enableai')) && !empty(get_config('googlemeet', 'geminiapikey'));
+        $recordings = googlemeet_list_recordings(['googlemeetid' => $googlemeet->id, 'visible' => true], $aienabled);
         $hasrecordings = !empty($recordings);
 
         $data = [
