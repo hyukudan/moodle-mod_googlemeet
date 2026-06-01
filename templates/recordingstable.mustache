@@ -110,7 +110,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
                     </svg>
-                    AI
+                    {{# str }} ai_badge_label, mod_googlemeet {{/ str }}
                   </span>
                 {{/hasai}}
                 {{#hascapability}}
@@ -122,6 +122,14 @@
               <div class="googlemeet-recording-meta">
                 <span class="googlemeet-recording-date">{{createdtimeformatted}}</span>
                 <span class="googlemeet-recording-duration">{{duration}}</span>
+                {{^hasai}}
+                  {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
+                  {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
+                  {{#aistatusisfailed}}
+                    {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                    {{^hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-muted">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                  {{/aistatusisfailed}}
+                {{/hasai}}
                 {{#hasai}}
                   <span class="googlemeet-recording-ai-info">
                     <span class="googlemeet-ai-keypoints-count">{{aikeypointscount}} {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>
