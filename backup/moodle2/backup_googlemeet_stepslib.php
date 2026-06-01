@@ -175,6 +175,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         // Define file annotations.
         $googlemeet->annotate_files('mod_googlemeet', 'intro', null); // This file area hasn't itemid.
+        $recording->annotate_files('mod_googlemeet', 'recordingmaterial', null);
 
         return $this->prepare_activity_structure($googlemeet);
     }

@@ -229,5 +229,6 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
      */
     protected function after_execute() {
         $this->add_related_files('mod_googlemeet', 'intro', null);
+        $this->add_related_files('mod_googlemeet', 'recordingmaterial', 'googlemeet_recording');
     }
 }

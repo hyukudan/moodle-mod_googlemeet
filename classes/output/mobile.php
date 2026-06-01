@@ -62,6 +62,40 @@ class mobile {
 
         $aienabled = !empty(get_config('googlemeet', 'enableai')) && !empty(get_config('googlemeet', 'geminiapikey'));
         $recordings = googlemeet_list_recordings(['googlemeetid' => $googlemeet->id, 'visible' => true], $aienabled);
+        $questionservice = new \mod_googlemeet\question_service();
+        $practicestate = [];
+        foreach ($recordings as $recording) {
+            $questions = $questionservice->get_ready_practice_questions($googlemeet, $cm, $context, (int)$recording->id);
+            $practicequestions = [];
+            foreach ($questions as $index => $question) {
+                $options = [];
+                foreach ($question['options'] as $option) {
+                    $options[] = [
+                        'answerid' => (int)$option['answerid'],
+                        'text' => trim(html_to_text($option['text'], 0, false)),
+                    ];
+                }
+                $practicequestions[] = [
+                    'questionid' => (int)$question['questionid'],
+                    'index' => $index,
+                    'position' => $index + 1,
+                    'stem' => trim(html_to_text($question['stem'], 0, false)),
+                    'options' => $options,
+                ];
+            }
+
+            $recording->practicequestions = $practicequestions;
+            $recording->haspracticequestions = !empty($practicequestions);
+            $recording->practicequestioncount = count($practicequestions);
+            if ($recording->haspracticequestions) {
+                $practicestate[(int)$recording->id] = [
+                    'index' => 0,
+                    'selected' => new \stdClass(),
+                    'checked' => new \stdClass(),
+                    'answer' => new \stdClass(),
+                ];
+            }
+        }
         $hasrecordings = !empty($recordings);
 
         $data = [
@@ -82,7 +116,8 @@ class mobile {
                     'html' => $OUTPUT->render_from_template("mod_googlemeet/mobile_view_page", $data),
                 ],
             ],
-            'javascript' => 'this.showUpcomingEvents = '. !$hasrecordings,
+            'javascript' => 'this.showUpcomingEvents = ' . json_encode(!$hasrecordings) . ';'
+                . 'this.googlemeetPractice = ' . json_encode($practicestate) . ';',
             'otherdata' => '',
             'files' => '',
         ];
