@@ -613,6 +613,27 @@ class locallib_test extends \advanced_testcase {
         $this->assertFalse($f['hasanalysisrow']);
     }
 
+    // =========================================================================
+    // googlemeet_recording_is_new()
+    // =========================================================================
+
+    public function test_recording_is_new_within_threshold(): void {
+        $now = mktime(12, 0, 0, 6, 10, 2026);
+        $created = mktime(12, 0, 0, 6, 8, 2026); // 2 days earlier.
+        $this->assertTrue(googlemeet_recording_is_new($created, $now, 7));
+    }
+    public function test_recording_is_new_outside_threshold(): void {
+        $now = mktime(12, 0, 0, 6, 10, 2026);
+        $created = mktime(12, 0, 0, 5, 20, 2026); // ~21 days earlier.
+        $this->assertFalse(googlemeet_recording_is_new($created, $now, 7));
+    }
+    public function test_recording_date_group_is_month_year(): void {
+        $ts = mktime(12, 0, 0, 5, 27, 2026);
+        $out = googlemeet_recording_date_group($ts);
+        $this->assertNotSame('', $out);
+        $this->assertStringContainsString('2026', $out);
+    }
+
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *

@@ -454,6 +454,28 @@ function googlemeet_ai_status_flags(?string $status): array {
 }
 
 /**
+ * Whether a recording counts as "new" relative to a reference time.
+ *
+ * @param int $createdtime Recording creation time.
+ * @param int $now Reference "now" timestamp.
+ * @param int $thresholddays Age threshold in days.
+ * @return bool
+ */
+function googlemeet_recording_is_new(int $createdtime, int $now, int $thresholddays = 7): bool {
+    return ($now - $createdtime) <= ($thresholddays * DAYSECS);
+}
+
+/**
+ * Localised month/year heading for grouping recordings, e.g. "mayo 2026".
+ *
+ * @param int $timestamp Recording creation time.
+ * @return string
+ */
+function googlemeet_recording_date_group(int $timestamp): string {
+    return userdate($timestamp, get_string('strftimemonthyear', 'langconfig'));
+}
+
+/**
  * Get icon mapping for font-awesome.
  */
 function mod_googlemeet_get_fontawesome_icon_map() {
