@@ -55,6 +55,7 @@ $PAGE->set_context($context);
 // Process the view write actions (logout / sync). The handler enforces the
 // editrecording capability, the sesskey check and (for sync) a POST request.
 googlemeet_handle_view_actions($googlemeet, $cm, $course);
+googlemeet_handle_subscription_action($googlemeet, $cm);
 
 // Make sure URL exists before generating output - some older sites may contain empty urls
 // Do not use PARAM_URL here, it is too strict and does not support general URIs!

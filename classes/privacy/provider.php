@@ -50,8 +50,7 @@ class provider implements
      * @return collection the updated collection of metadata items.
      */
     public static function get_metadata(collection $collection) : collection {
-        // Per-user notification dispatch log. This is the only table with a direct userid
-        // column, so it is the only personal data this plugin can export and delete per user.
+        // Per-user notification dispatch log.
         $collection->add_database_table(
             'googlemeet_notify_done',
             [
@@ -60,6 +59,16 @@ class provider implements
                 'timesent' => 'privacy:metadata:googlemeet_notify_done:timesent',
             ],
             'privacy:metadata:googlemeet_notify_done'
+        );
+
+        $collection->add_database_table(
+            'googlemeet_recording_subs',
+            [
+                'googlemeetid' => 'privacy:metadata:googlemeet_recording_subs:googlemeetid',
+                'userid' => 'privacy:metadata:googlemeet_recording_subs:userid',
+                'timecreated' => 'privacy:metadata:googlemeet_recording_subs:timecreated',
+            ],
+            'privacy:metadata:googlemeet_recording_subs'
         );
 
         // The plugin authenticates against Google using the per-user OAuth 2 tokens managed
@@ -160,17 +169,28 @@ class provider implements
 
         $sql = "SELECT c.id
                   FROM {context} c
-            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel
-            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel1
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname1
             INNER JOIN {googlemeet} g ON g.id = cm.instance
             INNER JOIN {googlemeet_events} ge ON ge.googlemeetid = g.id
             INNER JOIN {googlemeet_notify_done} gnd ON gnd.eventid = ge.id
-                 WHERE gnd.userid = :userid";
+                 WHERE gnd.userid = :userid1
+                 UNION
+                SELECT c.id
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel2
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname2
+            INNER JOIN {googlemeet} g ON g.id = cm.instance
+            INNER JOIN {googlemeet_recording_subs} grs ON grs.googlemeetid = g.id
+                 WHERE grs.userid = :userid2";
 
         $params = [
-            'modname' => 'googlemeet',
-            'contextlevel' => CONTEXT_MODULE,
-            'userid' => $userid,
+            'modname1' => 'googlemeet',
+            'contextlevel1' => CONTEXT_MODULE,
+            'userid1' => $userid,
+            'modname2' => 'googlemeet',
+            'contextlevel2' => CONTEXT_MODULE,
+            'userid2' => $userid,
         ];
 
         $contextlist = new contextlist();
@@ -204,6 +224,15 @@ class provider implements
             'cmid' => $context->instanceid,
             'modulename' => 'googlemeet',
         ];
+
+        $userlist->add_from_sql('userid', $sql, $params);
+
+        $sql = "SELECT grs.userid
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
+                  JOIN {googlemeet} g ON g.id = cm.instance
+                  JOIN {googlemeet_recording_subs} grs ON grs.googlemeetid = g.id
+                 WHERE cm.id = :cmid";
 
         $userlist->add_from_sql('userid', $sql, $params);
     }
@@ -258,6 +287,33 @@ class provider implements
         }
 
         $notifications->close();
+
+        $sql = "SELECT cm.id AS cmid,
+                       grs.timecreated
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+            INNER JOIN {googlemeet} g ON g.id = cm.instance
+            INNER JOIN {googlemeet_recording_subs} grs ON grs.googlemeetid = g.id
+                 WHERE c.id {$contextsql}
+                   AND grs.userid = :userid
+              ORDER BY cm.id";
+
+        $subscriptions = $DB->get_recordset_sql($sql, $params);
+
+        foreach ($subscriptions as $subscription) {
+            $subscriptiondata = [
+                'timecreated' => \core_privacy\local\request\transform::datetime($subscription->timecreated),
+            ];
+
+            $context = \context_module::instance($subscription->cmid);
+            writer::with_context($context)->export_data(
+                [get_string('recordingnotificationsubscription', 'googlemeet')],
+                (object)$subscriptiondata
+            );
+        }
+
+        $subscriptions->close();
     }
 
     /**
@@ -284,6 +340,7 @@ class provider implements
                 'googlemeetid' => $cm->instance,
             ]
         );
+        $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $cm->instance]);
     }
 
     /**
@@ -317,6 +374,7 @@ class provider implements
                     'googlemeetid' => $instanceid,
                 ]
             );
+            $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $instanceid, 'userid' => $userid]);
         }
     }
 
@@ -346,5 +404,8 @@ class provider implements
         $select = "eventid IN (SELECT id FROM {googlemeet_events} WHERE googlemeetid = :googlemeetid) AND userid $usersql";
         $params = ['googlemeetid' => $cm->instance] + $userparams;
         $DB->delete_records_select('googlemeet_notify_done', $select, $params);
+
+        $select = "googlemeetid = :googlemeetid AND userid $usersql";
+        $DB->delete_records_select('googlemeet_recording_subs', $select, $params);
     }
 }

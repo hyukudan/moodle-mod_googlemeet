@@ -96,6 +96,12 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $recordings = new backup_nested_element('recordings');
         $recording = new backup_nested_element('recording', ['id'], $recordingfields);
 
+        $recordingsubs = new backup_nested_element('recordingsubs');
+        $recordingsub = new backup_nested_element('recordingsub', ['id'], [
+            'userid',
+            'timecreated'
+        ]);
+
         $aianalysis = new backup_nested_element('aianalysis', ['id'], [
             'summary',
             'keypoints',
@@ -136,6 +142,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         // when the backup carries user information.
         if ($userinfo) {
             $recording->add_child($aianalysis);
+            $googlemeet->add_child($recordingsubs);
+            $recordingsubs->add_child($recordingsub);
         }
 
         $googlemeet->add_child($holidays);
@@ -153,6 +161,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         if ($userinfo) {
             $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
+            $recordingsub->set_source_table('googlemeet_recording_subs', ['googlemeetid' => backup::VAR_PARENTID]);
         }
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
@@ -160,6 +169,9 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         $cancelleddate->set_source_table('googlemeet_cancelled', ['googlemeetid' => backup::VAR_PARENTID]);
 
         // Define id annotations.
+        if ($userinfo) {
+            $recordingsub->annotate_ids('user', 'userid');
+        }
 
         // Define file annotations.
         $googlemeet->annotate_files('mod_googlemeet', 'intro', null); // This file area hasn't itemid.
