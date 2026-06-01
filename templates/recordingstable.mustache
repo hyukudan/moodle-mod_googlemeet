@@ -83,19 +83,20 @@
   {{#hasrecordings}}
   <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
     <input type="hidden" name="id" value="{{coursemoduleid}}">
+    <input type="hidden" name="rorder" value="{{#isorderdesc}}DESC{{/isorderdesc}}{{#isorderasc}}ASC{{/isorderasc}}">
     <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
     <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
            placeholder="{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}">
+    {{#alltopics.0}}
+    <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
+    <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm" style="max-width:260px">
+      <option value="">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</option>
+      {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
+    </select>
+    {{/alltopics.0}}
     <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</button>
     {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
   </form>
-  {{#alltopics.0}}
-  <div class="googlemeet-recordings-topicfilter d-flex flex-wrap gap-1 mb-3">
-    {{#alltopics}}
-      <a href="{{url}}" class="googlemeet-ai-topic-tag {{#active}}googlemeet-topic-active{{/active}}">{{text}}</a>
-    {{/alltopics}}
-  </div>
-  {{/alltopics.0}}
   {{/hasrecordings}}
 
   {{#hasrecordings}}
@@ -134,7 +135,7 @@
             </div>
             {{#hasai}}
             <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
-            {{#aitopics.0}}<div class="googlemeet-card-topics">{{#aitopics}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopics}}</div>{{/aitopics.0}}
+            {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
             {{/hasai}}
             <div class="googlemeet-card-footer">
               <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
@@ -381,6 +382,8 @@ require([
 ], function($, Ajax, Notification) {
 
   $(document).ready(function() {
+    $('#googlemeet-topic-select').on('change', function() { this.form.submit(); });
+
     {{#hascapability}}
       // Edit recording name
       $('.recordingeditname').on('click', function() {
@@ -735,9 +738,12 @@ require([
         // Topics: update or create .googlemeet-card-topics inside .googlemeet-card-body
         if (data.topics && data.topics.length > 0) {
           var topicsHtml = '<div class="googlemeet-card-topics">';
-          data.topics.forEach(function(topic) {
+          data.topics.slice(0, 3).forEach(function(topic) {
             topicsHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
           });
+          if (data.topics.length > 3) {
+            topicsHtml += '<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow">+' + (data.topics.length - 3) + '</span>';
+          }
           topicsHtml += '</div>';
           var cardTopics = cardBody.find('.googlemeet-card-topics');
           if (cardTopics.length) {

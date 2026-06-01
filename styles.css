@@ -1348,7 +1348,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    align-items: stretch;
+    align-items: start;
 }
 .googlemeet-recordings-group {
     grid-column: 1 / -1;
@@ -1448,3 +1448,5 @@
 .googlemeet-ai-topic-tag.googlemeet-topic-active,
 .googlemeet-topic-active { background: #174ea6; color: #fff; }
 .googlemeet-recordings-topicfilter a { text-decoration: none; }
+.googlemeet-card-topics { max-height: 3.6rem; overflow: hidden; }
+.googlemeet-ai-topic-tag.googlemeet-topic-overflow { background: #e8eaed; color: #5f6368; border: 1px solid #dadce0; font-weight: 600; }
