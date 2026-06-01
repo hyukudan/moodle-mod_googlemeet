@@ -86,107 +86,62 @@
     {{# str }} recordings_showing, mod_googlemeet {{/ str }} {{start}} - {{end}} / {{totalrecordings}}
   </div>
   {{/haspagination}}
-  <div class="googlemeet-recordings-list">
+  <div class="googlemeet-recordings-grid">
     {{#recordings}}
+        {{#showdategroup}}<h5 class="googlemeet-recordings-group w-100">{{dategroup}}</h5>{{/showdategroup}}
         <div class="googlemeet-recording-card {{^visible}}googlemeet-recording-hidden{{/visible}} {{#hasai}}googlemeet-recording-has-ai{{/hasai}}" data-recordingid="{{id}}">
-          {{^visible}}
-            <div class="googlemeet-recording-hidden-badge">
-              {{# str }} recording_hidden, mod_googlemeet {{/ str }}
+          <a href="{{huburl}}" class="googlemeet-card-media" aria-label="{{# str }} recording_play_aria, mod_googlemeet {{/ str }}: {{name}}">
+            <span class="googlemeet-card-play" aria-hidden="true">{{# pix }} play, mod_googlemeet {{/ pix }}</span>
+            <span class="googlemeet-card-date" aria-hidden="true">{{createddateshort}}</span>
+            <span class="googlemeet-card-duration">{{duration}}</span>
+            {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
+            {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
+          </a>
+          <div class="googlemeet-card-body">
+            <div class="googlemeet-card-title">
+              <a href="{{huburl}}" class="recording-name-text">{{name}}</a>
+              {{#hascapability}}<a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>{{/hascapability}}
             </div>
-          {{/visible}}
-
-          <div class="googlemeet-recording-content">
-            <div class="googlemeet-recording-icon">
-              <a href="{{huburl}}" class="googlemeet-play-btn" title="{{# str }} recording_watch, mod_googlemeet {{/ str }}">
-                {{# pix }} play, mod_googlemeet {{/ pix }}
-              </a>
+            <div class="googlemeet-card-meta">
+              <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
+              {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointscount}} {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>{{/hasai}}
+              {{^hasai}}
+                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
+                {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
+                {{#aistatusisfailed}}
+                  {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                  {{^hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-muted">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}</span>{{/hascapability}}
+                {{/aistatusisfailed}}
+              {{/hasai}}
             </div>
-
-            <div class="googlemeet-recording-info">
-              <div class="googlemeet-recording-name">
-                <a href="{{huburl}}" class="recording-name-text">{{name}}</a>
-                {{#hasai}}
-                  <span class="googlemeet-ai-badge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
-                    </svg>
-                    {{# str }} ai_badge_label, mod_googlemeet {{/ str }}
-                  </span>
-                {{/hasai}}
+            {{#hasai}}
+            <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
+            {{#aitopics.0}}<div class="googlemeet-card-topics">{{#aitopics}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopics}}</div>{{/aitopics.0}}
+            {{/hasai}}
+            <div class="googlemeet-card-footer">
+              <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
+              <div class="googlemeet-card-actions googlemeet-recording-actions">
+                <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}">{{# pix }} i/externallink, core {{/ pix }}</a>
                 {{#hascapability}}
-                  <a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">
-                    {{# pix }} i/edit, core {{/ pix }}
-                  </a>
+                  <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{# str }} showhide, mod_googlemeet {{/ str }}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
+                  <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>
                 {{/hascapability}}
-              </div>
-              <div class="googlemeet-recording-meta">
-                <span class="googlemeet-recording-date">{{createdtimeformatted}}</span>
-                <span class="googlemeet-recording-duration">{{duration}}</span>
-                {{^hasai}}
-                  {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
-                  {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
-                  {{#aistatusisfailed}}
-                    {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
-                    {{^hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-muted">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}</span>{{/hascapability}}
-                  {{/aistatusisfailed}}
-                {{/hasai}}
-                {{#hasai}}
-                  <span class="googlemeet-recording-ai-info">
-                    <span class="googlemeet-ai-keypoints-count">{{aikeypointscount}} {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>
-                  </span>
-                {{/hasai}}
+                {{#aienabled}}{{#hascapability}}
+                  <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
+                  </a>
+                {{/hascapability}}{{/aienabled}}
               </div>
             </div>
-
-            <div class="googlemeet-recording-actions">
-              <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}" title="{{# str }} openindrive, mod_googlemeet {{/ str }}">
-                {{# pix }} i/externallink, core, {{# str }} openindrive, mod_googlemeet {{/ str }} {{/ pix }}
-              </a>
-              {{#hascapability}}
-                <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}">
-                  {{#visible}}
-                    {{# pix }} i/hide, core, {{# str }} hide, mod_googlemeet {{/ str }} {{/ pix }}
-                  {{/visible}}
-                  {{^visible}}
-                    {{# pix }} i/show, core, {{# str }} show, mod_googlemeet {{/ str }} {{/ pix }}
-                  {{/visible}}
-                </a>
-                <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">
-                  {{# pix }} i/edit, core {{/ pix }}
-                </a>
-              {{/hascapability}}
-              {{#aienabled}}
-                <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon">
-                    <path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/>
-                  </svg>
-                </a>
-              {{/aienabled}}
-            </div>
           </div>
-
-          {{! AI Preview Section - Shows summary and topics directly }}
-          {{#aienabled}}
-          {{#hasai}}
-          <div class="googlemeet-ai-preview" data-recordingid="{{id}}">
-            <div class="googlemeet-ai-preview-summary">
-              <span class="googlemeet-ai-preview-label">{{# str }} ai_summary, mod_googlemeet {{/ str }}:</span>
-              {{aisummarypreview}}
-            </div>
-            {{#aitopics.0}}
-            <div class="googlemeet-ai-preview-topics">
-              {{#aitopics}}
-                <span class="googlemeet-ai-topic-tag">{{.}}</span>
-              {{/aitopics}}
-            </div>
-            {{/aitopics.0}}
-          </div>
-          {{/hasai}}
-          {{/aienabled}}
 
           {{! Expandable AI Panel }}
           {{#aienabled}}
-          <div class="googlemeet-ai-panel" data-recordingid="{{id}}" style="display: none;">
+            {{^hascapability}}
+              {{#hasai}}<a href="{{huburl}}" class="googlemeet-card-summarylink">{{# str }} recording_view_summary, mod_googlemeet {{/ str }} ›</a>{{/hasai}}
+            {{/hascapability}}
+            {{#hascapability}}
+            <div class="googlemeet-ai-panel" id="googlemeet-ai-panel-{{id}}" data-recordingid="{{id}}" style="display: none;">
             <div class="googlemeet-ai-header">
               <h5>{{# str }} ai_analysis, mod_googlemeet {{/ str }}</h5>
               <div class="googlemeet-ai-header-actions">
@@ -290,6 +245,7 @@
               </div>
             </div>
           </div>
+            {{/hascapability}}
           {{/aienabled}}
         </div>
     {{/recordings}}
