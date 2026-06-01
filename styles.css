@@ -1536,6 +1536,13 @@
     filter: brightness(0) invert(1);
 }
 
+/* List view uses the full content width (the card grid stays capped at 900px for
+   readability; the list does not need that cap and looks cramped under it). */
+#googlemeet_recordings.googlemeet-view-list,
+#googlemeet_recordings.googlemeet-view-list #googlemeet_recordings_table {
+    max-width: none;
+}
+
 .googlemeet-recordings-listview {
     display: flex;
     flex-direction: column;

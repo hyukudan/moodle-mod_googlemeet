@@ -418,7 +418,14 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         $params['visible'] = true;
     }
 
-    $html = '<div id="googlemeet_recordings" class="googlemeet_recordings">';
+    // Recordings view preference (cards|list). Used both for the view modifier class on the
+    // outer wrapper (so list view can use the full content width) and for the template branch.
+    $recordingsview = get_user_preferences('mod_googlemeet_recordings_view', 'list');
+    if ($recordingsview !== 'cards' && $recordingsview !== 'list') {
+        $recordingsview = 'list';
+    }
+
+    $html = '<div id="googlemeet_recordings" class="googlemeet_recordings googlemeet-view-' . $recordingsview . '">';
 
     // Check if AI features are enabled (single config fetch).
     $aiconfig = get_config('googlemeet');
@@ -507,10 +514,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     // preserve the current content state (page/order/query/topic) and carry the
     // rview action param. view.php consumes rview, sets the preference and
     // redirects to a clean URL.
-    $view = get_user_preferences('mod_googlemeet_recordings_view', 'list');
-    if ($view !== 'cards' && $view !== 'list') {
-        $view = 'list';
-    }
+    $view = $recordingsview;
     $viewurlparams = ['id' => $cm->id, 'rorder' => $order];
     if ($page > 0) {
         $viewurlparams['rpage'] = $page;
