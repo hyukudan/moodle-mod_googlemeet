@@ -634,6 +634,50 @@ class locallib_test extends \advanced_testcase {
         $this->assertStringContainsString('2026', $out);
     }
 
+    // =========================================================================
+    // googlemeet_filter_recordings_by_query(), googlemeet_filter_recordings_by_topic(),
+    // googlemeet_collect_topics()
+    // =========================================================================
+
+    /**
+     * Build a minimal recording stdClass for filter tests.
+     */
+    private function rec(string $name, bool $hasai = false, array $topics = [], string $summary = ''): \stdClass {
+        $r = new \stdClass();
+        $r->name = $name; $r->hasai = $hasai; $r->aitopics = $topics; $r->aisummary = $summary;
+        return $r;
+    }
+
+    public function test_filter_by_query_matches_name_case_insensitive(): void {
+        $recs = [$this->rec('Clase de Contratos'), $this->rec('Clase de Personal')];
+        $out = googlemeet_filter_recordings_by_query($recs, 'contratos');
+        $this->assertCount(1, $out);
+        $this->assertSame('Clase de Contratos', $out[0]->name);
+    }
+
+    public function test_filter_by_query_matches_ai_topic(): void {
+        $recs = [$this->rec('Sesión 1', true, ['Silencio administrativo'])];
+        $out = googlemeet_filter_recordings_by_query($recs, 'silencio');
+        $this->assertCount(1, $out);
+    }
+
+    public function test_filter_by_query_empty_returns_all(): void {
+        $recs = [$this->rec('a'), $this->rec('b')];
+        $this->assertCount(2, googlemeet_filter_recordings_by_query($recs, '  '));
+    }
+
+    public function test_filter_by_topic_exact(): void {
+        $recs = [$this->rec('a', true, ['LPAC']), $this->rec('b', true, ['LCSP'])];
+        $out = googlemeet_filter_recordings_by_topic($recs, 'LPAC');
+        $this->assertCount(1, $out);
+        $this->assertSame('a', $out[0]->name);
+    }
+
+    public function test_collect_topics_unique_sorted(): void {
+        $recs = [$this->rec('a', true, ['LCSP', 'LPAC']), $this->rec('b', true, ['LPAC'])];
+        $this->assertSame(['LCSP', 'LPAC'], googlemeet_collect_topics($recs));
+    }
+
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *
