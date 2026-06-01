@@ -584,6 +584,35 @@ class locallib_test extends \advanced_testcase {
         $this->assertStringNotContainsString("\xEF\xBF\xBD", $out);
     }
 
+    // =========================================================================
+    // googlemeet_ai_status_flags()
+    // =========================================================================
+
+    public function test_ai_status_flags_completed(): void {
+        $f = googlemeet_ai_status_flags('completed');
+        $this->assertSame('completed', $f['aistatus']);
+        $this->assertTrue($f['hasanalysisrow']);
+        $this->assertTrue($f['aistatusiscompleted']);
+        $this->assertFalse($f['aistatusisfailed']);
+    }
+
+    public function test_ai_status_flags_failed(): void {
+        $f = googlemeet_ai_status_flags('failed');
+        $this->assertTrue($f['aistatusisfailed']);
+        $this->assertFalse($f['aistatusiscompleted']);
+    }
+
+    public function test_ai_status_flags_null_means_no_row(): void {
+        $f = googlemeet_ai_status_flags(null);
+        $this->assertFalse($f['hasanalysisrow']);
+        $this->assertSame('', $f['aistatus']);
+    }
+
+    public function test_ai_status_flags_unknown_treated_as_no_row(): void {
+        $f = googlemeet_ai_status_flags('banana');
+        $this->assertFalse($f['hasanalysisrow']);
+    }
+
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *
