@@ -416,6 +416,20 @@ function googlemeet_count_recordings($params) {
 }
 
 /**
+ * Multibyte-safe truncation for AI summary previews.
+ *
+ * @param string $text The full summary text.
+ * @param int $length Maximum length in characters.
+ * @return string Truncated text with an ellipsis if it was cut.
+ */
+function googlemeet_truncate_summary(string $text, int $length = 200): string {
+    if (core_text::strlen($text) <= $length) {
+        return $text;
+    }
+    return core_text::substr($text, 0, $length) . '…';
+}
+
+/**
  * Get icon mapping for font-awesome.
  */
 function mod_googlemeet_get_fontawesome_icon_map() {
