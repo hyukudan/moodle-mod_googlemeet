@@ -678,6 +678,21 @@ class locallib_test extends \advanced_testcase {
         $this->assertSame(['LCSP', 'LPAC'], googlemeet_collect_topics($recs));
     }
 
+    // =========================================================================
+    // googlemeet_topic_preview()
+    // =========================================================================
+
+    public function test_topic_preview_caps_and_counts_overflow(): void {
+        $p = googlemeet_topic_preview(['a', 'b', 'c', 'd', 'e'], 3);
+        $this->assertSame(['a', 'b', 'c'], $p['visible']);
+        $this->assertSame(2, $p['overflow']);
+    }
+    public function test_topic_preview_no_overflow(): void {
+        $p = googlemeet_topic_preview(['a', 'b'], 3);
+        $this->assertSame(['a', 'b'], $p['visible']);
+        $this->assertSame(0, $p['overflow']);
+    }
+
     /**
      * Duration is correctly computed from start/end hours and minutes.
      *
