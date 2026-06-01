@@ -211,6 +211,7 @@
               {{/hasai}}
               {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
             </div>
+            {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
           </div>
           <div class="googlemeet-listitem-actions googlemeet-recording-actions">
             <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
