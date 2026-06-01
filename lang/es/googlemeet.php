@@ -122,6 +122,7 @@ $string['ai_status_processing'] = 'Procesando';
 $string['ai_status_completed'] = 'Completado';
 $string['ai_status_failed'] = 'Fallido';
 $string['ai_noanalysis'] = 'No hay análisis IA disponible todavía.';
+$string['ai_notconfigured'] = 'El análisis IA no está habilitado en este sitio.';
 $string['ai_noanalysis_hint'] = 'Pulsa el botón de arriba para generar un resumen, puntos clave y transcripción con IA.';
 $string['ai_error'] = 'Error generando análisis: {$a}';
 $string['ai_not_configured'] = 'Las funciones IA no están configuradas. Por favor contacta con el administrador.';

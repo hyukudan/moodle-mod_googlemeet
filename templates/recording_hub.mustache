@@ -87,7 +87,8 @@
         {{/topics.0}}
       {{/hasanalysis}}
       {{^hasanalysis}}
-        <div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>
+        {{#aienabled}}<div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>{{/aienabled}}
+        {{^aienabled}}<div class="alert alert-secondary">{{# str }} ai_notconfigured, mod_googlemeet {{/ str }}</div>{{/aienabled}}
       {{/hasanalysis}}
     </div>
 
@@ -125,11 +126,11 @@
               <div class="card mb-3 googlemeet-question-card" data-questionid="{{id}}">
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="form-check">
-                      <input class="form-check-input googlemeet-question-select" type="checkbox" value="{{id}}" id="googlemeet-question-select-{{id}}">
-                      <label class="form-check-label fw-bold" for="googlemeet-question-select-{{id}}">{{{stem}}}</label>
+                    <div class="d-flex align-items-start gap-2" style="min-width:0;">
+                      <input class="form-check-input mt-1 flex-shrink-0 googlemeet-question-select" type="checkbox" value="{{id}}" id="googlemeet-question-select-{{id}}" aria-label="{{# str }} select {{/ str }}">
+                      <label class="fw-bold mb-0 text-break" for="googlemeet-question-select-{{id}}">{{{stem}}}</label>
                     </div>
-                    <span class="badge {{#isready}}bg-success{{/isready}}{{#isdraft}}bg-warning text-dark{{/isdraft}}">{{statuslabel}}</span>
+                    <span class="badge flex-shrink-0 {{#isready}}bg-success{{/isready}}{{#isdraft}}bg-warning text-dark{{/isdraft}}">{{statuslabel}}</span>
                   </div>
                   <ol class="mt-2">
                     {{#answers}}

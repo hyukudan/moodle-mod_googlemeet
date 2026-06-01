@@ -340,28 +340,21 @@ class process_video_analysis extends adhoc_task {
             }
         }
 
-        $curl2 = new \curl();
-        $options = [
-            'CURLOPT_TIMEOUT' => 1800,        // 30 minutes for large files.
+        // Google Drive serves files above its virus-scan limit behind a confirmation interstitial
+        // (an HTML page) instead of the file. Probe the URL once: if the response is that page,
+        // extract the confirm token and rewrite the download URL so the streamed download below
+        // fetches the actual file. A direct (small-file) response is ignored here — the real
+        // download is the CURLOPT_FILE streaming pass that follows.
+        $probe = new \curl();
+        $probehtml = $probe->get($downloadurl, [], [
             'CURLOPT_CONNECTTIMEOUT' => 60,
+            'CURLOPT_TIMEOUT' => 120,
             'CURLOPT_FOLLOWLOCATION' => true,
             'CURLOPT_MAXREDIRS' => 5,
-        ];
-
-        // First request to get the download.
-        $response = $curl2->download_one($downloadurl, null, $options);
-
-        // Check if we got a virus scan warning page (for large files).
-        if ($response === true && file_exists($tempfile) === false) {
-            // We need to handle the confirmation page.
-            $response = $curl2->get($downloadurl);
-
-            // Look for the confirm token.
-            if (preg_match('/confirm=([^&]+)/', $response, $matches)) {
-                $confirmtoken = $matches[1];
-                $downloadurl = "https://drive.google.com/uc?export=download&confirm={$confirmtoken}&id={$fileid}";
-                mtrace("Large file detected, using confirm token...");
-            }
+        ]);
+        if (is_string($probehtml) && preg_match('/confirm=([^&"]+)/', $probehtml, $matches)) {
+            $downloadurl = "https://drive.google.com/uc?export=download&confirm={$matches[1]}&id={$fileid}";
+            mtrace("Large file detected, using confirm token...");
         }
 
         // Download to file. Stream straight to disk via CURLOPT_FILE in a single

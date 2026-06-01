@@ -241,6 +241,7 @@ $string['practice_loading'] = 'Carregando perguntas...';
 $string['practice_next'] = 'Próxima';
 $string['practice_retry'] = 'Tentar novamente';
 $string['practice_title'] = 'Perguntas de prática';
+$string['ai_notconfigured'] = 'A análise por IA não está habilitada neste site.';
 $string['practice_progress'] = 'Pergunta {$a->current} de {$a->total}';
 $string['showhide'] = 'Mostrar/ocultar';
 $string['ai_subtitles_unavailable'] = 'Não foram encontradas legendas geradas automaticamente para esta gravação. Clique em "Transcrever a partir do vídeo" para baixar a gravação completa e gerar uma transcrição.';

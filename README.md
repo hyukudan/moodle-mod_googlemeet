@@ -24,6 +24,7 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Custom recording filter** to specify the exact name pattern to search in Google Drive
 - **Sync feedback** showing how many recordings were added, updated, or removed
 - **Automatic recording sync** a configurable number of hours after a session ends, with bounded retries and back-off (`process_autosync` scheduled task)
+- **Recording-ready notifications** - learners can opt in to be notified when new recordings are added to the activity
 - **Pagination** with configurable recordings per page
 - **Sorting options** (newest/oldest first)
 
@@ -102,6 +103,21 @@ To create Google Meet rooms from Moodle, you need an active OAuth 2 service for 
 6. Click on the preview or expand button to see the full analysis
 7. Use "Copy" to copy the transcript to clipboard
 
+### Practice questions & materials (recording hub)
+
+Open a recording (click its name or play button in the recordings list) to enter its **hub**.
+
+- **AI practice questions** (teachers): in the *Questions* tab, click *Generate AI questions*. Questions
+  are created in the course's question bank as **drafts** (tagged `googlemeet-rec-<id>`). Review each
+  one, edit if needed, then **Publish**. Students only ever see published questions. Requires the
+  `mod/googlemeet:managequestions` capability.
+- **Practice** (students): in the *Questions* tab, answer the published questions one at a time and get
+  immediate feedback with the correct answer and an explanation. Available on the web and in the Moodle
+  mobile app. It is formative — nothing is graded or stored.
+- **Materials** (teachers): in the *Materials* tab, click *Manage materials* to attach files (slides,
+  PDFs, etc.) to that recording. Anyone who can view the activity can download them. Requires the
+  `mod/googlemeet:editrecording` capability.
+
 ### CLI Bulk Processing
 
 Extract subtitles and run AI analysis for all recordings in one command:
@@ -130,6 +146,10 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.14.1
+- UX polish: Summary tab shows a clear "AI not enabled" state when AI is off (instead of "no analysis yet"); cleaner teacher question-review card layout (separate checkbox / stem / status badge); accessible labels.
+- Code cleanup: simplified the Drive large-file download confirm-token handling in the video-analysis task (removed a redundant request).
 
 ### Version 2.14.0
 - **Materials per recording** - teachers attach files to a recording (own `pluginfile` file area, capability- and instance-scoped; backed up/restored). New "Materials" hub tab.
