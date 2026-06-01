@@ -366,7 +366,7 @@ require([
     {{#hascapability}}
       // Edit recording name
       $('.recordingeditname').on('click', function() {
-        var card = $(this).closest('.googlemeet-recording-name');
+        var card = $(this).closest('.googlemeet-card-title');
         var text = card.find('.recording-name-text');
         var editBtn = $(this);
         var recordingid = $(this).attr('data-id');
@@ -404,7 +404,7 @@ require([
 
       function recordingeditperform(element) {
         element = $(element);
-        var card = element.closest('.googlemeet-recording-name');
+        var card = element.closest('.googlemeet-card-title');
         var text = card.find('.recording-name-text');
         var editBtn = card.find('.recordingeditname');
 
@@ -441,7 +441,7 @@ require([
           element = $(element);
         }
 
-        var card = element.closest('.googlemeet-recording-name');
+        var card = element.closest('.googlemeet-card-title');
         var text = card.find('.recording-name-text');
         var editBtn = card.find('.recordingeditname');
         element.remove();
@@ -507,12 +507,6 @@ require([
           card.addClass('googlemeet-ai-expanded');
           btn.addClass('expanded');
         }
-      });
-
-      // Click on preview also expands
-      $('.googlemeet-ai-preview').on('click', function() {
-        var recordingid = $(this).attr('data-recordingid');
-        $('.googlemeet-ai-toggle-btn[data-id="' + recordingid + '"]').trigger('click');
       });
 
       // Generate AI analysis
@@ -703,59 +697,55 @@ require([
         result.show();
         loadedTranscripts[recordingid] = true;
 
-        // Update card to show AI badge and preview
+        // Update card-level elements to reflect new AI data (new card-grid classes)
         card.addClass('googlemeet-recording-has-ai');
         var toggleBtn = card.find('.googlemeet-ai-toggle-btn');
         toggleBtn.addClass('googlemeet-ai-toggle-active');
         toggleBtn.attr('data-hasai', '1');
         content.attr('data-hasai', '1');
 
-        // Add or update preview
-        var preview = card.find('.googlemeet-ai-preview');
+        // Summary: update or create .googlemeet-card-summary inside .googlemeet-card-body
         var summaryPreview = data.summary ? (data.summary.length > 200 ? data.summary.substring(0, 200) + '...' : data.summary) : '';
-        var previewHtml = '<div class="googlemeet-ai-preview" data-recordingid="' + recordingid + '">' +
-          '<div class="googlemeet-ai-preview-summary"><span class="googlemeet-ai-preview-label">{{# str }} ai_summary, mod_googlemeet {{/ str }}:</span> ' + escapeHtml(summaryPreview) + '</div>';
+        var cardBody = card.find('.googlemeet-card-body');
+        var cardSummary = cardBody.find('.googlemeet-card-summary');
+        if (cardSummary.length) {
+          cardSummary.text(summaryPreview);
+        } else {
+          cardBody.append('<p class="googlemeet-card-summary">' + escapeHtml(summaryPreview) + '</p>');
+        }
+
+        // Topics: update or create .googlemeet-card-topics inside .googlemeet-card-body
         if (data.topics && data.topics.length > 0) {
-          previewHtml += '<div class="googlemeet-ai-preview-topics">';
+          var topicsHtml = '<div class="googlemeet-card-topics">';
           data.topics.forEach(function(topic) {
-            previewHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
+            topicsHtml += '<span class="googlemeet-ai-topic-tag">' + escapeHtml(topic) + '</span>';
           });
-          previewHtml += '</div>';
-        }
-        previewHtml += '</div>';
-
-        if (preview.length) {
-          preview.replaceWith(previewHtml);
-        } else {
-          card.find('.googlemeet-recording-content').after(previewHtml);
-        }
-
-        // Add AI badge to name if not present
-        var nameContainer = card.find('.googlemeet-recording-name');
-        if (!nameContainer.find('.googlemeet-ai-badge').length) {
-          nameContainer.find('.recording-name-text').after(
-            '<span class="googlemeet-ai-badge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-                '<path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>' +
-              '</svg> AI' +
-            '</span>'
-          );
+          topicsHtml += '</div>';
+          var cardTopics = cardBody.find('.googlemeet-card-topics');
+          if (cardTopics.length) {
+            cardTopics.replaceWith(topicsHtml);
+          } else {
+            cardBody.append(topicsHtml);
+          }
         }
 
-        // Update keypoints count in meta
-        var metaContainer = card.find('.googlemeet-recording-meta');
-        var aiInfo = metaContainer.find('.googlemeet-recording-ai-info');
+        // Keypoints count: update or create .googlemeet-ai-keypoints-count inside .googlemeet-card-meta;
+        // also remove any status chip spans now that analysis is completed.
         var keypointsCount = data.keypoints ? data.keypoints.length : 0;
-        if (aiInfo.length) {
-          aiInfo.find('.googlemeet-ai-keypoints-count').text(keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}');
+        var metaContainer = card.find('.googlemeet-card-meta');
+        metaContainer.find('.googlemeet-ai-statuschip').remove();
+        var keypointsEl = metaContainer.find('.googlemeet-ai-keypoints-count');
+        if (keypointsEl.length) {
+          keypointsEl.text(keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}');
         } else {
-          metaContainer.append('<span class="googlemeet-recording-ai-info"><span class="googlemeet-ai-keypoints-count">' + keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span></span>');
+          metaContainer.append('<span class="googlemeet-ai-keypoints-count">' + keypointsCount + ' {{# str }} ai_keypoints_short, mod_googlemeet {{/ str }}</span>');
         }
 
-        // Rebind click handler for new preview
-        $('.googlemeet-ai-preview[data-recordingid="' + recordingid + '"]').on('click', function() {
-          $('.googlemeet-ai-toggle-btn[data-id="' + recordingid + '"]').trigger('click');
-        });
+        // AI badge: ensure .googlemeet-card-aibadge exists inside .googlemeet-card-media
+        var cardMedia = card.find('.googlemeet-card-media');
+        if (!cardMedia.find('.googlemeet-card-aibadge').length) {
+          cardMedia.append('<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>');
+        }
 
         // Rebind copy handler
         result.find('.googlemeet-ai-copy-btn').on('click', function(e) {
