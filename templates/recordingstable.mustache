@@ -745,6 +745,9 @@ require([
           } else {
             cardBody.append(topicsHtml);
           }
+        } else {
+          // No topics in the new analysis: drop any stale topic row.
+          cardBody.find('.googlemeet-card-topics').remove();
         }
 
         // Keypoints count: update or create .googlemeet-ai-keypoints-count inside .googlemeet-card-meta;

@@ -530,8 +530,9 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'isorderdesc' => ($order === 'DESC'),
         'isorderasc' => ($order === 'ASC'),
         // Filter data.
-        'recordingquery' => s($query),
-        'selectedtopic' => s($topic),
+        // Not pre-escaped: Mustache {{ }} HTML-escapes these on output, so s() here would double-encode.
+        'recordingquery' => $query,
+        'selectedtopic' => $topic,
         'alltopics' => $topicchips,
         'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== ''),
         'clearfiltersurl' => (new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]))->out(false),
