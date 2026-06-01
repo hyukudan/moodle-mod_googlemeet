@@ -403,8 +403,11 @@ class mod_googlemeet_external extends external_api {
         $cantranscript = has_capability('mod/googlemeet:editrecording', $context);
 
         // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
-        $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+        // Also pull the recording's own transcript so we can fall back to it when the analysis row
+        // has no transcript stored (tier-1 analyses generated from an existing recording transcript
+        // never copied it into the analysis row, leaving the UI stuck on "loading transcript").
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id, transcripttext', MUST_EXIST);
 
         $aiservice = new \mod_googlemeet\ai_service();
         $analysis = $aiservice->get_analysis($recordingid);
@@ -427,6 +430,12 @@ class mod_googlemeet_external extends external_api {
             ];
         }
 
+        // Prefer the analysis transcript; fall back to the recording's own transcript when empty.
+        $transcript = $analysis->transcript ?? '';
+        if (trim((string)$transcript) === '') {
+            $transcript = $recording->transcripttext ?? '';
+        }
+
         return [
             'found' => true,
             'id' => $analysis->id,
@@ -434,7 +443,7 @@ class mod_googlemeet_external extends external_api {
             'summary' => $analysis->summary ?? '',
             'keypoints' => is_array($analysis->keypoints) ? $analysis->keypoints : [],
             'topics' => is_array($analysis->topics) ? $analysis->topics : [],
-            'transcript' => $cantranscript ? ($analysis->transcript ?? '') : '',
+            'transcript' => $cantranscript ? $transcript : '',
             'language' => $analysis->language ?? 'es',
             'status' => $analysis->status,
             'error' => $analysis->error ?? '',
