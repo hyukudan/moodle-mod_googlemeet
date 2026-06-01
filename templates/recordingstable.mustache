@@ -66,7 +66,7 @@
       {{/cansubscriberecordings}}
       {{#hasrecordings}}
       <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
-      <div class="btn-group btn-group-sm" role="group">
+      <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group">
         <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
            class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
           {{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}

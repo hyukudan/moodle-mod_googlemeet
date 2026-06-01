@@ -1657,3 +1657,86 @@
 @media (prefers-reduced-motion: reduce) {
     .googlemeet-recording-listitem { transition: none; }
 }
+/* ════════════════════════════════════════════════════════════════════════
+   Controls-bar polish — Codex UX review (Opus-approved, surgical scope).
+   Does NOT touch AI-panel / modal buttons; only the recordings controls,
+   the card/list CTA and the in-row action icons.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* View toggle ACTIVE: the .active class triggers the theme's darken (#122238 +
+   grey text → looks disabled). Force the unified navy + white, matching Ordenar. */
+#googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active,
+#googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active:hover,
+#googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active:focus {
+    background-color: #1E3A5F;
+    border-color: #1E3A5F;
+    color: #fff !important;
+}
+#googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active img {
+    filter: brightness(0) invert(1);
+}
+/* View toggle INACTIVE: neutral grey outline so it doesn't compete with Ordenar/CTA. */
+.googlemeet-view-toggle .btn.btn-outline-secondary {
+    background-color: #fff;
+    border-color: #DADCE0;
+    color: #5F6368;
+}
+.googlemeet-view-toggle .btn.btn-outline-secondary:hover {
+    background-color: #F8F9FA;
+    border-color: #B8C0CC;
+    color: #3C4043;
+}
+
+/* Unify the primary navy across the CTA and the Ordenar active button. */
+.googlemeet-card-cta.btn-primary,
+.googlemeet-sort-toggle .btn.btn-primary {
+    background-color: #1E3A5F;
+    border-color: #1E3A5F;
+    color: #fff;
+}
+.googlemeet-card-cta.btn-primary:hover,
+.googlemeet-sort-toggle .btn.btn-primary:hover {
+    background-color: #16304F;
+    border-color: #16304F;
+    color: #fff;
+}
+
+/* Filter bar: match the select / input / button to the control height + type. */
+.googlemeet-recordings-filterbar .form-control,
+.googlemeet-recordings-filterbar .form-select,
+.googlemeet-recordings-filterbar .form-control-sm,
+.googlemeet-recordings-filterbar .form-select-sm,
+.googlemeet-recordings-filterbar .btn {
+    height: 40px;
+    min-height: 40px;
+    font-size: 0.875rem;
+    border-radius: 8px;
+}
+.googlemeet-recordings-filterbar .form-control,
+.googlemeet-recordings-filterbar .form-select {
+    border: 1px solid #DADCE0;
+    background-color: #fff;
+    color: #3C4043;
+}
+
+/* AI toggle icon: secondary by default (was a heavy filled blue circle for every
+   AI recording, competing with the CTA). Accent only on hover / when expanded. */
+.googlemeet-ai-toggle-btn,
+.googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active {
+    background: transparent;
+    color: #52627A;
+}
+.googlemeet-ai-toggle-btn:hover,
+.googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active:hover,
+.googlemeet-ai-toggle-btn.expanded {
+    background: #E8F0FE;
+    color: #174EA6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Date chip: stop artificial capitalisation (PHP already lowercases the value). */
+.googlemeet-listitem-date { text-transform: none; }
+
+/* "Análisis IA" badge: subtle border so it reads as a pill on white list rows. */
+.googlemeet-card-aibadge { border: 1px solid #C6DAFC; }
