@@ -479,6 +479,78 @@ function googlemeet_recording_date_group(int $timestamp): string {
 }
 
 /**
+ * Filter recordings by a free-text query against name (and AI summary/topics when completed).
+ *
+ * @param array $recordings Recording stdClass list (post AI-enrichment).
+ * @param string $query Raw search query.
+ * @return array Filtered recordings, re-indexed.
+ */
+function googlemeet_filter_recordings_by_query(array $recordings, string $query): array {
+    $needle = core_text::strtolower(trim($query));
+    if ($needle === '') {
+        return $recordings;
+    }
+    return array_values(array_filter($recordings, static function($r) use ($needle) {
+        $haystacks = [(string)($r->name ?? '')];
+        if (!empty($r->hasai)) {
+            $haystacks[] = (string)($r->aisummary ?? '');
+            foreach (($r->aitopics ?? []) as $t) {
+                $haystacks[] = (string)$t;
+            }
+        }
+        foreach ($haystacks as $h) {
+            if (core_text::strpos(core_text::strtolower($h), $needle) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }));
+}
+
+/**
+ * Filter recordings to those tagged with an exact AI topic.
+ *
+ * @param array $recordings Recording stdClass list.
+ * @param string $topic Exact topic text.
+ * @return array Filtered recordings, re-indexed.
+ */
+function googlemeet_filter_recordings_by_topic(array $recordings, string $topic): array {
+    $topic = trim($topic);
+    if ($topic === '') {
+        return $recordings;
+    }
+    return array_values(array_filter($recordings, static function($r) use ($topic) {
+        foreach (($r->aitopics ?? []) as $t) {
+            if ((string)$t === $topic) {
+                return true;
+            }
+        }
+        return false;
+    }));
+}
+
+/**
+ * Distinct, naturally-sorted list of AI topics across recordings.
+ *
+ * @param array $recordings Recording stdClass list.
+ * @return string[]
+ */
+function googlemeet_collect_topics(array $recordings): array {
+    $seen = [];
+    foreach ($recordings as $r) {
+        foreach (($r->aitopics ?? []) as $t) {
+            $t = (string)$t;
+            if ($t !== '') {
+                $seen[$t] = true;
+            }
+        }
+    }
+    $topics = array_keys($seen);
+    sort($topics, SORT_NATURAL | SORT_FLAG_CASE);
+    return $topics;
+}
+
+/**
  * Get icon mapping for font-awesome.
  */
 function mod_googlemeet_get_fontawesome_icon_map() {
