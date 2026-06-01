@@ -507,9 +507,9 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     // preserve the current content state (page/order/query/topic) and carry the
     // rview action param. view.php consumes rview, sets the preference and
     // redirects to a clean URL.
-    $view = get_user_preferences('mod_googlemeet_recordings_view', 'cards');
+    $view = get_user_preferences('mod_googlemeet_recordings_view', 'list');
     if ($view !== 'cards' && $view !== 'list') {
-        $view = 'cards';
+        $view = 'list';
     }
     $viewurlparams = ['id' => $cm->id, 'rorder' => $order];
     if ($page > 0) {
