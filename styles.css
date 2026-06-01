@@ -978,6 +978,18 @@
 /* Expanded card state */
 .googlemeet-ai-expanded {
     box-shadow: 0 4px 20px rgba(26, 115, 232, 0.15);
+    /* Span the whole grid row when the AI panel is open, so the panel is full-width
+       and readable instead of squeezed into a single ~289px column. */
+    grid-column: 1 / -1;
+}
+/* Keep the expanded AI panel text comfortable to read at full card width. */
+.googlemeet-ai-expanded .googlemeet-ai-content {
+    max-width: 70rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+@media only screen and (max-width: 600px) {
+    .googlemeet-ai-expanded .googlemeet-ai-content { max-width: none; }
 }
 
 .googlemeet-ai-expanded .googlemeet-ai-preview {
