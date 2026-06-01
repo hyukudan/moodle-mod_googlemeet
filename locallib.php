@@ -503,6 +503,29 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $start = $totalrecordings > 0 ? $offset + 1 : 0;
     $end = min($offset + $maxrecordings, $totalrecordings);
 
+    // Per-user recordings view preference (cards|list), with toggle URLs that
+    // preserve the current content state (page/order/query/topic) and carry the
+    // rview action param. view.php consumes rview, sets the preference and
+    // redirects to a clean URL.
+    $view = get_user_preferences('mod_googlemeet_recordings_view', 'cards');
+    if ($view !== 'cards' && $view !== 'list') {
+        $view = 'cards';
+    }
+    $viewurlparams = ['id' => $cm->id, 'rorder' => $order];
+    if ($page > 0) {
+        $viewurlparams['rpage'] = $page;
+    }
+    if (trim((string)$query) !== '') {
+        $viewurlparams['rq'] = $query;
+    }
+    if (trim((string)$topic) !== '') {
+        $viewurlparams['topic'] = $topic;
+    }
+    $viewcardsurl = (new moodle_url('/mod/googlemeet/view.php',
+        $viewurlparams + ['rview' => 'cards']))->out(false);
+    $viewlisturl = (new moodle_url('/mod/googlemeet/view.php',
+        $viewurlparams + ['rview' => 'list']))->out(false);
+
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
         'hasrecordings' => !empty($recordings),
@@ -536,6 +559,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'alltopics' => $topicchips,
         'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== ''),
         'clearfiltersurl' => (new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]))->out(false),
+        // View toggle (cards|list).
+        'isviewcards' => ($view === 'cards'),
+        'isviewlist' => ($view === 'list'),
+        'viewcardsurl' => $viewcardsurl,
+        'viewlisturl' => $viewlisturl,
     ]);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
