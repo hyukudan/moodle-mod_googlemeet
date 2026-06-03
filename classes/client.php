@@ -356,7 +356,8 @@ class client {
      * @return array|void Stats array ['inserted','updated','deleted','found'] when $noredirect=true.
      */
     public function syncrecordings($googlemeet, $noredirect = false) {
-        global $PAGE, $DB;
+        global $PAGE, $DB, $CFG;
+        require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
 
         if ($this->check_login()) {
             $service = new rest($this->get_user_oauth_client());
