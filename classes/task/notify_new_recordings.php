@@ -71,9 +71,12 @@ class notify_new_recordings extends \core\task\adhoc_task {
                     'name' => format_string($googlemeet->name, true, ['context' => $context]),
                     'count' => $newcount,
                     'url' => $url->out(false),
+                    'user' => !empty($user->firstname) ? $user->firstname : '',
                 ];
-                $subject = get_string('recordingavailable_subject', 'googlemeet', $a);
-                $body = get_string('recordingavailable_body', 'googlemeet', $a);
+                // Proper singular/plural (no robotic "(s)").
+                $variant = ($newcount == 1) ? '_one' : '_many';
+                $subject = get_string('recordingavailable_subject' . $variant, 'googlemeet', $a);
+                $body = get_string('recordingavailable_body' . $variant, 'googlemeet', $a);
 
                 $message = new \core\message\message();
                 $message->component = 'mod_googlemeet';
@@ -84,6 +87,28 @@ class notify_new_recordings extends \core\task\adhoc_task {
                 $message->fullmessage = $body;
                 $message->fullmessageformat = FORMAT_MARKDOWN;
                 $message->fullmessagehtml = format_text($body, FORMAT_MARKDOWN);
+
+                // Branded HTML version (shared campus template), consistent with the
+                // other transactional notifications. Falls back to the markdown HTML above.
+                if (class_exists('\\local_achievements\\email_template')) {
+                    try {
+                        $et = \local_achievements\email_template::class;
+                        $fn = !empty($user->firstname) ? s($user->firstname) : '';
+                        $isone = ($newcount == 1);
+                        $title = $isone
+                            ? '🎥 Nueva grabación disponible'
+                            : '🎥 ' . (int)$newcount . ' nuevas grabaciones disponibles';
+                        $hbody  = $et::text(($fn ? 'Hola ' . $fn . ',' : 'Hola,'), 'left');
+                        $hbody .= $et::text($isone
+                            ? 'Ya tienes disponible una nueva grabación en <strong>' . s($a->name) . '</strong>.'
+                            : 'Ya tienes disponibles <strong>' . (int)$newcount . '</strong> nuevas grabaciones en <strong>' . s($a->name) . '</strong>.');
+                        $hbody .= $et::button($url->out(false), $isone ? 'Ver la grabación' : 'Ver las grabaciones', '#2563eb');
+                        $hbody .= $et::text('¡A repasar! Revisar las clases es una de las mejores formas de fijar el temario.', 'center');
+                        $message->fullmessagehtml = $et::wrap($title, $hbody);
+                    } catch (\Throwable $e) {
+                        debugging('mod_googlemeet: branded recording notice render failed — ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    }
+                }
                 $message->smallmessage = $subject;
                 $message->notification = 1;
                 $message->contexturl = $url->out(false);
