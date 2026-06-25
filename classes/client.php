@@ -721,6 +721,104 @@ class client {
     }
 
     /**
+     * Find and fetch the Gemini meeting notes (a Google Doc) for a recording.
+     *
+     * Notes are optional and often generated AFTER the recording appears, so this
+     * is called both for new recordings and for existing ones still missing notes.
+     *
+     * @param rest $service The REST service
+     * @param string $parents The parent folders query (may be empty)
+     * @param string $videoname The video filename
+     * @return array|null ['docid' => string, 'content' => string] or null
+     */
+    private function find_notes_for_recording($service, $parents, $videoname) {
+        $basename = pathinfo($videoname, PATHINFO_FILENAME);
+
+        // Mirror the transcript search: prefer the Meet Recordings folder, fall back
+        // to all of Drive when no folder was found (empty parents clause).
+        $parentclause = !empty($parents) ? '(' . $parents . ') and ' : '';
+        $notesparams = [
+            'q' => $parentclause . 'trashed = false and
+                    "me" in owners and
+                    mimeType = "application/vnd.google-apps.document" and
+                    name contains "' . $this->drive_quote($basename) . '"',
+            'pageSize' => 10,
+            'fields' => 'files(id,name,mimeType)'
+        ];
+
+        try {
+            $response = helper::request($service, 'list', $notesparams, false);
+            if (empty($response->files)) {
+                return null;
+            }
+
+            // Take the first matching Doc. Name-matching to the recording basename
+            // makes a wrong match very unlikely within the Meet Recordings folder.
+            $docfile = $response->files[0];
+            $html = $this->export_doc_html($service, $docfile->id);
+            if (empty($html)) {
+                return null;
+            }
+
+            $clean = $this->sanitize_notes_html($html);
+            if (trim($clean) === '') {
+                return null;
+            }
+
+            return [
+                'docid' => $docfile->id,
+                'content' => $clean,
+            ];
+        } catch (\Exception $e) {
+            debugging("Failed to fetch notes: " . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * Export a Google Doc to HTML.
+     *
+     * @param rest $service The REST service
+     * @param string $docid The Google Doc file ID
+     * @return string|null The HTML body or null on failure
+     */
+    private function export_doc_html($service, $docid) {
+        try {
+            $params = ['fileid' => $docid, 'mimeType' => 'text/html'];
+            return helper::request($service, 'export', $params, false);
+        } catch (\Exception $e) {
+            debugging("Failed to export notes doc {$docid}: " . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * Sanitize the HTML exported from a Google Doc into safe, structure-preserving HTML.
+     *
+     * Google Docs HTML wraps content in <html><head><style>...</style></head><body>...</body>.
+     * We keep only the body's inner HTML and run it through Moodle's clean_text() with
+     * FORMAT_HTML, which strips scripts/styles/event handlers but preserves headings/lists.
+     *
+     * @param string $html Raw exported HTML
+     * @return string Safe HTML (may be empty string)
+     */
+    private function sanitize_notes_html($html) {
+        if ($html === null || trim($html) === '') {
+            return '';
+        }
+
+        // Extract inner <body> if present; otherwise use the whole string.
+        if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $m)) {
+            $html = $m[1];
+        }
+
+        // Drop <style> blocks Google Docs inlines in the body, then let Moodle sanitize.
+        $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html);
+
+        return trim(clean_text($html, FORMAT_HTML));
+    }
+
+    /**
      * Download file content from Google Drive.
      *
      * @param rest $service The REST service
