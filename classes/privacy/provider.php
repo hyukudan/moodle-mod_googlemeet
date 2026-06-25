@@ -122,6 +122,8 @@ class provider implements
                 'webviewlink' => 'privacy:metadata:googlemeet_recordings:webviewlink',
                 'transcripttext' => 'privacy:metadata:googlemeet_recordings:transcripttext',
                 'transcriptfileid' => 'privacy:metadata:googlemeet_recordings:transcriptfileid',
+                'notestext' => 'privacy:metadata:googlemeet_recordings:notestext',
+                'notesdocid' => 'privacy:metadata:googlemeet_recordings:notesdocid',
             ],
             'privacy:metadata:googlemeet_recordings'
         );
