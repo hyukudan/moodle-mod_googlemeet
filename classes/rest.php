@@ -74,6 +74,24 @@ class rest extends \core\oauth2\rest {
                     'fields' => PARAM_RAW
                 ],
                 'response' => 'json'
+            ],
+            'get' => [
+                'endpoint' => 'https://www.googleapis.com/drive/v3/files/{fileid}',
+                'method' => 'get',
+                'args' => [
+                    'fileid' => PARAM_RAW,
+                    'alt' => PARAM_RAW
+                ],
+                'response' => 'raw'
+            ],
+            'export' => [
+                'endpoint' => 'https://www.googleapis.com/drive/v3/files/{fileid}/export',
+                'method' => 'get',
+                'args' => [
+                    'fileid' => PARAM_RAW,
+                    'mimeType' => PARAM_RAW
+                ],
+                'response' => 'raw'
             ]
         ];
     }
