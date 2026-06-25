@@ -357,6 +357,16 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $minutesbefore->setSelected($config->minutesbefore);
         $mform->addHelpButton('minutesbefore', 'minutesbefore', 'googlemeet');
 
+        // Attachments for students to download.
+        $mform->addElement('header', 'headerattachments', get_string('attachmentsheader', 'googlemeet'));
+        $mform->addElement('filemanager', 'attachments', get_string('attachments', 'googlemeet'), null, [
+            'subdirs' => 0,
+            'maxbytes' => $CFG->maxbytes,
+            'maxfiles' => -1,
+            'accepted_types' => '*',
+        ]);
+        $mform->addHelpButton('attachments', 'attachments', 'googlemeet');
+
         // Add standard elements.
         $this->standard_coursemodule_elements();
 
@@ -372,6 +382,12 @@ class mod_googlemeet_mod_form extends moodleform_mod {
      * @return void
      */
     public function data_preprocessing(&$defaultvalues) {
+        // Prepare the draft file area for the teacher attachments (works for new and existing instances).
+        $draftitemid = file_get_submitted_draft_itemid('attachments');
+        file_prepare_draft_area($draftitemid, $this->context->id, 'mod_googlemeet', 'attachment', 0,
+            ['subdirs' => 0]);
+        $defaultvalues['attachments'] = $draftitemid;
+
         if ($this->current->instance) {
             $defaultvalues['days'] = json_decode($defaultvalues['days'], true);
 

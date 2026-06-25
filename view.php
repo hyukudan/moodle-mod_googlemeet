@@ -131,6 +131,9 @@ if (has_capability('mod/googlemeet:editrecording', $context)) {
     }
 }
 
+// Teacher attachments: files the teacher provided for students to download.
+googlemeet_print_attachments($context);
+
 $maxevents = $googlemeet->maxupcomingevents ?? 3;
 echo $OUTPUT->render_from_template('mod_googlemeet/upcomingevents', googlemeet_get_upcoming_events($googlemeet->id, $maxevents));
 

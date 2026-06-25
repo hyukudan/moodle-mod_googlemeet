@@ -174,6 +174,21 @@
             </div>
           </div>
 
+          {{! Materials: teachers always get a manage button (so they can add the first
+              file); students only see download chips when files exist. }}
+          {{#hascapability}}
+          <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-2">
+            <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
+            {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+          </div>
+          {{/hascapability}}
+          {{^hascapability}}{{#hasmaterials}}
+          <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-2">
+            <span class="small text-muted">{{# str }} hub_tab_materials, mod_googlemeet {{/ str }}:</span>
+            {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+          </div>
+          {{/hasmaterials}}{{/hascapability}}
+
           {{! Student-only summary link stays inside the card. }}
           {{#aienabled}}
             {{^hascapability}}
@@ -212,6 +227,19 @@
               {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
             </div>
             {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
+            {{! Materials row (same rules as the card view). }}
+            {{#hascapability}}
+            <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-1">
+              <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
+              {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+            </div>
+            {{/hascapability}}
+            {{^hascapability}}{{#hasmaterials}}
+            <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-1">
+              <span class="small text-muted">{{# str }} hub_tab_materials, mod_googlemeet {{/ str }}:</span>
+              {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+            </div>
+            {{/hasmaterials}}{{/hascapability}}
           </div>
           <div class="googlemeet-listitem-actions googlemeet-recording-actions">
             <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>

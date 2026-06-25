@@ -81,6 +81,18 @@ function googlemeet_pluginfile($course, $cm, $context, $filearea, $args, $forced
         return false;
     }
 
+    // Teacher attachments (files for students to download). Itemid is always 0.
+    if ($filearea === 'attachment') {
+        $fs = get_file_storage();
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_googlemeet/attachment/$relativepath";
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+            return false;
+        }
+        send_stored_file($file, 86400, 0, $forcedownload, $options);
+        return true;
+    }
+
     if ($filearea !== 'recordingmaterial') {
         return false;
     }
@@ -174,6 +186,9 @@ function googlemeet_add_instance($googlemeet, $mform = null) {
 
     googlemeet_set_events($googlemeet, $events);
 
+    // Save teacher attachments (files for students to download).
+    googlemeet_save_attachments($googlemeet);
+
     return $googlemeet->id;
 }
 
@@ -230,6 +245,9 @@ function googlemeet_update_instance($googlemeet, $mform = null) {
     // `autosynced` timestamp and their notify_done rows. This prevents re-sending notifications
     // and re-running autosync for sessions that were already processed before this save.
     googlemeet_merge_events($googlemeet, $events);
+
+    // Save teacher attachments (files for students to download).
+    googlemeet_save_attachments($googlemeet);
 
     return $googlemeetupdated;
 }
