@@ -91,6 +91,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         if ($userinfo) {
             $recordingfields[] = 'transcripttext';
             $recordingfields[] = 'transcriptfileid';
+            $recordingfields[] = 'notestext';
+            $recordingfields[] = 'notesdocid';
         }
 
         $recordings = new backup_nested_element('recordings');
