@@ -444,6 +444,10 @@ class client {
                 $existingids = $DB->get_fieldset_select('googlemeet_recordings', 'recordingid',
                     'googlemeetid = ?', [$googlemeet->id]);
                 $existingids = array_flip($existingids);
+                // Map recordingid => notestext so we know which existing recordings
+                // still lack notes (Gemini notes are often generated later).
+                $existingnotes = $DB->get_records_menu('googlemeet_recordings',
+                    ['googlemeetid' => $googlemeet->id], '', 'recordingid, notestext');
 
                 for ($i = 0; $i < $recordingscount; $i++) {
                     $recording = $recordings[$i];
@@ -495,6 +499,18 @@ class client {
                                         $recordings[$i]->transcripttext = $cctext;
                                     }
                                 }
+                            }
+                        }
+
+                        // Notes are fetched for new recordings AND for existing ones
+                        // that still have no notes, because Gemini notes are often
+                        // published after the recording first appears.
+                        $existingnotestext = $existingnotes[$recording->id] ?? null;
+                        if (!isset($existingids[$recording->id]) || empty($existingnotestext)) {
+                            $notesdata = $this->find_notes_for_recording($service, $parents, $recording->name);
+                            if ($notesdata) {
+                                $recordings[$i]->notestext = $notesdata['content'];
+                                $recordings[$i]->notesdocid = $notesdata['docid'];
                             }
                         }
 
