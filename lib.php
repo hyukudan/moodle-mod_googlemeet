@@ -635,9 +635,11 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     $fileidsmap = [];
+    $filesbyid = [];
     foreach ($files as $file) {
         if (isset($file->recordingId)) {
             $fileidsmap[$file->recordingId] = true;
+            $filesbyid[$file->recordingId] = $file;
         }
     }
 
@@ -653,19 +655,39 @@ function sync_recordings($googlemeetid, $files) {
         }
     }
 
-    foreach ($googlemeetrecordings as $googlemeetrecording) {
-        // O(1) lookup with isset() instead of O(n) in_array().
-        if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
-            // Accumulate every orphaned recording id, not just the last one.
-            $deleterecordings[] = $googlemeetrecording->id;
-        }
-    }
-
     $stats = [
         'inserted' => 0,
         'updated' => 0,
         'deleted' => 0,
     ];
+
+    $updatednotes = 0;
+    foreach ($googlemeetrecordings as $googlemeetrecording) {
+        // O(1) lookup with isset() instead of O(n) in_array().
+        if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
+            // Accumulate every orphaned recording id, not just the last one.
+            $deleterecordings[] = $googlemeetrecording->id;
+            continue;
+        }
+
+        // Backfill notes for an existing recording that just received them (Gemini
+        // notes are often published after the recording first synced). This is the
+        // only field updated on existing rows; all Drive metadata stays immutable.
+        if (empty($googlemeetrecording->notestext)
+                && !empty($fileidsmap[$googlemeetrecording->recordingid])) {
+            $incoming = $filesbyid[$googlemeetrecording->recordingid] ?? null;
+            if ($incoming && !empty($incoming->notestext)) {
+                $DB->update_record('googlemeet_recordings', (object)[
+                    'id' => $googlemeetrecording->id,
+                    'notestext' => $incoming->notestext,
+                    'notesdocid' => $incoming->notesdocid ?? null,
+                    'timemodified' => time(),
+                ]);
+                $updatednotes++;
+            }
+        }
+    }
+    $stats['updated'] = $updatednotes;
 
     if ($deleterecordings) {
         list($insql, $inparams) = $DB->get_in_or_equal($deleterecordings);
@@ -691,6 +713,12 @@ function sync_recordings($googlemeetid, $files) {
             if (!empty($insertrecording->transcripttext)) {
                 $recording->transcripttext = $insertrecording->transcripttext;
                 $recording->transcriptfileid = $insertrecording->transcriptfileid ?? null;
+            }
+
+            // Add notes if available.
+            if (!empty($insertrecording->notestext)) {
+                $recording->notestext = $insertrecording->notestext;
+                $recording->notesdocid = $insertrecording->notesdocid ?? null;
             }
 
             $newrecordingids[] = $DB->insert_record('googlemeet_recordings', $recording);
