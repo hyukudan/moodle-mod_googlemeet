@@ -25,6 +25,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['attachmentsheader'] = 'Anexos';
+$string['attachments'] = 'Arquivos para os alunos baixarem';
+$string['attachments_help'] = 'Envie arquivos aqui (PDFs, slides, documentos, etc.). Os alunos inscritos os verão como uma lista de download na página da atividade. Deixe vazio para não exibir nada.';
 $string['at'] = 'às';
 $string['issuerid'] = 'Serviço OAuth';
 $string['issuerid_desc'] = '<a href="https://github.com/ronefel/moodle-mod_googlemeet/wiki/Como-criar-o-ID-do-cliente-e-a-Chave-secreta-do-cliente" target="_blank">Como configurar um Serviço OAuth</a>';

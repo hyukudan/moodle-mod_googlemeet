@@ -468,6 +468,14 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         }
         $urlparams['rorder'] = $order;
         $recording->huburl = (new moodle_url('/mod/googlemeet/view.php', $urlparams))->out(false);
+        // Surface attached materials directly in the recordings list so teachers can
+        // upload/manage from here and students can download without entering the hub.
+        $materials = googlemeet_get_recording_materials($context, $recording->id);
+        $recording->materials = $materials;
+        $recording->hasmaterials = !empty($materials);
+        $recording->materialcount = count($materials);
+        $recording->managematerialsurl = (new moodle_url('/mod/googlemeet/material.php',
+            ['id' => $cm->id, 'recording' => $recording->id]))->out(false);
     }
     $prevgroup = null;
     foreach ($recordings as $recording) {
@@ -759,6 +767,77 @@ function googlemeet_get_recording_materials(context_module $context, int $record
     }
 
     return $materials;
+}
+
+/**
+ * Save the teacher attachment files submitted through the mod form draft area.
+ *
+ * Files are stored in the module context under the 'attachment' file area (itemid 0).
+ * No DB schema is needed: they live in mdl_files keyed by context + file area.
+ *
+ * @param object $googlemeet Instance object from the form (needs ->coursemodule and ->attachments).
+ * @return void
+ */
+function googlemeet_save_attachments($googlemeet): void {
+    if (empty($googlemeet->coursemodule) || !isset($googlemeet->attachments)) {
+        return;
+    }
+    $context = context_module::instance($googlemeet->coursemodule);
+    file_save_draft_area_files(
+        $googlemeet->attachments,
+        $context->id,
+        'mod_googlemeet',
+        'attachment',
+        0,
+        ['subdirs' => 0]
+    );
+}
+
+/**
+ * Print the teacher-provided attachment files as a download list for students.
+ *
+ * Does nothing if the activity has no attachments.
+ *
+ * @param context_module $context Module context.
+ * @return void
+ */
+function googlemeet_print_attachments(context_module $context): void {
+    global $OUTPUT;
+
+    $fs = get_file_storage();
+    $files = $fs->get_area_files($context->id, 'mod_googlemeet', 'attachment', 0, 'filename', false);
+    if (!$files) {
+        return;
+    }
+
+    echo html_writer::start_div('googlemeet-attachments mt-4');
+    echo $OUTPUT->heading(get_string('attachmentsheader', 'googlemeet'), 4);
+    echo html_writer::start_tag('ul', ['class' => 'list-unstyled mb-0']);
+
+    foreach ($files as $file) {
+        if ($file->is_directory()) {
+            continue;
+        }
+        $filename = $file->get_filename();
+        $url = moodle_url::make_pluginfile_url(
+            $context->id,
+            'mod_googlemeet',
+            'attachment',
+            0,
+            $file->get_filepath(),
+            $filename,
+            true
+        );
+        $icon = $OUTPUT->pix_icon(file_file_icon($file), '', 'moodle', ['class' => 'me-2']);
+        $size = html_writer::tag('span', ' (' . display_size($file->get_filesize()) . ')',
+            ['class' => 'text-muted small']);
+        echo html_writer::tag('li',
+            html_writer::link($url, $icon . s($filename) . $size),
+            ['class' => 'mb-1']);
+    }
+
+    echo html_writer::end_tag('ul');
+    echo html_writer::end_div();
 }
 
 /**
