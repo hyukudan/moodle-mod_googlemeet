@@ -133,6 +133,8 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         if (!$this->userinfo) {
             unset($data->transcripttext);
             unset($data->transcriptfileid);
+            unset($data->notestext);
+            unset($data->notesdocid);
         }
 
         $newitemid = $DB->insert_record('googlemeet_recordings', $data);
