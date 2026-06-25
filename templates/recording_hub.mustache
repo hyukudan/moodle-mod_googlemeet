@@ -64,6 +64,13 @@
       </button>
     </li>
     {{/caneditrecording}}
+    {{#hasnotes}}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="googlemeet-notes-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-notes-panel" type="button" role="tab" aria-controls="googlemeet-notes-panel" aria-selected="false">
+        {{# str }} hub_tab_notes, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    {{/hasnotes}}
   </ul>
 
   <div class="tab-content pt-3">
@@ -234,6 +241,11 @@
       {{^hasanalysis}}<div class="alert alert-info">{{# str }} ai_transcript_loading, mod_googlemeet {{/ str }}</div>{{/hasanalysis}}
     </div>
     {{/caneditrecording}}
+    {{#hasnotes}}
+    <div class="tab-pane fade" id="googlemeet-notes-panel" role="tabpanel" aria-labelledby="googlemeet-notes-tab">
+      <div class="googlemeet-ai-notes-text">{{{notes}}}</div>
+    </div>
+    {{/hasnotes}}
   </div>
 
   <div class="modal fade" id="googlemeet-question-edit-modal" tabindex="-1" role="dialog" aria-hidden="true">

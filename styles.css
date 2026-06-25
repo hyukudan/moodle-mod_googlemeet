@@ -1228,6 +1228,17 @@
     border-radius: 4px;
 }
 
+.googlemeet-ai-notes-text {
+    color: #333;
+    line-height: 1.6;
+    max-height: 480px;
+    overflow-y: auto;
+    font-size: 0.95rem;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
 .googlemeet-ai-copy-btn {
     font-size: 0.8rem;
     padding: 2px 8px;

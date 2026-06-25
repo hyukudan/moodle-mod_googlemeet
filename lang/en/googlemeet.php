@@ -309,6 +309,7 @@ $string['hub_tab_summary'] = 'Summary';
 $string['hub_tab_questions'] = 'Questions';
 $string['hub_tab_transcript'] = 'Transcript';
 $string['hub_tab_materials'] = 'Materials';
+$string['hub_tab_notes'] = 'Notes';
 $string['material_saved'] = 'Materials saved';
 $string['materials_empty_teacher'] = 'No materials yet; add the first one.';
 $string['materials_manage'] = 'Manage materials';
