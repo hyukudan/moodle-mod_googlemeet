@@ -394,5 +394,22 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026060102, 'googlemeet');
     }
 
+    if ($oldversion < 2026062500) {
+        // Add Gemini meeting-notes columns to recordings.
+        $table = new xmldb_table('googlemeet_recordings');
+
+        $field = new xmldb_field('notestext', XMLDB_TYPE_TEXT, null, null, null, null, null, 'transcriptfileid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('notesdocid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'notestext');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026062500, 'googlemeet');
+    }
+
     return true;
 }
