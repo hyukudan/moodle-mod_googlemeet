@@ -1305,6 +1305,7 @@
 }
 
 .googlemeet-ai-notes-text a {
+    color: #174ea6;
     font-weight: 600;
 }
 
@@ -1388,6 +1389,10 @@
 .dark .googlemeet-ai-notes-text h1,
 .dark .googlemeet-ai-notes-text h2 {
     border-bottom-color: #3c4043;
+}
+
+.dark .googlemeet-ai-notes-text a {
+    color: #8ab4f8;
 }
 
 .dark .googlemeet-ai-nodata,
@@ -1584,6 +1589,9 @@
     gap: 0.25rem;
     max-width: min(34rem, 100%);
 }
+.googlemeet-materials-list-card {
+    gap: 0.5rem;
+}
 .googlemeet-material-row {
     display: flex;
     align-items: center;
@@ -1613,6 +1621,9 @@
 .googlemeet-material-row-compact {
     min-height: 34px;
     padding: 0.35rem 0.55rem;
+}
+.googlemeet-materials-list-card .googlemeet-material-row {
+    padding: 0.6rem 0.75rem;
 }
 .googlemeet-material-file {
     display: flex;
