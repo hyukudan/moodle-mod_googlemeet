@@ -748,18 +748,19 @@ class client {
      * @return array|null ['docid' => string, 'content' => string] or null
      */
     private function find_notes_for_recording($service, $parents, $videoname) {
-        $basename = pathinfo($videoname, PATHINFO_FILENAME);
-
-        // Mirror the transcript search: prefer the Meet Recordings folder, fall back
-        // to all of Drive when no folder was found (empty parents clause).
-        $parentclause = !empty($parents) ? '(' . $parents . ') and ' : '';
+        $prefix = preg_replace('/\s*[-–—]\s*Recording\s*$/iu', '', $videoname);
+        $prefix = trim($prefix);
+        if ($prefix === '' || $prefix === trim($videoname)) {
+            $prefix = preg_replace('/\.[A-Za-z0-9]{2,4}$/', '', trim($videoname));
+        }
+        if ($prefix === '') {
+            return null;
+        }
         $notesparams = [
-            'q' => $parentclause . 'trashed = false and
-                    "me" in owners and
-                    mimeType = "application/vnd.google-apps.document" and
-                    name contains "' . $this->drive_quote($basename) . '"',
-            'pageSize' => 10,
-            'fields' => 'files(id,name,mimeType)'
+            'q' => 'trashed = false and "me" in owners and mimeType = "application/vnd.google-apps.document"',
+            'orderBy' => 'createdTime desc',
+            'pageSize' => 200,
+            'fields' => 'files(id,name)'
         ];
 
         try {
@@ -767,26 +768,36 @@ class client {
             if (empty($response->files)) {
                 return null;
             }
-
-            // Take the first matching Doc. Name-matching to the recording basename
-            // makes a wrong match very unlikely within the Meet Recordings folder.
-            $docfile = $response->files[0];
-            $html = $this->export_doc_html($service, $docfile->id);
+            $candidate = null;
+            foreach ($response->files as $file) {
+                if (stripos($file->name, $prefix) === false) {
+                    continue;
+                }
+                if (preg_match('/Gemini|Notas|Notes/iu', $file->name)) {
+                    $candidate = $file;
+                    break;
+                }
+                if ($candidate === null) {
+                    $candidate = $file;
+                }
+            }
+            if (!$candidate) {
+                return null;
+            }
+            $html = $this->export_doc_html($service, $candidate->id);
             if (empty($html)) {
                 return null;
             }
-
             $clean = $this->sanitize_notes_html($html);
             if (trim($clean) === '') {
                 return null;
             }
-
             return [
-                'docid' => $docfile->id,
+                'docid' => $candidate->id,
                 'content' => $clean,
             ];
         } catch (\Exception $e) {
-            debugging("Failed to fetch notes: " . $e->getMessage(), DEBUG_DEVELOPER);
+            debugging('Failed to fetch notes: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return null;
         }
     }
