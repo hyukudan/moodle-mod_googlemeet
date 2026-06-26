@@ -839,8 +839,14 @@ class client {
             $html = $m[1];
         }
 
-        // Drop <style> blocks Google Docs inlines in the body, then let Moodle sanitize.
+        // Drop <style> blocks Google Docs inlines in the body.
         $html = preg_replace('/<style\b[^>]*>.*?<\/style>/is', '', $html);
+
+        // Strip Google Docs' inline presentation (style/class/id attributes) so the
+        // plugin's own CSS governs appearance — otherwise the 32pt Roboto styling from
+        // the export overrides the notes panel. Semantic tags (h1-h6, ul/li, p, strong)
+        // survive and carry the structure.
+        $html = preg_replace('/\s(?:style|class|id|dir|lang)="[^"]*"/i', '', $html);
 
         return trim(clean_text($html, FORMAT_HTML));
     }
