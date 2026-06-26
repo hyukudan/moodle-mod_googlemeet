@@ -848,6 +848,19 @@ class client {
         // survive and carry the structure.
         $html = preg_replace('/\s(?:style|class|id|dir|lang)="[^"]*"/i', '', $html);
 
+        // The Gemini notes Doc wraps the actual notes in chrome we don't want in the
+        // panel: a header (title + 'Archivos adjuntos' / 'Registros de la reunión'
+        // links), the full meeting transcript appended at the end (shown in its own
+        // tab), and Gemini promo/disclaimer paragraphs. Keep only Resumen / Próximos
+        // pasos / Detalles.
+        // (a) Drop everything before the first 'Resumen' heading.
+        $html = preg_replace('/^.*?(?=<h3\b[^>]*>(?:(?!<\/h3>).)*?Resumen)/isu', '', $html);
+        // (b) Drop the transcript appendix (📖 Transcripción marker, or the '… - Transcripción' h2) to the end.
+        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?📖\s*Transcri.*$/isu', '', $html);
+        $html = preg_replace('/<h2\b[^>]*>(?:(?!<\/h2>).)*?Transcripci[oó]n.*$/isu', '', $html);
+        // (c) Drop Gemini's review/feedback/promo paragraphs.
+        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?(?:Revisa las notas de Gemini|Gemini (?:toma|tom[oó]) notas|Obt[eé]n sugerencias|Responde una breve encuesta)(?:(?!<\/p>).)*?<\/p>/isu', '', $html);
+
         return trim(clean_text($html, FORMAT_HTML));
     }
 
