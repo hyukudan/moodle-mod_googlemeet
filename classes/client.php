@@ -848,6 +848,8 @@ class client {
         // survive and carry the structure.
         $html = preg_replace('/\s(?:style|class|id|dir|lang)="[^"]*"/i', '', $html);
 
+        $html = clean_text($html, FORMAT_HTML);
+
         // The Gemini notes Doc wraps the actual notes in chrome we don't want in the
         // panel: a header (title + 'Archivos adjuntos' / 'Registros de la reunión'
         // links), the full meeting transcript appended at the end (shown in its own
@@ -861,7 +863,7 @@ class client {
         // (c) Drop Gemini's review/feedback/promo paragraphs.
         $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?(?:Revisa las notas de Gemini|Gemini (?:toma|tom[oó]) notas|Obt[eé]n sugerencias|Responde una breve encuesta)(?:(?!<\/p>).)*?<\/p>/isu', '', $html);
 
-        return trim(clean_text($html, FORMAT_HTML));
+        return trim($html);
     }
 
     /**
