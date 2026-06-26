@@ -739,6 +739,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
  * @return array
  */
 function googlemeet_get_recording_materials(context_module $context, int $recordingid): array {
+    global $OUTPUT;
+
     $fs = get_file_storage();
     $files = $fs->get_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recordingid, 'filename', false);
     $materials = [];
@@ -751,6 +753,7 @@ function googlemeet_get_recording_materials(context_module $context, int $record
         $filepath = $file->get_filepath();
         $materials[] = [
             'name' => $file->get_filename(),
+            'icon' => $OUTPUT->image_url(file_file_icon($file), 'moodle')->out(false),
             'size' => display_size($file->get_filesize()),
             'modified' => userdate($file->get_timemodified(), get_string('strftimedatetimeshort')),
             'filepath' => ($filepath !== '/' && $filepath !== '') ? trim($filepath, '/') : '',
