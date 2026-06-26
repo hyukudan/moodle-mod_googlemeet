@@ -62,6 +62,7 @@ class rest extends \core\oauth2\rest {
                 'args' => [
                     'fields' => PARAM_RAW,
                     'pageSize' => PARAM_INT,
+                    'orderBy' => PARAM_RAW,
                     'q' => PARAM_RAW
                 ],
                 'response' => 'json'
