@@ -40,10 +40,11 @@ class helper {
      * @param array $params The parameters required by the API call
      * @param string $rawpost Optional param to include in the body of a post.
      *
-     * @return \stdClass The response object
+     * @return \stdClass|string|null The response object, or a raw string body for
+     *         endpoints declared with a non-JSON ('raw') response (e.g. Drive get/export).
      * @throws moodle_exception
      */
-    public static function request($service, $api, $params, $rawpost = false): ?\stdClass {
+    public static function request($service, $api, $params, $rawpost = false) {
         try {
             $response = $service->call($api, $params, $rawpost);
         } catch (\Exception $e) {
