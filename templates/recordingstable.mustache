@@ -177,15 +177,45 @@
           {{! Materials: teachers always get a manage button (so they can add the first
               file); students only see download chips when files exist. }}
           {{#hascapability}}
-          <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-2">
+          <div class="googlemeet-card-materials mt-2">
             <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
-            {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+            {{#hasmaterials}}
+            <div class="googlemeet-materials-list googlemeet-materials-list-card">
+              {{#materials}}
+              <a href="{{url}}" class="googlemeet-material-row">
+                <span class="googlemeet-material-file">
+                  <img src="{{icon}}" class="googlemeet-material-icon" alt="" aria-hidden="true">
+                  <span class="googlemeet-material-details">
+                    <span class="googlemeet-material-name">{{name}}</span>
+                    <span class="googlemeet-material-separator" aria-hidden="true">&middot;</span>
+                    <span class="googlemeet-material-size">{{size}}</span>
+                  </span>
+                </span>
+                <span class="googlemeet-material-download" aria-hidden="true">{{# pix }} t/download, core {{/ pix }}</span>
+              </a>
+              {{/materials}}
+            </div>
+            {{/hasmaterials}}
           </div>
           {{/hascapability}}
           {{^hascapability}}{{#hasmaterials}}
-          <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-2">
+          <div class="googlemeet-card-materials mt-2">
             <span class="small text-muted">{{# str }} hub_tab_materials, mod_googlemeet {{/ str }}:</span>
-            {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+            <div class="googlemeet-materials-list googlemeet-materials-list-card">
+              {{#materials}}
+              <a href="{{url}}" class="googlemeet-material-row">
+                <span class="googlemeet-material-file">
+                  <img src="{{icon}}" class="googlemeet-material-icon" alt="" aria-hidden="true">
+                  <span class="googlemeet-material-details">
+                    <span class="googlemeet-material-name">{{name}}</span>
+                    <span class="googlemeet-material-separator" aria-hidden="true">&middot;</span>
+                    <span class="googlemeet-material-size">{{size}}</span>
+                  </span>
+                </span>
+                <span class="googlemeet-material-download" aria-hidden="true">{{# pix }} t/download, core {{/ pix }}</span>
+              </a>
+              {{/materials}}
+            </div>
           </div>
           {{/hasmaterials}}{{/hascapability}}
 
@@ -229,15 +259,45 @@
             {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
             {{! Materials row (same rules as the card view). }}
             {{#hascapability}}
-            <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-1">
+            <div class="googlemeet-card-materials mt-1">
               <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
-              {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+              {{#hasmaterials}}
+              <div class="googlemeet-materials-list googlemeet-materials-list-compact">
+                {{#materials}}
+                <a href="{{url}}" class="googlemeet-material-row googlemeet-material-row-compact">
+                  <span class="googlemeet-material-file">
+                    <img src="{{icon}}" class="googlemeet-material-icon" alt="" aria-hidden="true">
+                    <span class="googlemeet-material-details">
+                      <span class="googlemeet-material-name">{{name}}</span>
+                      <span class="googlemeet-material-separator" aria-hidden="true">&middot;</span>
+                      <span class="googlemeet-material-size">{{size}}</span>
+                    </span>
+                  </span>
+                  <span class="googlemeet-material-download" aria-hidden="true">{{# pix }} t/download, core {{/ pix }}</span>
+                </a>
+                {{/materials}}
+              </div>
+              {{/hasmaterials}}
             </div>
             {{/hascapability}}
             {{^hascapability}}{{#hasmaterials}}
-            <div class="googlemeet-card-materials d-flex flex-wrap align-items-center gap-2 mt-1">
+            <div class="googlemeet-card-materials mt-1">
               <span class="small text-muted">{{# str }} hub_tab_materials, mod_googlemeet {{/ str }}:</span>
-              {{#materials}}<a href="{{url}}" class="badge bg-light text-dark text-decoration-none border" title="{{size}}">{{name}}</a>{{/materials}}
+              <div class="googlemeet-materials-list googlemeet-materials-list-compact">
+                {{#materials}}
+                <a href="{{url}}" class="googlemeet-material-row googlemeet-material-row-compact">
+                  <span class="googlemeet-material-file">
+                    <img src="{{icon}}" class="googlemeet-material-icon" alt="" aria-hidden="true">
+                    <span class="googlemeet-material-details">
+                      <span class="googlemeet-material-name">{{name}}</span>
+                      <span class="googlemeet-material-separator" aria-hidden="true">&middot;</span>
+                      <span class="googlemeet-material-size">{{size}}</span>
+                    </span>
+                  </span>
+                  <span class="googlemeet-material-download" aria-hidden="true">{{# pix }} t/download, core {{/ pix }}</span>
+                </a>
+                {{/materials}}
+              </div>
             </div>
             {{/hasmaterials}}{{/hascapability}}
           </div>
