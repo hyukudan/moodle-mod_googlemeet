@@ -850,18 +850,21 @@ class client {
 
         $html = clean_text($html, FORMAT_HTML);
 
-        // The Gemini notes Doc wraps the actual notes in chrome we don't want in the
-        // panel: a header (title + 'Archivos adjuntos' / 'Registros de la reunión'
-        // links), the full meeting transcript appended at the end (shown in its own
-        // tab), and Gemini promo/disclaimer paragraphs. Keep only Resumen / Próximos
-        // pasos / Detalles.
-        // (a) Drop everything before the first 'Resumen' heading.
-        $html = preg_replace('/^.*?(?=<h3\b[^>]*>(?:(?!<\/h3>).)*?Resumen)/isu', '', $html);
-        // (b) Drop the transcript appendix (📖 Transcripción marker, or the '… - Transcripción' h2) to the end.
-        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?📖\s*Transcri.*$/isu', '', $html);
-        $html = preg_replace('/<h2\b[^>]*>(?:(?!<\/h2>).)*?Transcripci[oó]n.*$/isu', '', $html);
-        // (c) Drop Gemini's review/feedback/promo paragraphs.
-        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?(?:Revisa las notas de Gemini|Gemini (?:toma|tom[oó]) notas|Obt[eé]n sugerencias|Responde una breve encuesta)(?:(?!<\/p>).)*?<\/p>/isu', '', $html);
+        // The Gemini Doc adds chrome we don't want in the panel: a header, the full
+        // transcript appended at the end (shown in its own tab), and promo/disclaimer
+        // paragraphs. Keep only the notes (Resumen/Summary/Resumo …). Markers are
+        // localized (es/en/pt); a language-agnostic fallback also removes the transcript.
+        // (a) Drop everything before the first notes heading.
+        $html = preg_replace('/^.*?(?=<h[23]\b[^>]*>(?:(?!<\/h[23]>).)*?(?:Resumen|Summary|Resumo)\b)/isu', '', $html);
+        // (b) Drop the transcript appendix: localized markers first…
+        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?📖\s*(?:Transcripci[oó]n|Transcript|Transcri[çc][aã]o).*$/isu', '', $html);
+        $html = preg_replace('/<h2\b[^>]*>(?:(?!<\/h2>).)*?(?:Transcripci[oó]n|Transcript|Transcri[çc][aã]o).*$/isu', '', $html);
+        // …then language-agnostic: cut from the first timestamp heading (<h3>HH:MM:SS</h3>), used only by the transcript.
+        $html = preg_replace('/<h3\b[^>]*>(?:(?!<\/h3>).)*?\b\d{1,2}:\d{2}:\d{2}\b.*$/isu', '', $html);
+        // (c) Drop Gemini promo/disclaimer paragraphs (es/en/pt).
+        $html = preg_replace('/<p\b[^>]*>(?:(?!<\/p>).)*?(?:Revisa las notas de Gemini|Check Gemini.?s notes|Revise as notas do Gemini|Gemini (?:toma|tom[oó]|takes) notas|Obt[eé]n sugerencias|Get tips|Responde una breve encuesta|Take a .{0,14}survey|Responda .{0,14}pesquisa)(?:(?!<\/p>).)*?<\/p>/isu', '', $html);
+        // (d) Timestamp references point to the (removed) transcript anchors; flatten to plain text.
+        $html = preg_replace('/<a\b[^>]*href="#[^"]*"[^>]*>(.*?)<\/a>/is', '$1', $html);
 
         return trim($html);
     }
