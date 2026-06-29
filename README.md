@@ -45,9 +45,10 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Resilient retries** - transient Gemini errors (rate limits / overload) are retried automatically with exponential back-off instead of failing permanently
 - **CLI bulk processing** for batch transcript extraction and analysis
 - **Default model: Gemini 3 Flash Preview** with automatic fallback to Gemini 2.5 Flash
+- **Meeting Notes (Notes by Gemini)** - if Google Meet generated a "Notes by Gemini" document for the session, it is synced from Drive, sanitised, trimmed to just the notes (Summary / Next steps / Details — the embedded transcript and Gemini's own chrome are removed) and shown to **students** in a dedicated **Notes** tab. Notes that Gemini publishes after the recording first synced are back-filled on a later sync. Localised trimming for ES/EN/PT with a language-agnostic safety fallback.
 
 ### Per-recording hub, AI practice questions & materials
-- **Recording hub** - each recording opens its own view (video + tabs: AI summary · Questions · Transcript · Materials)
+- **Recording hub** - each recording opens its own view (video + tabs: AI summary · Questions · Transcript · Notes · Materials)
 - **AI-generated practice questions** from a recording's transcript, inserted into the Moodle **question bank** (reusable, tagged `googlemeet-rec-<id>`)
 - **Draft → teacher review → publish** workflow (questions are created as drafts; students only see published ones)
 - **One-at-a-time student practice** with immediate feedback, the correct answer and an explanation/citation (formative, no grade) — also available in the Moodle mobile app
@@ -149,6 +150,13 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.18.x – 2.19.x (Meeting Notes)
+- **Meeting Notes (Notes by Gemini)** - new `notestext`/`notesdocid` columns on recordings; the Gemini meeting-notes Google Doc is matched in Drive (by the meeting-name prefix, since the recording ends `- Recording` and the notes Doc ends `- Notas de Gemini` / `- Notes by Gemini`), exported to HTML, sanitised and trimmed, then shown to students in a **Notes** tab. Declared in the privacy provider and backup/restore (`$userinfo`-gated).
+- **Robust note trimming** - removes the Doc header, the embedded transcript appendix (localised ES/EN/PT markers + a language-agnostic fallback that cuts from the first `HH:MM:SS` heading) and Gemini's promo/disclaimer text; flattens transcript timestamp links to plain text; runs `clean_text()` before trimming so HTML-entity-encoded markers match.
+- **REST fix** - declared the Drive `get` (alt=media) and `export` endpoints; `helper::request()` now allows raw string responses (this also fixes transcript-file downloads, which previously failed silently).
+- **Recording materials UX** - the per-recording materials render as file rows (type icon · name · size · download cue) in both card and list views, teacher and student variants, with dark-mode styling and accessible download labels.
+- **Sync efficiency** - the Drive document listing used for note matching is fetched once per sync instead of once per recording.
 
 ### Version 2.14.1
 - UX polish: Summary tab shows a clear "AI not enabled" state when AI is off (instead of "no analysis yet"); cleaner teacher question-review card layout (separate checkbox / stem / status badge); accessible labels.
