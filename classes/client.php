@@ -44,6 +44,12 @@ class client {
      */
     private $issuer = null;
 
+    /**
+     * Cached Google Docs listing for notes during a sync.
+     * @var array|null
+     */
+    private $notesdocscache = null;
+
     /** @var bool informs if the client is enabled */
     public $enabled = true;
 
@@ -764,12 +770,15 @@ class client {
         ];
 
         try {
-            $response = helper::request($service, 'list', $notesparams, false);
-            if (empty($response->files)) {
+            if ($this->notesdocscache === null) {
+                $response = helper::request($service, 'list', $notesparams, false);
+                $this->notesdocscache = $response->files ?? [];
+            }
+            if (empty($this->notesdocscache)) {
                 return null;
             }
             $candidate = null;
-            foreach ($response->files as $file) {
+            foreach ($this->notesdocscache as $file) {
                 if (stripos($file->name, $prefix) === false) {
                     continue;
                 }
