@@ -103,7 +103,7 @@ function googlemeet_pluginfile($course, $cm, $context, $filearea, $args, $forced
     }
 
     $recording = $DB->get_record('googlemeet_recordings',
-        ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id, visible');
+        ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id, visible');
     if (!$recording) {
         return false;
     }
@@ -361,6 +361,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
 
     // Validate order parameter.
     $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+    if (!array_key_exists('deleted', $params)) {
+        $params['deleted'] = 0;
+    }
 
     $recordings = $DB->get_records(
         'googlemeet_recordings',
@@ -450,6 +453,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
  */
 function googlemeet_count_recordings($params) {
     global $DB;
+    if (!array_key_exists('deleted', $params)) {
+        $params['deleted'] = 0;
+    }
     return $DB->count_records('googlemeet_recordings', $params);
 }
 
@@ -635,7 +641,7 @@ function mod_googlemeet_get_fontawesome_icon_map() {
  *
  * @param int $googlemeetid the googlemeet ID
  * @param array $files the array of recordings
- * @return array with 'recordings' list and 'stats' (inserted, updated, deleted counts)
+ * @return array with 'recordings' list and 'stats' (inserted, updated, deleted, trashed, restored counts)
  */
 function sync_recordings($googlemeetid, $files) {
     global $DB;
@@ -661,15 +667,20 @@ function sync_recordings($googlemeetid, $files) {
         }
     }
 
-    // Existing recordings are never touched on re-sync: Drive metadata (createdtime, duration,
-    // webviewlink) is immutable once the recording is finalised, and the transcript is captured
-    // at insert time. A manual sync via the UI is the path for re-fetching missing data.
     $insertrecordings = [];
-    $deleterecordings = [];
+    $restorerecordings = [];
+    $trashrecordings = [];
 
     foreach ($files as $file) {
-        if (!isset($file->unprocessed) && !isset($recordingsbyid[$file->recordingId])) {
+        if (isset($file->unprocessed) || empty($file->recordingId)) {
+            continue;
+        }
+        if (!isset($recordingsbyid[$file->recordingId])) {
             $insertrecordings[] = $file;
+            continue;
+        }
+        if (!empty($recordingsbyid[$file->recordingId]->deleted)) {
+            $restorerecordings[] = $file;
         }
     }
 
@@ -677,14 +688,22 @@ function sync_recordings($googlemeetid, $files) {
         'inserted' => 0,
         'updated' => 0,
         'deleted' => 0,
+        'trashed' => 0,
+        'restored' => 0,
     ];
 
     $updatednotes = 0;
     foreach ($googlemeetrecordings as $googlemeetrecording) {
         // O(1) lookup with isset() instead of O(n) in_array().
         if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
-            // Accumulate every orphaned recording id, not just the last one.
-            $deleterecordings[] = $googlemeetrecording->id;
+            if (empty($googlemeetrecording->deleted)) {
+                // Accumulate every orphaned active recording id, not just the last one.
+                $trashrecordings[] = $googlemeetrecording->id;
+            }
+            continue;
+        }
+
+        if (!empty($googlemeetrecording->deleted)) {
             continue;
         }
 
@@ -707,12 +726,42 @@ function sync_recordings($googlemeetid, $files) {
     }
     $stats['updated'] = $updatednotes;
 
-    if ($deleterecordings) {
-        list($insql, $inparams) = $DB->get_in_or_equal($deleterecordings);
-        // Also delete associated AI analysis to avoid orphaned data.
-        $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
-        $DB->delete_records_select('googlemeet_recordings', "id $insql", $inparams);
-        $stats['deleted'] = count($deleterecordings);
+    if ($trashrecordings) {
+        list($insql, $inparams) = $DB->get_in_or_equal($trashrecordings, SQL_PARAMS_NAMED);
+        $now = time();
+        $params = $inparams + [
+            'deleted' => 1,
+            'timedeleted' => $now,
+            'timemodified' => $now,
+        ];
+        $DB->execute("UPDATE {googlemeet_recordings}
+                         SET deleted = :deleted,
+                             timedeleted = :timedeleted,
+                             timemodified = :timemodified
+                       WHERE id $insql", $params);
+        $stats['trashed'] = count($trashrecordings);
+    }
+
+    if ($restorerecordings) {
+        foreach ($restorerecordings as $restorerecording) {
+            $existing = $recordingsbyid[$restorerecording->recordingId];
+            $update = (object)[
+                'id' => $existing->id,
+                'name' => $restorerecording->name,
+                'createdtime' => $restorerecording->createdTime,
+                'duration' => $restorerecording->duration,
+                'webviewlink' => $restorerecording->webViewLink,
+                'deleted' => 0,
+                'timedeleted' => 0,
+                'timemodified' => time(),
+            ];
+            if (empty($existing->notestext) && !empty($restorerecording->notestext)) {
+                $update->notestext = $restorerecording->notestext;
+                $update->notesdocid = $restorerecording->notesdocid ?? null;
+            }
+            $DB->update_record('googlemeet_recordings', $update);
+        }
+        $stats['restored'] = count($restorerecordings);
     }
 
     if ($insertrecordings) {
@@ -725,6 +774,8 @@ function sync_recordings($googlemeetid, $files) {
             $recording->createdtime = $insertrecording->createdTime;
             $recording->duration = $insertrecording->duration;
             $recording->webviewlink = $insertrecording->webViewLink;
+            $recording->deleted = 0;
+            $recording->timedeleted = 0;
             $recording->timemodified = time();
 
             // Add transcript if available.
@@ -758,6 +809,7 @@ function sync_recordings($googlemeetid, $files) {
             $task->set_custom_data([
                 'googlemeetid' => $googlemeetid,
                 'newcount' => $stats['inserted'],
+                'recordingids' => $newrecordingids,
             ]);
             \core\task\manager::queue_adhoc_task($task);
         }

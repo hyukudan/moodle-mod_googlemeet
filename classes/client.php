@@ -359,7 +359,7 @@ class client {
      * @param bool $noredirect When true, skip the final redirect() call and return stats.
      *                         Required for background/cron contexts (no $PAGE, no HTTP).
      *
-     * @return array|void Stats array ['inserted','updated','deleted','found'] when $noredirect=true.
+     * @return array|void Stats array ['inserted','updated','deleted','trashed','restored','found'] when $noredirect=true.
      */
     public function syncrecordings($googlemeet, $noredirect = false) {
         global $PAGE, $DB, $CFG;
@@ -441,7 +441,7 @@ class client {
                 $url = new moodle_url($PAGE->url);
                 $url->remove_params(['sync']);
             }
-            $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0];
+            $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0];
 
             $recordingscount = $recordings ? count($recordings) : 0;
             if ($recordingscount > 0) {
@@ -542,8 +542,9 @@ class client {
 
             // Build feedback message.
             $message = $this->build_sync_message($stats, $recordingscount);
-            $messagetype = ($stats['inserted'] > 0) ? \core\output\notification::NOTIFY_SUCCESS
-                                                    : \core\output\notification::NOTIFY_INFO;
+            $messagetype = ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0)
+                ? \core\output\notification::NOTIFY_SUCCESS
+                : \core\output\notification::NOTIFY_INFO;
 
             redirect($url, $message, null, $messagetype);
         }
@@ -552,20 +553,26 @@ class client {
     /**
      * Build a user-friendly sync feedback message.
      *
-     * @param array $stats Array with inserted, updated, deleted counts.
+     * @param array $stats Array with inserted, updated, deleted, trashed and restored counts.
      * @param int $totalfound Total recordings found in Drive.
      * @return string The feedback message.
      */
-    private function build_sync_message(array $stats, int $totalfound): string {
+    public function build_sync_message(array $stats, int $totalfound): string {
         $parts = [];
 
-        if ($stats['inserted'] > 0) {
+        if (($stats['inserted'] ?? 0) > 0) {
             $parts[] = get_string('sync_new_recordings', 'googlemeet', $stats['inserted']);
         }
-        if ($stats['updated'] > 0) {
+        if (($stats['updated'] ?? 0) > 0) {
             $parts[] = get_string('sync_updated_recordings', 'googlemeet', $stats['updated']);
         }
-        if ($stats['deleted'] > 0) {
+        if (($stats['trashed'] ?? 0) > 0) {
+            $parts[] = get_string('sync_trashed_recordings', 'googlemeet', $stats['trashed']);
+        }
+        if (($stats['restored'] ?? 0) > 0) {
+            $parts[] = get_string('sync_restored_recordings', 'googlemeet', $stats['restored']);
+        }
+        if (($stats['deleted'] ?? 0) > 0) {
             $parts[] = get_string('sync_deleted_recordings', 'googlemeet', $stats['deleted']);
         }
 

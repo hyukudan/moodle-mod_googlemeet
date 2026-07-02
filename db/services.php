@@ -49,6 +49,22 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:removerecording',
     ),
+    'mod_googlemeet_restore_recording' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'restore_recording',
+        'description' => 'Restore a recording from the Google Meet recording trash',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
+    'mod_googlemeet_purge_recording' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'purge_recording',
+        'description' => 'Permanently delete a trashed Google Meet recording',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:removerecording',
+    ),
     'mod_googlemeet_generate_ai_analysis' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'generate_ai_analysis',

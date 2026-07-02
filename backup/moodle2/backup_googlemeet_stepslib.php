@@ -159,7 +159,13 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         $event->set_source_table('googlemeet_events', ['googlemeetid' => backup::VAR_PARENTID]);
 
-        $recording->set_source_table('googlemeet_recordings', ['googlemeetid' => backup::VAR_PARENTID]);
+        $recording->set_source_sql(
+            'SELECT *
+               FROM {googlemeet_recordings}
+              WHERE googlemeetid = ?
+                AND deleted = 0',
+            [backup::VAR_PARENTID]
+        );
 
         if ($userinfo) {
             $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);

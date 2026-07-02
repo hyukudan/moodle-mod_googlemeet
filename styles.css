@@ -293,6 +293,22 @@
     margin-left: 6px !important;
 }
 
+.googlemeet-recordings-trash > summary {
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.googlemeet-recordings-trash > summary::marker {
+    content: "";
+}
+
+.googlemeet-recordings-trash-panel {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.5rem;
+    background: #fff;
+}
+
 .googlemeet-recordings-list {
     display: flex;
     flex-direction: column;

@@ -34,7 +34,7 @@ use mod_googlemeet\client;
  * the Drive sync impersonating the activity creator via their stored refresh token.
  *
  * Retry policy is controlled by site config:
- *   - mod_googlemeet/maxsyncattempts (int, default 1)
+ *   - mod_googlemeet/maxsyncattempts (int, default 3)
  *   - mod_googlemeet/syncretryinterval (int seconds, default 3600, min 60)
  *
  * Per-attempt outcome is decided by classify_outcome(): 'success', 'retry' or 'permanent'.
@@ -166,94 +166,106 @@ class process_autosync extends \core\task\scheduled_task {
             return;
         }
 
-        mtrace("mod_googlemeet autosync: activity #{$googlemeetid} ({$googlemeet->name}) "
-            . count($events) . " event(s) due.");
+        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet');
+        $lock = $lockfactory->get_lock('sync_' . $googlemeetid, 5);
+        if (!$lock) {
+            mtrace("mod_googlemeet autosync: activity #{$googlemeetid} is already syncing; skipping this tick.");
+            return;
+        }
 
-        // Inputs we will pass to classify_outcome(). Default values cover the no-creatoremail and
-        // no-Moodle-user paths so we still record an attempt even when sync cannot run.
-        // $identitymissing flags the permanent "nobody to authenticate as" case, which must be
-        // kept distinct from a merely missing/revoked token (where $loggedin is also false but
-        // the creator may re-link Google later, so we keep retrying).
-        $loggedin = false;
-        $exception = null;
-        $stats = null;
-        $identitymissing = false;
+        try {
+            mtrace("mod_googlemeet autosync: activity #{$googlemeetid} ({$googlemeet->name}) "
+                . count($events) . " event(s) due.");
 
-        if (empty($creatoremail)) {
-            mtrace("  no creatoremail recorded for this activity.");
-            $identitymissing = true;
-        } else {
-            $creator = $DB->get_record('user', ['email' => $creatoremail, 'deleted' => 0]);
-            if (!$creator) {
-                mtrace("  no active Moodle user with email {$creatoremail}.");
+            // Inputs we will pass to classify_outcome(). Default values cover the no-creatoremail and
+            // no-Moodle-user paths so we still record an attempt even when sync cannot run.
+            // $identitymissing flags the permanent "nobody to authenticate as" case, which must be
+            // kept distinct from a merely missing/revoked token (where $loggedin is also false but
+            // the creator may re-link Google later, so we keep retrying).
+            $loggedin = false;
+            $exception = null;
+            $stats = null;
+            $identitymissing = false;
+
+            if (empty($creatoremail)) {
+                mtrace("  no creatoremail recorded for this activity.");
                 $identitymissing = true;
             } else {
-                // Impersonate so core\oauth2\client resolves the refresh token for this user.
-                $previoususer = $GLOBALS['USER'] ?? null;
-                \core\session\manager::set_user($creator);
+                $creator = $DB->get_record('user', ['email' => $creatoremail, 'deleted' => 0]);
+                if (!$creator) {
+                    mtrace("  no active Moodle user with email {$creatoremail}.");
+                    $identitymissing = true;
+                } else {
+                    // Impersonate so core\oauth2\client resolves the refresh token for this user.
+                    $previoususer = $GLOBALS['USER'] ?? null;
+                    \core\session\manager::set_user($creator);
 
-                try {
-                    $client = new client();
-                    if (!$client->enabled || !$client->check_login()) {
-                        mtrace("  creator {$creator->username} is not logged-in to Google "
-                            . "(token missing/revoked).");
-                    } else {
-                        $loggedin = true;
-                        try {
-                            $stats = $client->syncrecordings($googlemeet, true);
-                            if (is_array($stats)) {
-                                mtrace("  sync ran: inserted={$stats['inserted']} "
-                                    . "updated={$stats['updated']} deleted={$stats['deleted']} "
-                                    . "found={$stats['found']}.");
+                    try {
+                        $client = new client();
+                        if (!$client->enabled || !$client->check_login()) {
+                            mtrace("  creator {$creator->username} is not logged-in to Google "
+                                . "(token missing/revoked).");
+                        } else {
+                            $loggedin = true;
+                            try {
+                                $stats = $client->syncrecordings($googlemeet, true);
+                                if (is_array($stats)) {
+                                    mtrace("  sync ran: inserted={$stats['inserted']} "
+                                        . "updated={$stats['updated']} deleted={$stats['deleted']} "
+                                        . "trashed={$stats['trashed']} restored={$stats['restored']} "
+                                        . "found={$stats['found']}.");
+                                }
+                            } catch (\Throwable $e) {
+                                $exception = $e;
+                                mtrace("  sync threw: " . $e->getMessage());
                             }
-                        } catch (\Throwable $e) {
-                            $exception = $e;
-                            mtrace("  sync threw: " . $e->getMessage());
                         }
-                    }
-                } finally {
-                    if ($previoususer) {
-                        \core\session\manager::set_user($previoususer);
+                    } finally {
+                        if ($previoususer) {
+                            \core\session\manager::set_user($previoususer);
+                        }
                     }
                 }
             }
-        }
 
-        // Resolve outcome for each due event of this activity.
-        foreach ($events as $ev) {
-            $newattempts = (int) $ev->syncattempts + 1;
-            $outcome = $this->classify_outcome(
-                $loggedin,
-                $exception,
-                $stats,
-                $identitymissing,
-                $ev,
-                (int) $ev->syncattempts
-            );
+            // Resolve outcome for each due event of this activity.
+            foreach ($events as $ev) {
+                $newattempts = (int) $ev->syncattempts + 1;
+                $outcome = $this->classify_outcome(
+                    $loggedin,
+                    $exception,
+                    $stats,
+                    $identitymissing,
+                    $ev,
+                    (int) $ev->syncattempts
+                );
 
-            if ($outcome === 'success' || $outcome === 'permanent') {
-                $this->close_event((int) $ev->eventid, $newattempts, $now);
-                mtrace("  event #{$ev->eventid}: closed (outcome={$outcome}, attempts={$newattempts}).");
-                continue;
+                if ($outcome === 'success' || $outcome === 'permanent') {
+                    $this->close_event((int) $ev->eventid, $newattempts, $now);
+                    mtrace("  event #{$ev->eventid}: closed (outcome={$outcome}, attempts={$newattempts}).");
+                    continue;
+                }
+
+                // outcome === 'retry'
+                if ($newattempts >= $max) {
+                    $this->close_event((int) $ev->eventid, $newattempts, $now);
+                    mtrace("  event #{$ev->eventid}: max attempts reached ({$newattempts}/{$max}); giving up.");
+                    continue;
+                }
+
+                $next = $now + $interval;
+                $DB->execute(
+                    "UPDATE {googlemeet_events}
+                        SET syncattempts = :attempts,
+                            nextsyncattempt = :next
+                      WHERE id = :id",
+                    ['attempts' => $newattempts, 'next' => $next, 'id' => $ev->eventid]
+                );
+                mtrace("  event #{$ev->eventid}: scheduled retry #{$newattempts} at "
+                    . userdate($next) . ".");
             }
-
-            // outcome === 'retry'
-            if ($newattempts >= $max) {
-                $this->close_event((int) $ev->eventid, $newattempts, $now);
-                mtrace("  event #{$ev->eventid}: max attempts reached ({$newattempts}/{$max}); giving up.");
-                continue;
-            }
-
-            $next = $now + $interval;
-            $DB->execute(
-                "UPDATE {googlemeet_events}
-                    SET syncattempts = :attempts,
-                        nextsyncattempt = :next
-                  WHERE id = :id",
-                ['attempts' => $newattempts, 'next' => $next, 'id' => $ev->eventid]
-            );
-            mtrace("  event #{$ev->eventid}: scheduled retry #{$newattempts} at "
-                . userdate($next) . ".");
+        } finally {
+            $lock->release();
         }
     }
 
@@ -263,7 +275,7 @@ class process_autosync extends \core\task\scheduled_task {
      * Policy: retry transient failures until maxsyncattempts is exhausted, and close
      * without further retries on success or on a permanent error.
      *   - success   → the sync ran and brought in at least one recording
-     *                 (inserted or updated > 0); the event is done.
+     *                 (inserted, updated or restored > 0); the event is done.
      *   - permanent → a non-recoverable condition that retrying cannot fix: no creator
      *                 email recorded, or no active Moodle user for it. There is nobody
      *                 to authenticate as, so stop.
@@ -276,7 +288,7 @@ class process_autosync extends \core\task\scheduled_task {
      * @param bool $loggedin True iff client->check_login() succeeded for the creator.
      *                       False covers: no creator email, no Moodle user, token revoked.
      * @param \Throwable|null $exception Set if syncrecordings() threw; null otherwise.
-     * @param array|null $stats ['inserted','updated','deleted','found'] when sync ran;
+     * @param array|null $stats ['inserted','updated','deleted','trashed','restored','found'] when sync ran;
      *                          null if sync was skipped (e.g. not logged in).
      * @param bool $identitymissing True when there is no creator email or no Moodle user
      *                              for it (the only permanent, non-recoverable failures).
@@ -294,7 +306,9 @@ class process_autosync extends \core\task\scheduled_task {
     ): string {
         // Got what we came for: at least one recording landed in the DB.
         if (is_array($stats)
-            && ((int) ($stats['inserted'] ?? 0) > 0 || (int) ($stats['updated'] ?? 0) > 0)) {
+            && ((int) ($stats['inserted'] ?? 0) > 0
+                || (int) ($stats['updated'] ?? 0) > 0
+                || (int) ($stats['restored'] ?? 0) > 0)) {
             return 'success';
         }
 

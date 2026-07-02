@@ -81,7 +81,7 @@ $extractor = new \mod_googlemeet\subtitle_extractor($language);
 
 // Get recordings to process.
 $params = ['googlemeetid' => $options['googlemeetid']];
-$where = 'r.googlemeetid = :googlemeetid';
+$where = 'r.googlemeetid = :googlemeetid AND r.deleted = 0';
 
 if (!empty($options['recordingid'])) {
     $where .= ' AND r.id = :recordingid';
@@ -320,4 +320,3 @@ foreach ($recordings as $recording) {
 cli_writeln("\n========================================");
 cli_writeln("Results: {$processed} processed, {$skipped} skipped, {$errors} errors (of {$total} total)");
 cli_writeln("========================================");
-

@@ -86,8 +86,68 @@ function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
     // Sync performs DB writes and remote Google calls: only run it for a POST
     // request (in addition to the sesskey check). Ignore plain GETs.
     if ($sync && confirm_sesskey() && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-        $client->syncrecordings($googlemeet);
+        $redirecturl = new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
+        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet');
+        $lock = $lockfactory->get_lock('sync_' . $googlemeet->id, 0);
+        if (!$lock) {
+            \core\notification::warning(get_string('sync_already_running', 'googlemeet'));
+            redirect($redirecturl);
+        }
+
+        $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0, 'found' => 0];
+        try {
+            googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id);
+            $stats = $client->syncrecordings($googlemeet, true) ?: $stats;
+        } finally {
+            $lock->release();
+        }
+
+        $message = $client->build_sync_message($stats, (int)($stats['found'] ?? 0));
+        $messagetype = ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0)
+            ? \core\output\notification::NOTIFY_SUCCESS
+            : \core\output\notification::NOTIFY_INFO;
+        redirect($redirecturl, $message, null, $messagetype);
     }
+}
+
+/**
+ * Let auto-sync retry exhausted events after a teacher manually syncs the activity.
+ *
+ * @param int $googlemeetid Activity instance id.
+ * @return int Number of events reset.
+ */
+function googlemeet_reset_exhausted_autosync_events(int $googlemeetid): int {
+    global $DB;
+
+    $max = (int)get_config('googlemeet', 'maxsyncattempts');
+    if ($max < 1) {
+        $max = 1;
+    }
+
+    // Exhausted events were closed by process_autosync::close_event(), which stamps
+    // autosynced with a timestamp for BOTH success and give-up; only give-up leaves
+    // syncattempts >= max (success can too on the final attempt, but reopening those
+    // is harmless: the sync is idempotent and the event re-closes on the next tick).
+    // Reopening requires autosynced = 0 or the due-events query never selects them.
+    $eventids = $DB->get_fieldset_select(
+        'googlemeet_events',
+        'id',
+        'googlemeetid = :googlemeetid AND autosynced <> 0 AND syncattempts >= :maxattempts',
+        ['googlemeetid' => $googlemeetid, 'maxattempts' => $max]
+    );
+
+    if (empty($eventids)) {
+        return 0;
+    }
+
+    list($insql, $inparams) = $DB->get_in_or_equal($eventids, SQL_PARAMS_NAMED);
+    $DB->execute("UPDATE {googlemeet_events}
+                     SET autosynced = 0,
+                         syncattempts = 0,
+                         nextsyncattempt = 0
+                   WHERE id $insql", $inparams);
+
+    return count($eventids);
 }
 
 /**
@@ -496,6 +556,26 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'googlemeet_recording_subs',
         ['googlemeetid' => $googlemeet->id, 'userid' => $USER->id]
     );
+    $canpurge = has_capability('mod/googlemeet:removerecording', $context);
+    $deletedrecordings = [];
+    if ($hascapability) {
+        $deletedrecords = $DB->get_records(
+            'googlemeet_recordings',
+            ['googlemeetid' => $googlemeet->id, 'deleted' => 1],
+            'timedeleted DESC, createdtime DESC',
+            'id,name,createdtime,timedeleted'
+        );
+        foreach ($deletedrecords as $deletedrecording) {
+            $deletedrecordings[] = [
+                'id' => $deletedrecording->id,
+                'name' => $deletedrecording->name,
+                'createdtimeformatted' => userdate($deletedrecording->createdtime),
+                'timedeletedformatted' => !empty($deletedrecording->timedeleted)
+                    ? userdate($deletedrecording->timedeleted)
+                    : get_string('never', 'googlemeet'),
+            ];
+        }
+    }
 
     // Pagination data.
     $haspagination = $totalpages > 1;
@@ -547,6 +627,10 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'cangenerateai' => $cangenerateai,
         'cansubscriberecordings' => $cansubscriberecordings,
         'issubscribed' => $issubscribed,
+        'canpurge' => $canpurge,
+        'deletedrecordings' => $deletedrecordings,
+        'hasdeletedrecordings' => !empty($deletedrecordings),
+        'deletedrecordingcount' => count($deletedrecordings),
         'sesskey' => sesskey(),
         // Pagination data.
         'haspagination' => $haspagination,
@@ -884,7 +968,7 @@ function googlemeet_has_recording($googlemeetid) {
 
     // Use record_exists() instead of get_records() for efficiency.
     // record_exists() stops at first match, while get_records() loads all data.
-    return $DB->record_exists('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
+    return $DB->record_exists('googlemeet_recordings', ['googlemeetid' => $googlemeetid, 'deleted' => 0]);
 }
 
 /**

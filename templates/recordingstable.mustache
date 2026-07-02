@@ -97,6 +97,47 @@
     </div>
   </div>
 
+  {{#hascapability}}{{#hasdeletedrecordings}}
+  <details class="googlemeet-recordings-trash mb-3">
+    <summary class="btn btn-outline-secondary btn-sm">
+      {{# str }} recordings_trash_count, mod_googlemeet, {{deletedrecordingcount}} {{/ str }}
+    </summary>
+    <div class="googlemeet-recordings-trash-panel mt-2">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">{{# str }} name {{/ str }}</th>
+              <th scope="col">{{# str }} recordings_trash_created_at, mod_googlemeet {{/ str }}</th>
+              <th scope="col">{{# str }} recordings_trash_deleted_at, mod_googlemeet {{/ str }}</th>
+              <th scope="col" class="text-end">{{# str }} actions {{/ str }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#deletedrecordings}}
+            <tr data-trash-recordingid="{{id}}">
+              <td>{{name}}</td>
+              <td>{{createdtimeformatted}}</td>
+              <td>{{timedeletedformatted}}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary googlemeet-restore-recording" data-id="{{id}}">
+                  {{# str }} recording_restore, mod_googlemeet {{/ str }}
+                </button>
+                {{#canpurge}}
+                <button type="button" class="btn btn-sm btn-outline-danger googlemeet-purge-recording" data-id="{{id}}">
+                  {{# str }} recording_purge, mod_googlemeet {{/ str }}
+                </button>
+                {{/canpurge}}
+              </td>
+            </tr>
+            {{/deletedrecordings}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+  {{/hasdeletedrecordings}}{{/hascapability}}
+
   {{#hasrecordings}}
   <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
     <input type="hidden" name="id" value="{{coursemoduleid}}">
@@ -710,6 +751,43 @@ require([
           }
         }).fail(Notification.exception).fail(function() {
           btn.html(oldContent);
+        });
+      });
+
+      $('.googlemeet-restore-recording').on('click', function() {
+        var btn = $(this);
+        btn.prop('disabled', true);
+        Ajax.call([{
+          methodname: 'mod_googlemeet_restore_recording',
+          args: {
+            recordingid: btn.attr('data-id'),
+            coursemoduleid: {{ coursemoduleid }}
+          }
+        }])[0].then(function() {
+          window.location.reload();
+        }).fail(function(ex) {
+          btn.prop('disabled', false);
+          Notification.exception(ex);
+        });
+      });
+
+      $('.googlemeet-purge-recording').on('click', function() {
+        var btn = $(this);
+        if (!window.confirm('{{# str }} recording_purge_confirm, mod_googlemeet {{/ str }}')) {
+          return;
+        }
+        btn.prop('disabled', true);
+        Ajax.call([{
+          methodname: 'mod_googlemeet_purge_recording',
+          args: {
+            recordingid: btn.attr('data-id'),
+            coursemoduleid: {{ coursemoduleid }}
+          }
+        }])[0].then(function() {
+          window.location.reload();
+        }).fail(function(ex) {
+          btn.prop('disabled', false);
+          Notification.exception(ex);
         });
       });
     {{/hascapability}}

@@ -101,7 +101,7 @@ class ai_service {
             . ", alreadyclaimed=" . ($alreadyclaimed ? 'true' : 'false'), DEBUG_DEVELOPER);
 
         // Get the recording.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
         debugging("AI Service: Found recording '{$recording->name}'", DEBUG_DEVELOPER);
 
         // Check if analysis already exists.
@@ -190,7 +190,7 @@ class ai_service {
         global $DB;
 
         // Get the recording.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
 
         // Check if analysis already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
@@ -296,7 +296,7 @@ class ai_service {
     public function generate_questions_for_recording(int $recordingid, int $count = 10): int {
         global $DB;
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
         $googlemeet = $DB->get_record('googlemeet', ['id' => $recording->googlemeetid], '*', MUST_EXIST);
         $cm = get_coursemodule_from_instance('googlemeet', $googlemeet->id, $googlemeet->course, false, MUST_EXIST);
         $context = \context_module::instance($cm->id);
@@ -335,7 +335,13 @@ class ai_service {
     public function get_pending_analyses(int $limit = 10): array {
         global $DB;
 
-        return $DB->get_records('googlemeet_ai_analysis', ['status' => 'pending'], 'timecreated ASC', '*', 0, $limit);
+        $sql = "SELECT aa.*
+                  FROM {googlemeet_ai_analysis} aa
+                  JOIN {googlemeet_recordings} r ON r.id = aa.recordingid
+                 WHERE aa.status = :pending
+                   AND r.deleted = 0
+              ORDER BY aa.timecreated ASC";
+        return $DB->get_records_sql($sql, ['pending' => 'pending'], 0, $limit);
     }
 
     /**
@@ -459,15 +465,17 @@ class ai_service {
         global $DB;
 
         $now = time();
-        $sql = "SELECT *
-                  FROM {googlemeet_ai_analysis}
-                 WHERE status = :pending
-                    OR (status = :failed
-                        AND retrycount > 0
-                        AND retrycount < :maxretries
-                        AND nextretry > 0
-                        AND nextretry <= :now)
-              ORDER BY timecreated ASC";
+        $sql = "SELECT aa.*
+                  FROM {googlemeet_ai_analysis} aa
+                  JOIN {googlemeet_recordings} r ON r.id = aa.recordingid
+                 WHERE r.deleted = 0
+                   AND (aa.status = :pending
+                    OR (aa.status = :failed
+                        AND aa.retrycount > 0
+                        AND aa.retrycount < :maxretries
+                        AND aa.nextretry > 0
+                        AND aa.nextretry <= :now))
+              ORDER BY aa.timecreated ASC";
         $params = [
             'pending' => 'pending',
             'failed' => 'failed',
@@ -527,6 +535,8 @@ class ai_service {
     public function queue_for_analysis(int $recordingid): stdClass {
         global $DB;
 
+        $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], 'id', MUST_EXIST);
+
         // Check if already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
         if ($existing) {
@@ -557,6 +567,7 @@ class ai_service {
                 FROM {googlemeet_ai_analysis} aa
                 JOIN {googlemeet_recordings} r ON r.id = aa.recordingid
                 WHERE r.googlemeetid = :googlemeetid
+                  AND r.deleted = 0
                 GROUP BY aa.status";
 
         $records = $DB->get_records_sql($sql, ['googlemeetid' => $googlemeetid]);

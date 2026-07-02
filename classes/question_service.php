@@ -375,7 +375,8 @@ class question_service {
     ): array {
         global $DB;
 
-        $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'googlemeetid' => $googlemeet->id], 'id', MUST_EXIST);
+        $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id', MUST_EXIST);
         $category = $this->get_category($googlemeet, $cm, $context, false);
         if (!$category || empty($questionids)) {
             throw new moodle_exception('invalidrecord', 'error');

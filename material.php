@@ -58,7 +58,7 @@ $cm = get_coursemodule_from_id('googlemeet', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
 $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
 $recording = $DB->get_record('googlemeet_recordings',
-    ['id' => $recordingid, 'googlemeetid' => $googlemeet->id], '*', MUST_EXIST);
+    ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0], '*', MUST_EXIST);
 $context = context_module::instance($cm->id);
 
 require_login($course, true, $cm);

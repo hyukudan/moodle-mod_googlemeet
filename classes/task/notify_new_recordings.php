@@ -36,9 +36,26 @@ class notify_new_recordings extends \core\task\adhoc_task {
         $data = $this->get_custom_data();
         $googlemeetid = (int)($data->googlemeetid ?? 0);
         $newcount = (int)($data->newcount ?? 0);
+        $recordingids = array_values(array_filter(array_map('intval', $data->recordingids ?? [])));
 
         if (!$googlemeetid || !$newcount) {
             return;
+        }
+
+        if (!empty($recordingids)) {
+            list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
+            $params = $inparams + [
+                'googlemeetid' => $googlemeetid,
+                'deleted' => 0,
+            ];
+            $newcount = (int)$DB->count_records_select(
+                'googlemeet_recordings',
+                "googlemeetid = :googlemeetid AND deleted = :deleted AND id $insql",
+                $params
+            );
+            if ($newcount <= 0) {
+                return;
+            }
         }
 
         $sql = "SELECT g.id,

@@ -110,7 +110,10 @@ googlemeet_print_header($googlemeet, $cm, $course);
 
 if ($recordingid > 0) {
     $recording = $DB->get_record('googlemeet_recordings',
-        ['id' => $recordingid, 'googlemeetid' => $googlemeet->id], '*', MUST_EXIST);
+        ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0]);
+    if (!$recording) {
+        throw new moodle_exception('invalidrecord', 'error');
+    }
     if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
         throw new moodle_exception('invalidrecord', 'error');
     }

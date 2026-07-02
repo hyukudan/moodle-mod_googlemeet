@@ -343,6 +343,19 @@ class provider implements
             ]
         );
         $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $cm->instance]);
+
+        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$cm->instance]);
+        if (!empty($recordingids)) {
+            list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
+            $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
+        }
+
+        $DB->execute("UPDATE {googlemeet_recordings}
+                         SET transcripttext = NULL,
+                             transcriptfileid = NULL,
+                             notestext = NULL,
+                             notesdocid = NULL
+                       WHERE googlemeetid = :googlemeetid", ['googlemeetid' => $cm->instance]);
     }
 
     /**

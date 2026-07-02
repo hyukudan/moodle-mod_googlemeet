@@ -72,6 +72,13 @@ class process_video_analysis extends adhoc_task {
             return;
         }
 
+        if (!empty($recording->deleted)) {
+            mtrace("Recording {$recordingid} is in trash, marking analysis as non-processable.");
+            $aiservice = new ai_service();
+            $aiservice->record_permanent_failure($analysisid, 'recording_deleted');
+            return;
+        }
+
         // Update status to processing.
         $analysis->status = 'processing';
         $analysis->timemodified = time();

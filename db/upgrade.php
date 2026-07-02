@@ -411,5 +411,28 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026062500, 'googlemeet');
     }
 
+    if ($oldversion < 2026070201) {
+        // Soft-delete support for recordings. Sync now moves missing Drive files to
+        // a teacher trash instead of physically deleting the recording and its AI analysis.
+        $table = new xmldb_table('googlemeet_recordings');
+
+        $field = new xmldb_field('deleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'visible');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('timedeleted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'deleted');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $index = new xmldb_index('googlemeetid_createdtime', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid', 'createdtime']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_mod_savepoint(true, 2026070201, 'googlemeet');
+    }
+
     return true;
 }

@@ -88,7 +88,7 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
 
         $recording->name = $name;
         $recording->timemodified = time();
@@ -154,7 +154,7 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
 
         if ($recording->visible) {
             $recording->visible = false;
@@ -251,6 +251,132 @@ class mod_googlemeet_external extends external_api {
     }
 
     /**
+     * Describes the parameters for restore_recording.
+     *
+     * @return external_function_parameters
+     */
+    public static function restore_recording_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+            ]
+        );
+    }
+
+    /**
+     * Restore one soft-deleted recording from the teacher trash.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @return array
+     */
+    public static function restore_recording($recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(
+            self::restore_recording_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+            ]
+        );
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:editrecording', $context);
+
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
+        if (!$recording || empty($recording->deleted)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $DB->update_record('googlemeet_recordings', (object)[
+            'id' => $recording->id,
+            'deleted' => 0,
+            'timedeleted' => 0,
+            'timemodified' => time(),
+        ]);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Describes the restore_recording return value.
+     *
+     * @return external_single_structure
+     */
+    public static function restore_recording_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether the restore succeeded'),
+        ]);
+    }
+
+    /**
+     * Describes the parameters for purge_recording.
+     *
+     * @return external_function_parameters
+     */
+    public static function purge_recording_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+            ]
+        );
+    }
+
+    /**
+     * Permanently delete one soft-deleted recording and its plugin-owned dependents.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @return array
+     */
+    public static function purge_recording($recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(
+            self::purge_recording_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+            ]
+        );
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:removerecording', $context);
+
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
+        if (!$recording || empty($recording->deleted)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $fs = get_file_storage();
+        $fs->delete_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recording->id);
+        $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
+        $DB->delete_records('googlemeet_recordings', ['id' => $recording->id]);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Describes the purge_recording return value.
+     *
+     * @return external_single_structure
+     */
+    public static function purge_recording_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether the purge succeeded'),
+        ]);
+    }
+
+    /**
      * Describes the parameters for generate_ai_analysis.
      *
      * @return external_function_parameters
@@ -296,7 +422,7 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
         $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
 
         $aiservice = new \mod_googlemeet\ai_service();
 
@@ -407,7 +533,7 @@ class mod_googlemeet_external extends external_api {
         // has no transcript stored (tier-1 analyses generated from an existing recording transcript
         // never copied it into the analysis row, leaving the UI stuck on "loading transcript").
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance], 'id, transcripttext', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id, transcripttext', MUST_EXIST);
 
         $aiservice = new \mod_googlemeet\ai_service();
         $analysis = $aiservice->get_analysis($recordingid);
@@ -536,7 +662,7 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording exists and belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
 
         // Parse keypoints (one per line).
         $keypointsarray = [];
@@ -686,7 +812,7 @@ class mod_googlemeet_external extends external_api {
 
         // Get recording info for context, scoped to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0]);
         if (!$recording) {
             throw new \moodle_exception('ai_error', 'googlemeet', '', 'Recording not found (ID: ' . $params['recordingid'] . ')');
         }
@@ -1054,7 +1180,7 @@ class mod_googlemeet_external extends external_api {
         self::validate_context($context);
         require_capability('mod/googlemeet:managequestions', $context);
         $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
 
         $service = new \mod_googlemeet\ai_service();
         if (!$service->is_available()) {
@@ -1106,7 +1232,7 @@ class mod_googlemeet_external extends external_api {
         require_capability('mod/googlemeet:managequestions', $context);
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
         $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance], 'id', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
 
         $service = new \mod_googlemeet\question_service();
         return ['questions' => $service->get_questions($googlemeet, $cm, $context, $params['recordingid'], false)];
@@ -1177,7 +1303,7 @@ class mod_googlemeet_external extends external_api {
 
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id], 'id,visible', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', MUST_EXIST);
         if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
             throw new \moodle_exception('invalidrecord', 'error');
         }
@@ -1246,7 +1372,7 @@ class mod_googlemeet_external extends external_api {
 
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id], 'id,visible', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', MUST_EXIST);
         if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
             throw new \moodle_exception('invalidrecord', 'error');
         }
