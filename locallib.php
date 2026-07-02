@@ -97,12 +97,15 @@ function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
         $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0, 'found' => 0];
         try {
             googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id);
-            $stats = $client->syncrecordings($googlemeet, true) ?: $stats;
+            $stats = $client->syncrecordings($googlemeet, true, true) ?: $stats;
         } finally {
             $lock->release();
         }
 
         $message = $client->build_sync_message($stats, (int)($stats['found'] ?? 0));
+        if ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0) {
+            $message .= ' ' . get_string('sync_enrichment_queued', 'googlemeet');
+        }
         $messagetype = ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0)
             ? \core\output\notification::NOTIFY_SUCCESS
             : \core\output\notification::NOTIFY_INFO;
@@ -670,9 +673,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             $lastsync = userdate($googlemeet->lastsync, get_string('timedate', 'googlemeet'));
         }
 
-        $redordingname = '"' . substr($googlemeet->url, 24, 12) . '" ';
+        $meetingcode = client::extract_meeting_code((string)($googlemeet->url ?? ''));
+        $redordingname = $meetingcode ? '"' . $meetingcode . '" ' : '';
         if ($googlemeet->originalname) {
-            $redordingname .= get_string('or', 'googlemeet') . ' "' . $googlemeet->originalname . '"';
+            $redordingname .= ($redordingname !== '' ? get_string('or', 'googlemeet') . ' ' : '') .
+                '"' . $googlemeet->originalname . '"';
         }
 
         $loginhtml = '';

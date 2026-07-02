@@ -93,11 +93,13 @@ if ($rview === 'cards' || $rview === 'list') {
 
 // Make sure URL exists before generating output - some older sites may contain empty urls
 // Do not use PARAM_URL here, it is too strict and does not support general URIs!
-$url = trim($googlemeet->url);
+$url = trim((string)$googlemeet->url);
+$hasvalidmeeturl = false;
 $pattern = "/^https:\/\/meet.google.com\/[-a-zA-Z0-9@:%._\+~#=]{3}-[-a-zA-Z0-9@:%._\+~#=]{4}-[-a-zA-Z0-9@:%._\+~#=]{3}$/";
-if (!preg_match($pattern, $url)) {
+if ($url !== '' && !preg_match($pattern, $url)) {
     throw new moodle_exception('invalidstoredurl', 'googlemeet', new moodle_url('/course/view.php', ['id' => $cm->course]));
 }
+$hasvalidmeeturl = ($url !== '');
 unset($url);
 
 // Completion and trigger events.
@@ -122,9 +124,11 @@ if ($recordingid > 0) {
     exit;
 }
 
-echo html_writer::link($googlemeet->url,
-    get_string('entertheroom', 'googlemeet'),
-    ['class' => 'btn btn-primary', 'target' => '_blank', 'title' => get_string('entertheroom', 'googlemeet')]);
+if ($hasvalidmeeturl) {
+    echo html_writer::link($googlemeet->url,
+        get_string('entertheroom', 'googlemeet'),
+        ['class' => 'btn btn-primary', 'target' => '_blank', 'title' => get_string('entertheroom', 'googlemeet')]);
+}
 
 if (has_capability('mod/googlemeet:editrecording', $context)) {
     if ($googlemeet->eventid != null) {

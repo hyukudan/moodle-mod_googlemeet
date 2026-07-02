@@ -146,13 +146,22 @@ function googlemeet_add_instance($googlemeet, $mform = null) {
             $googlemeet->url = $url;
         }
     } else {
-        $calendarevent = $client->create_meeting_event($googlemeet);
-        $googlemeet->url = $calendarevent->hangoutLink;
+        try {
+            $calendarevent = $client->create_meeting_event($googlemeet);
+            $googlemeet->url = $calendarevent->hangoutLink;
 
-        $link = new moodle_url($calendarevent->htmlLink);
-        $googlemeet->eventid = $link->get_param('eid');
-        $googlemeet->originalname = $calendarevent->summary;
-        $googlemeet->creatoremail = $calendarevent->creator->email;
+            $link = new moodle_url($calendarevent->htmlLink);
+            $googlemeet->eventid = $link->get_param('eid');
+            $googlemeet->originalname = $calendarevent->summary;
+            $googlemeet->creatoremail = $calendarevent->creator->email;
+        } catch (\Throwable $e) {
+            debugging('mod_googlemeet: Google Calendar event creation failed during add_instance: ' .
+                $e->getMessage(), DEBUG_DEVELOPER);
+            \core\notification::warning(get_string('googleeventcreationfailed', 'googlemeet'));
+            if (!isset($googlemeet->url)) {
+                $googlemeet->url = '';
+            }
+        }
     }
 
     // originalname is NOT NULL. Only the logged-in branch above sets it (from the calendar
@@ -641,9 +650,10 @@ function mod_googlemeet_get_fontawesome_icon_map() {
  *
  * @param int $googlemeetid the googlemeet ID
  * @param array $files the array of recordings
+ * @param bool $deferenrichment Queue transcript/notes/permission enrichment instead of doing follow-up queues now.
  * @return array with 'recordings' list and 'stats' (inserted, updated, deleted, trashed, restored counts)
  */
-function sync_recordings($googlemeetid, $files) {
+function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
     global $DB;
 
     $cm = get_coursemodule_from_instance('googlemeet', $googlemeetid, 0, false, MUST_EXIST);
@@ -743,8 +753,10 @@ function sync_recordings($googlemeetid, $files) {
     }
 
     if ($restorerecordings) {
+        $restoredrecordingids = [];
         foreach ($restorerecordings as $restorerecording) {
             $existing = $recordingsbyid[$restorerecording->recordingId];
+            $restoredrecordingids[] = (int)$existing->id;
             $update = (object)[
                 'id' => $existing->id,
                 'name' => $restorerecording->name,
@@ -762,10 +774,12 @@ function sync_recordings($googlemeetid, $files) {
             $DB->update_record('googlemeet_recordings', $update);
         }
         $stats['restored'] = count($restorerecordings);
+    } else {
+        $restoredrecordingids = [];
     }
 
+    $newrecordingids = [];
     if ($insertrecordings) {
-        $newrecordingids = [];
         foreach ($insertrecordings as $insertrecording) {
             $recording = new stdClass();
             $recording->googlemeetid = $googlemeetid;
@@ -794,7 +808,7 @@ function sync_recordings($googlemeetid, $files) {
         }
         $stats['inserted'] = count($insertrecordings);
 
-        $aiautogenerate = !empty(get_config('googlemeet', 'ai_autogenerate'));
+        $aiautogenerate = !$deferenrichment && !empty(get_config('googlemeet', 'ai_autogenerate'));
         if ($aiautogenerate) {
             $aiservice = new \mod_googlemeet\ai_service();
             if ($aiservice->is_available()) {
@@ -804,7 +818,7 @@ function sync_recordings($googlemeetid, $files) {
             }
         }
 
-        if ($DB->record_exists('googlemeet_recording_subs', ['googlemeetid' => $googlemeetid])) {
+        if (!$deferenrichment && $DB->record_exists('googlemeet_recording_subs', ['googlemeetid' => $googlemeetid])) {
             $task = new \mod_googlemeet\task\notify_new_recordings();
             $task->set_custom_data([
                 'googlemeetid' => $googlemeetid,
@@ -815,12 +829,30 @@ function sync_recordings($googlemeetid, $files) {
         }
     }
 
+    if ($deferenrichment) {
+        $enrichmentids = array_values(array_unique(array_merge($newrecordingids, $restoredrecordingids)));
+        if (!empty($enrichmentids)) {
+            $task = new \mod_googlemeet\task\process_recording_enrichment();
+            $task->set_custom_data([
+                'googlemeetid' => $googlemeetid,
+                'recordingids' => $enrichmentids,
+                // Restored recordings get their empty fields refilled but must not
+                // retrigger AI analysis or "new recording" notifications (parity
+                // with the inline/cron path, which only queues those for inserts).
+                'newrecordingids' => $newrecordingids,
+            ]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+    }
+
     // Always update lastsync timestamp (single query instead of 3 redundant queries).
     $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
 
     return [
         'recordings' => googlemeet_list_recordings(['googlemeetid' => $googlemeetid]),
         'stats' => $stats,
+        'newrecordingids' => $newrecordingids,
+        'restoredrecordingids' => $restoredrecordingids,
     ];
 }
 

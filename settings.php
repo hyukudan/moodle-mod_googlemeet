@@ -182,4 +182,12 @@ if ($ADMIN->fulltree) {
         'es',
         PARAM_ALPHANUMEXT
     ));
+
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/ytdlppath',
+        get_string('ytdlppath', 'googlemeet'),
+        get_string('ytdlppath_desc', 'googlemeet'),
+        '',
+        PARAM_RAW_TRIMMED
+    ));
 }

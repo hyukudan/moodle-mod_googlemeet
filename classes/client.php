@@ -50,6 +50,12 @@ class client {
      */
     private $notesdocscache = null;
 
+    /** @var int Defensive page cap for Google Drive list calls. */
+    private const DRIVE_LIST_MAX_PAGES = 10;
+
+    /** @var int Max allowed distance between a recording and its Gemini notes doc. */
+    private const NOTES_PROXIMITY_SECONDS = 36 * 3600;
+
     /** @var bool informs if the client is enabled */
     public $enabled = true;
 
@@ -118,6 +124,88 @@ class client {
      */
     private function drive_quote($value) {
         return str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $value);
+    }
+
+    /**
+     * Extract the Google Meet code from a room URL.
+     *
+     * @param string $url Room URL.
+     * @return string|null The lower-case meeting code, or null when the URL does not contain one.
+     */
+    public static function extract_meeting_code(string $url): ?string {
+        if (preg_match('~meet\.google\.com/([a-z]{3}-[a-z]{4}-[a-z]{3})~i', $url, $matches)) {
+            return \core_text::strtolower($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * List all Drive files for a query, following nextPageToken with a defensive cap.
+     *
+     * @param object $service The REST service.
+     * @param array $params Drive files.list parameters.
+     * @return array Accumulated files from all retrieved pages.
+     */
+    protected function list_all_pages($service, array $params): array {
+        $files = [];
+        $pagetoken = null;
+        $pages = 0;
+
+        do {
+            $requestparams = $params;
+            if ($pagetoken !== null && $pagetoken !== '') {
+                $requestparams['pageToken'] = $pagetoken;
+            }
+
+            $response = helper::request($service, 'list', $requestparams, false);
+            $files = array_merge($files, $response->files ?? []);
+            $pagetoken = $response->nextPageToken ?? null;
+            $pages++;
+
+            if ($pagetoken && $pages >= self::DRIVE_LIST_MAX_PAGES) {
+                $message = 'mod_googlemeet: Drive list pagination stopped after ' .
+                    self::DRIVE_LIST_MAX_PAGES . ' pages for query: ' . ($params['q'] ?? '');
+                debugging($message, DEBUG_DEVELOPER);
+                if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+                    mtrace($message);
+                }
+                break;
+            }
+        } while (!empty($pagetoken));
+
+        return $files;
+    }
+
+    /**
+     * Build the Drive parent query for the localised Meet Recordings folders.
+     *
+     * @param object $service The REST service.
+     * @return string Drive query fragment, or empty string when no folder was found.
+     */
+    private function get_meet_recordings_parents_query($service): string {
+        // Search for Meet Recordings folder in multiple languages.
+        // Google localises the auto-created folder name to the account language.
+        $folderparams = [
+            'q' => '(name = "Meet Recordings" or name contains "Registros de reuniones") and
+                    trashed = false and
+                    mimeType = "application/vnd.google-apps.folder" and
+                    "me" in owners',
+            'pageSize' => 1000,
+            'fields' => 'nextPageToken, files(id,owners)'
+        ];
+
+        $folders = $this->list_all_pages($service, $folderparams);
+        $parents = '';
+        $folderscount = count($folders);
+        for ($i = 0; $i < $folderscount; $i++) {
+            $parents .= 'parents="' . $this->drive_quote($folders[$i]->id) . '"';
+            if ($i + 1 < $folderscount) {
+                $parents .= ' or ';
+            }
+        }
+
+        return $parents;
     }
 
     /**
@@ -358,40 +446,24 @@ class client {
      * @param object $googlemeet An object instance.
      * @param bool $noredirect When true, skip the final redirect() call and return stats.
      *                         Required for background/cron contexts (no $PAGE, no HTTP).
+     * @param bool $deferenrichment When true, only upsert Drive metadata and queue enrichment.
      *
      * @return array|void Stats array ['inserted','updated','deleted','trashed','restored','found'] when $noredirect=true.
      */
-    public function syncrecordings($googlemeet, $noredirect = false) {
+    public function syncrecordings($googlemeet, $noredirect = false, bool $deferenrichment = false) {
         global $PAGE, $DB, $CFG;
         require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
 
         if ($this->check_login()) {
             $service = new rest($this->get_user_oauth_client());
 
-            // Search for Meet Recordings folder in multiple languages.
-            // Google localises the auto-created folder name to the account language.
-            $folderparams = [
-                'q' => '(name = "Meet Recordings" or name contains "Registros de reuniones") and
-                        trashed = false and
-                        mimeType = "application/vnd.google-apps.folder" and
-                        "me" in owners',
-                'pageSize' => 1000,
-                'fields' => 'nextPageToken, files(id,owners)'
-            ];
-
-            $folderresponse = helper::request($service, 'list', $folderparams, false);
-
-            $folders = $folderresponse->files;
-            $parents = '';
-            $folderscount = count($folders);
-            for ($i = 0; $i < $folderscount; $i++) {
-                $parents .= 'parents="'.$this->drive_quote($folders[$i]->id).'"';
-                if ($i + 1 < $folderscount) {
-                    $parents .= ' or ';
-                }
+            $parents = $this->get_meet_recordings_parents_query($service);
+            $meetingcode = self::extract_meeting_code((string)($googlemeet->url ?? ''));
+            if ($meetingcode === null) {
+                debugging('mod_googlemeet: could not extract meeting code from URL for activity #' .
+                    ($googlemeet->id ?? '?') . '; Drive sync will use name/filter matching only.', DEBUG_DEVELOPER);
+                $meetingcode = '';
             }
-
-            $meetingcode = substr($googlemeet->url, 24, 12);
             $name = $googlemeet->name;
             $customfilter = trim($googlemeet->recordingfilter ?? '');
 
@@ -399,7 +471,9 @@ class client {
             // plus custom filter if set. This avoids the problem where a custom
             // filter is an incorrect substring that doesn't match the actual filename.
             $conditions = [];
-            $conditions[] = 'name contains "' . $this->drive_quote($meetingcode) . '"';
+            if ($meetingcode !== '') {
+                $conditions[] = 'name contains "' . $this->drive_quote($meetingcode) . '"';
+            }
             $conditions[] = 'name contains "' . $this->drive_quote($name) . '"';
             if (!empty($customfilter) && $customfilter !== $name) {
                 $conditions[] = 'name contains "' . $this->drive_quote($customfilter) . '"';
@@ -414,7 +488,7 @@ class client {
                             "me" in owners and
                             ' . $namefilter,
                     'pageSize' => 100,
-                    'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
+                    'fields' => 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
                 ];
             } else {
                 $recordingparams = [
@@ -424,13 +498,11 @@ class client {
                             "me" in owners and
                             ' . $namefilter,
                     'pageSize' => 1000,
-                    'fields' => 'files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
+                    'fields' => 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
                 ];
             }
 
-            $recordingresponse = helper::request($service, 'list', $recordingparams, false);
-
-            $recordings = $recordingresponse->files;
+            $recordings = $this->list_all_pages($service, $recordingparams);
 
             // Additional filtering for duplicate check across activities.
             $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
@@ -445,15 +517,19 @@ class client {
 
             $recordingscount = $recordings ? count($recordings) : 0;
             if ($recordingscount > 0) {
-                // Pre-fetch the recording ids we already have so we can skip transcript fetching
-                // and yt-dlp extraction for them. sync_recordings() will ignore them anyway.
-                $existingids = $DB->get_fieldset_select('googlemeet_recordings', 'recordingid',
-                    'googlemeetid = ?', [$googlemeet->id]);
-                $existingids = array_flip($existingids);
-                // Map recordingid => notestext so we know which existing recordings
-                // still lack notes (Gemini notes are often generated later).
-                $existingnotes = $DB->get_records_menu('googlemeet_recordings',
-                    ['googlemeetid' => $googlemeet->id], '', 'recordingid, notestext');
+                // In inline mode, pre-fetch existing rows so we only do heavy enrichment
+                // for new recordings and for existing recordings that still lack notes.
+                $existingids = [];
+                $existingnotes = [];
+                if (!$deferenrichment) {
+                    $existingids = $DB->get_fieldset_select('googlemeet_recordings', 'recordingid',
+                        'googlemeetid = ?', [$googlemeet->id]);
+                    $existingids = array_flip($existingids);
+                    // Map recordingid => notestext so we know which existing recordings
+                    // still lack notes (Gemini notes are often generated later).
+                    $existingnotes = $DB->get_records_menu('googlemeet_recordings',
+                        ['googlemeetid' => $googlemeet->id], '', 'recordingid, notestext');
+                }
 
                 for ($i = 0; $i < $recordingscount; $i++) {
                     $recording = $recordings[$i];
@@ -466,7 +542,8 @@ class client {
                         // an admin can disable it to keep recordings private, but that breaks
                         // playback for everyone except the Drive owner (a deliberate privacy/
                         // playability trade-off).
-                        if (get_config('googlemeet', 'makerecordingspublic')
+                        if (!$deferenrichment
+                                && get_config('googlemeet', 'makerecordingspublic')
                                 && !in_array('anyoneWithLink', $recording->permissionIds)) {
                             $permissionparams = [
                                 'fileid' => $recording->id,
@@ -488,7 +565,7 @@ class client {
                         $recordings[$i]->duration = $duration;
                         $recordings[$i]->createdTime = $createdtime->getTimestamp();
 
-                        if (!isset($existingids[$recording->id])) {
+                        if (!$deferenrichment && !isset($existingids[$recording->id])) {
                             // Only fetch the transcript and run yt-dlp for recordings we are
                             // about to insert. Existing rows are left untouched by sync_recordings().
                             $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
@@ -512,8 +589,13 @@ class client {
                         // that still have no notes, because Gemini notes are often
                         // published after the recording first appears.
                         $existingnotestext = $existingnotes[$recording->id] ?? null;
-                        if (!isset($existingids[$recording->id]) || empty($existingnotestext)) {
-                            $notesdata = $this->find_notes_for_recording($service, $parents, $recording->name);
+                        if (!$deferenrichment && (!isset($existingids[$recording->id]) || empty($existingnotestext))) {
+                            $notesdata = $this->find_notes_for_recording(
+                                $service,
+                                $parents,
+                                $recording->name,
+                                $recordings[$i]->createdTime
+                            );
                             if ($notesdata) {
                                 $recordings[$i]->notestext = $notesdata['content'];
                                 $recordings[$i]->notesdocid = $notesdata['docid'];
@@ -528,7 +610,7 @@ class client {
                     }
                 }
 
-                $result = sync_recordings($googlemeet->id, $recordings);
+                $result = sync_recordings($googlemeet->id, $recordings, $deferenrichment);
                 $stats = $result['stats'];
             } else {
                 // No recordings found, but still update lastsync time.
@@ -708,16 +790,16 @@ class client {
                     (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
                     name contains "'.$this->drive_quote($basename).'"',
             'pageSize' => 10,
-            'fields' => 'files(id,name,mimeType)'
+            'fields' => 'nextPageToken, files(id,name,mimeType)'
         ];
 
         try {
-            $response = helper::request($service, 'list', $transcriptparams, false);
+            $files = $this->list_all_pages($service, $transcriptparams);
 
-            if (!empty($response->files)) {
+            if (!empty($files)) {
                 // Prefer .sbv or .vtt files, then .txt.
                 $transcriptfile = null;
-                foreach ($response->files as $file) {
+                foreach ($files as $file) {
                     $ext = strtolower(pathinfo($file->name, PATHINFO_EXTENSION));
                     if ($ext === 'sbv' || $ext === 'vtt') {
                         $transcriptfile = $file;
@@ -758,45 +840,33 @@ class client {
      * @param rest $service The REST service
      * @param string $parents The parent folders query (may be empty)
      * @param string $videoname The video filename
+     * @param int $recordingcreatedtime Recording creation timestamp.
      * @return array|null ['docid' => string, 'content' => string] or null
      */
-    private function find_notes_for_recording($service, $parents, $videoname) {
-        $prefix = preg_replace('/\s*[-–—]\s*Recording\s*$/iu', '', $videoname);
-        $prefix = trim($prefix);
-        if ($prefix === '' || $prefix === trim($videoname)) {
-            $prefix = preg_replace('/\.[A-Za-z0-9]{2,4}$/', '', trim($videoname));
-        }
-        if ($prefix === '') {
+    private function find_notes_for_recording($service, $parents, $videoname, int $recordingcreatedtime) {
+        if (self::recording_notes_prefix($videoname) === '' || $recordingcreatedtime <= 0) {
             return null;
         }
         $notesparams = [
             'q' => 'trashed = false and "me" in owners and mimeType = "application/vnd.google-apps.document"',
             'orderBy' => 'createdTime desc',
-            'pageSize' => 200,
-            'fields' => 'files(id,name)'
+            'pageSize' => 1000,
+            'fields' => 'nextPageToken, files(id,name,createdTime)'
         ];
 
         try {
             if ($this->notesdocscache === null) {
-                $response = helper::request($service, 'list', $notesparams, false);
-                $this->notesdocscache = $response->files ?? [];
+                $this->notesdocscache = $this->list_all_pages($service, $notesparams);
             }
             if (empty($this->notesdocscache)) {
                 return null;
             }
-            $candidate = null;
-            foreach ($this->notesdocscache as $file) {
-                if (stripos($file->name, $prefix) === false) {
-                    continue;
-                }
-                if (preg_match('/Gemini|Notas|Notes/iu', $file->name)) {
-                    $candidate = $file;
-                    break;
-                }
-                if ($candidate === null) {
-                    $candidate = $file;
-                }
-            }
+            $candidate = self::select_notes_candidate_for_recording(
+                $this->notesdocscache,
+                $videoname,
+                $recordingcreatedtime,
+                true
+            );
             if (!$candidate) {
                 return null;
             }
@@ -814,6 +884,210 @@ class client {
             ];
         } catch (\Exception $e) {
             debugging('Failed to fetch notes: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * Enrich already-synced recording rows with permissions, transcript and notes.
+     *
+     * @param object $googlemeet Activity instance.
+     * @param int[] $recordingids Local googlemeet_recordings ids.
+     * @return int[] Recording ids that were still active and processed.
+     */
+    public function enrich_recordings($googlemeet, array $recordingids): array {
+        global $DB;
+
+        $recordingids = array_values(array_unique(array_filter(array_map('intval', $recordingids))));
+        if (empty($recordingids)) {
+            return [];
+        }
+
+        $service = new rest($this->get_user_oauth_client());
+        $parents = $this->get_meet_recordings_parents_query($service);
+        $processedids = [];
+
+        foreach ($recordingids as $recordingid) {
+            $recording = $DB->get_record('googlemeet_recordings', [
+                'id' => $recordingid,
+                'googlemeetid' => $googlemeet->id,
+            ]);
+
+            if (!$recording) {
+                mtrace("mod_googlemeet enrichment: recording #{$recordingid} no longer exists; skipping.");
+                continue;
+            }
+
+            if (!empty($recording->deleted)) {
+                mtrace("mod_googlemeet enrichment: recording #{$recordingid} is deleted; skipping.");
+                continue;
+            }
+
+            if (get_config('googlemeet', 'makerecordingspublic')) {
+                try {
+                    $permissionparams = [
+                        'fileid' => $recording->recordingid,
+                        'fields' => 'id'
+                    ];
+                    $permissionrawpost = [
+                        'role' => 'reader',
+                        'type' => 'anyone'
+                    ];
+                    helper::request($service, 'create_permission', $permissionparams, json_encode($permissionrawpost));
+                } catch (\Throwable $e) {
+                    debugging('mod_googlemeet enrichment: failed to create recording permission for #' .
+                        $recordingid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+
+            $update = (object)[
+                'id' => $recordingid,
+                'timemodified' => time(),
+            ];
+            $haschanges = false;
+
+            if (empty($recording->transcripttext)) {
+                $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
+                if ($transcriptdata) {
+                    $update->transcriptfileid = $transcriptdata['fileid'];
+                    $update->transcripttext = $transcriptdata['content'];
+                    $recording->transcripttext = $update->transcripttext;
+                    $haschanges = true;
+                }
+
+                if (empty($recording->transcripttext) && !empty($recording->webviewlink)) {
+                    $extractor = new subtitle_extractor(get_config('googlemeet', 'subtitlelanguage') ?: 'es');
+                    if ($extractor->is_available()) {
+                        $cctext = $extractor->extract($recording->webviewlink);
+                        if (!empty($cctext)) {
+                            $update->transcripttext = $cctext;
+                            $recording->transcripttext = $cctext;
+                            $haschanges = true;
+                        }
+                    }
+                }
+            }
+
+            if (empty($recording->notestext)) {
+                $notesdata = $this->find_notes_for_recording(
+                    $service,
+                    $parents,
+                    $recording->name,
+                    (int)$recording->createdtime
+                );
+                if ($notesdata) {
+                    $update->notestext = $notesdata['content'];
+                    $update->notesdocid = $notesdata['docid'];
+                    $haschanges = true;
+                }
+            }
+
+            if ($haschanges) {
+                $DB->update_record('googlemeet_recordings', $update);
+            }
+
+            $processedids[] = $recordingid;
+        }
+
+        return $processedids;
+    }
+
+    /**
+     * Select the best Gemini notes document for a recording from an already fetched docs list.
+     *
+     * @param array $docs Google Docs Drive file objects.
+     * @param string $videoname Recording filename.
+     * @param int $recordingcreatedtime Recording creation timestamp.
+     * @param bool $debugdiscarded Whether to emit debugging() for discarded temporal candidates.
+     * @return stdClass|null Selected Drive file object.
+     */
+    public static function select_notes_candidate_for_recording(
+        array $docs,
+        string $videoname,
+        int $recordingcreatedtime,
+        bool $debugdiscarded = false
+    ): ?stdClass {
+        $prefix = self::recording_notes_prefix($videoname);
+        if ($prefix === '' || $recordingcreatedtime <= 0) {
+            return null;
+        }
+
+        $preferred = [];
+        $fallback = [];
+        foreach ($docs as $file) {
+            $filename = $file->name ?? '';
+            if (stripos($filename, $prefix) === false) {
+                continue;
+            }
+
+            $doctime = self::google_time_to_timestamp($file->createdTime ?? null);
+            if ($doctime === null) {
+                if ($debugdiscarded) {
+                    debugging('mod_googlemeet: notes candidate discarded without createdTime: ' . $filename,
+                        DEBUG_DEVELOPER);
+                }
+                continue;
+            }
+
+            $distance = abs($doctime - $recordingcreatedtime);
+            if ($distance > self::NOTES_PROXIMITY_SECONDS) {
+                if ($debugdiscarded) {
+                    debugging('mod_googlemeet: notes candidate discarded outside 36h window: ' . $filename,
+                        DEBUG_DEVELOPER);
+                }
+                continue;
+            }
+
+            $entry = ['file' => $file, 'distance' => $distance];
+            if (preg_match('/Gemini|Notas|Notes/iu', $filename)) {
+                $preferred[] = $entry;
+            } else {
+                $fallback[] = $entry;
+            }
+        }
+
+        $pool = !empty($preferred) ? $preferred : $fallback;
+        if (empty($pool)) {
+            return null;
+        }
+
+        usort($pool, static function(array $a, array $b): int {
+            return $a['distance'] <=> $b['distance'];
+        });
+
+        return $pool[0]['file'];
+    }
+
+    /**
+     * Derive the filename prefix shared by Meet recordings and Gemini notes.
+     *
+     * @param string $videoname Recording filename.
+     * @return string Prefix used for matching.
+     */
+    private static function recording_notes_prefix(string $videoname): string {
+        $prefix = preg_replace('/\s*[-–—]\s*Recording\s*$/iu', '', $videoname);
+        $prefix = trim($prefix);
+        if ($prefix === '' || $prefix === trim($videoname)) {
+            $prefix = preg_replace('/\.[A-Za-z0-9]{2,4}$/', '', trim($videoname));
+        }
+
+        return trim($prefix);
+    }
+
+    /**
+     * Convert a Google RFC3339 timestamp to Unix time.
+     *
+     * @param mixed $value Timestamp value.
+     * @return int|null Unix timestamp, or null when invalid.
+     */
+    private static function google_time_to_timestamp($value): ?int {
+        if (empty($value) || !is_string($value)) {
+            return null;
+        }
+
+        try {
+            return (new DateTime($value))->getTimestamp();
+        } catch (\Exception $e) {
             return null;
         }
     }

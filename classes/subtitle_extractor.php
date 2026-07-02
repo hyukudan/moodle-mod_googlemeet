@@ -43,6 +43,12 @@ class subtitle_extractor {
     /** @var string Subtitle language to extract */
     private string $language;
 
+    /** @var string|null Cached PATH lookup result for this request. */
+    private static ?string $cachedwhich = null;
+
+    /** @var bool Whether PATH lookup has already run in this request. */
+    private static bool $whichlookedup = false;
+
     /**
      * Constructor.
      *
@@ -120,26 +126,39 @@ class subtitle_extractor {
      * @return string|null Path to yt-dlp or null if not found
      */
     private function find_ytdlp(): ?string {
-        // Check common locations.
-        $paths = [
-            '/tmp/yt-dlp',
-            '/usr/local/bin/yt-dlp',
-            '/usr/bin/yt-dlp',
-        ];
-
-        foreach ($paths as $path) {
-            if (file_exists($path) && is_executable($path)) {
-                return $path;
+        $configured = trim((string)get_config('googlemeet', 'ytdlppath'));
+        if ($configured !== '') {
+            if (is_executable($configured)) {
+                return $configured;
             }
+            debugging('subtitle_extractor: configured yt-dlp path is not executable: ' . $configured, DEBUG_DEVELOPER);
         }
 
-        // Check PATH.
-        $which = trim(shell_exec('which yt-dlp 2>/dev/null') ?: '');
+        $which = self::which_ytdlp();
         if (!empty($which) && is_executable($which)) {
             return $which;
         }
 
+        if (is_executable('/tmp/yt-dlp')) {
+            return '/tmp/yt-dlp';
+        }
+
         return null;
+    }
+
+    /**
+     * Locate yt-dlp in PATH once per request.
+     *
+     * @return string|null Executable path, or null when not found.
+     */
+    private static function which_ytdlp(): ?string {
+        if (!self::$whichlookedup) {
+            self::$whichlookedup = true;
+            $which = trim(shell_exec('which yt-dlp 2>/dev/null') ?: '');
+            self::$cachedwhich = ($which !== '' && is_executable($which)) ? $which : null;
+        }
+
+        return self::$cachedwhich;
     }
 
     /**

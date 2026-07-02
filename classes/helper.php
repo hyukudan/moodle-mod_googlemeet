@@ -32,6 +32,9 @@ class helper {
     /** @var string The googlemeet meeting_start event */
     public const GOOGLEMEET_EVENT_START = 'googlemeet_event';
 
+    /** @var int Number of retry attempts after the initial Google API request. */
+    private const GOOGLE_REQUEST_RETRIES = 2;
+
     /**
      * Wrapper function to perform an API call and also catch and handle potential exceptions.
      *
@@ -45,18 +48,138 @@ class helper {
      * @throws moodle_exception
      */
     public static function request($service, $api, $params, $rawpost = false) {
-        try {
-            $response = $service->call($api, $params, $rawpost);
-        } catch (\Exception $e) {
-            if ($e->getCode() == 403 && strpos($e->getMessage(), 'Access Not Configured') !== false) {
-                // This is raised when the Drive API service or the Calendar API service
-                // has not been enabled on Google APIs control panel.
-                throw new moodle_exception('servicenotenabled', 'mod_googlemeet');
+        $attempt = 0;
+
+        while (true) {
+            try {
+                return $service->call($api, $params, $rawpost);
+            } catch (\Exception $e) {
+                if (self::is_service_not_enabled_error($e)) {
+                    // This is raised when the Drive API service or the Calendar API service
+                    // has not been enabled on Google APIs control panel.
+                    throw new moodle_exception('servicenotenabled', 'mod_googlemeet');
+                }
+
+                if ($attempt >= self::GOOGLE_REQUEST_RETRIES || !self::is_transient_google_error($e)) {
+                    throw $e;
+                }
+
+                $attempt++;
+                $delay = self::retry_delay_seconds($e, $attempt);
+                debugging(
+                    "mod_googlemeet: transient Google API error on {$api}; retry {$attempt}/" .
+                        self::GOOGLE_REQUEST_RETRIES . " in {$delay}s: " . $e->getMessage(),
+                    DEBUG_DEVELOPER
+                );
+                sleep($delay);
             }
-            throw $e;
+        }
+    }
+
+    /**
+     * Detect Google API-disabled errors that should keep the existing user-facing exception.
+     *
+     * @param \Exception $e The exception thrown by core\oauth2\rest.
+     * @return bool
+     */
+    private static function is_service_not_enabled_error(\Exception $e): bool {
+        return self::extract_http_status($e) === 403
+            && strpos($e->getMessage(), 'Access Not Configured') !== false;
+    }
+
+    /**
+     * Decide whether a failed Google API request is worth retrying.
+     *
+     * Moodle's core\oauth2\rest currently throws core\oauth2\rest_exception with
+     * JSON API failures encoded only as "HTTPSTATUS: message" in the exception
+     * text, and transport failures in the exception code. There is no structured
+     * response/status accessor to use here, so this parser deliberately accepts
+     * only the small Google transient set we need.
+     *
+     * @param \Exception $e The exception thrown by core\oauth2\rest.
+     * @return bool
+     */
+    private static function is_transient_google_error(\Exception $e): bool {
+        $message = $e->getMessage();
+        $status = self::extract_http_status($e);
+        $hastransientreason = preg_match('/\b(rateLimitExceeded|userRateLimitExceeded|backendError)\b/i', $message);
+
+        if ($status === 403) {
+            return (bool)$hastransientreason;
         }
 
-        return $response;
+        if (in_array($status, [429, 500, 502, 503], true)) {
+            return true;
+        }
+
+        if ($status === null && $hastransientreason) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract an HTTP status code from a Moodle OAuth REST exception.
+     *
+     * @param \Exception $e The exception to inspect.
+     * @return int|null HTTP status code, or null when it is not available.
+     */
+    private static function extract_http_status(\Exception $e): ?int {
+        $code = (int)$e->getCode();
+        if ($code >= 400 && $code <= 599) {
+            return $code;
+        }
+
+        if (preg_match('/(?:^|\D)([1-5][0-9]{2})\s*:/', $e->getMessage(), $matches)) {
+            return (int)$matches[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * Calculate retry delay, respecting Retry-After when it is present in the error text.
+     *
+     * @param \Exception $e The exception thrown by core\oauth2\rest.
+     * @param int $attempt Retry attempt number, starting at 1.
+     * @return int Seconds to wait.
+     */
+    private static function retry_delay_seconds(\Exception $e, int $attempt): int {
+        $retryafter = self::extract_retry_after($e->getMessage());
+        if ($retryafter !== null) {
+            // Cap it: this can run inside a web request (manual sync), where an
+            // upstream Retry-After of minutes must not stall the whole page.
+            return min(10, max(0, $retryafter));
+        }
+
+        $base = 2 ** ($attempt - 1);
+        $jitter = random_int(-250, 250) / 1000;
+        return max(1, (int)round($base + $jitter));
+    }
+
+    /**
+     * Parse a Retry-After value from exception text when an upstream layer includes headers.
+     *
+     * @param string $message Exception message.
+     * @return int|null Delay in seconds, or null when absent/unparseable.
+     */
+    private static function extract_retry_after(string $message): ?int {
+        if (!preg_match('/Retry-After:\s*([^\r\n]+)/i', $message, $matches)) {
+            return null;
+        }
+
+        $value = trim($matches[1]);
+        if (preg_match('/^\d+$/', $value)) {
+            return (int)$value;
+        }
+
+        $timestamp = strtotime($value);
+        if ($timestamp !== false) {
+            return max(0, $timestamp - time());
+        }
+
+        return null;
     }
 
     /**

@@ -286,4 +286,143 @@ class soft_delete_test extends \advanced_testcase {
 
         $this->assertCount(0, $filtered);
     }
+
+    /**
+     * Exhausted autosync events are reopened by manual sync without touching non-exhausted events.
+     */
+    public function test_reset_exhausted_autosync_events_only_reopens_exhausted_rows(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        set_config('maxsyncattempts', 3, 'googlemeet');
+        [, $googlemeet] = $this->create_googlemeet_fixture();
+        $now = time();
+
+        $exhaustedid = $DB->insert_record('googlemeet_events', (object)[
+            'googlemeetid' => $googlemeet->id,
+            'eventdate' => $now - HOURSECS,
+            'duration' => HOURSECS,
+            'timemodified' => $now,
+            'autosynced' => $now - 100,
+            'syncattempts' => 3,
+            'nextsyncattempt' => $now + HOURSECS,
+        ]);
+        $belowmaxid = $DB->insert_record('googlemeet_events', (object)[
+            'googlemeetid' => $googlemeet->id,
+            'eventdate' => $now - HOURSECS,
+            'duration' => HOURSECS,
+            'timemodified' => $now,
+            'autosynced' => $now - 100,
+            'syncattempts' => 2,
+            'nextsyncattempt' => $now + HOURSECS,
+        ]);
+        $openid = $DB->insert_record('googlemeet_events', (object)[
+            'googlemeetid' => $googlemeet->id,
+            'eventdate' => $now - HOURSECS,
+            'duration' => HOURSECS,
+            'timemodified' => $now,
+            'autosynced' => 0,
+            'syncattempts' => 3,
+            'nextsyncattempt' => $now + HOURSECS,
+        ]);
+
+        $this->assertSame(1, googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id));
+
+        $exhausted = $DB->get_record('googlemeet_events', ['id' => $exhaustedid], '*', MUST_EXIST);
+        $this->assertSame(0, (int)$exhausted->autosynced);
+        $this->assertSame(0, (int)$exhausted->syncattempts);
+        $this->assertSame(0, (int)$exhausted->nextsyncattempt);
+
+        $belowmax = $DB->get_record('googlemeet_events', ['id' => $belowmaxid], '*', MUST_EXIST);
+        $this->assertSame($now - 100, (int)$belowmax->autosynced);
+        $this->assertSame(2, (int)$belowmax->syncattempts);
+        $this->assertSame($now + HOURSECS, (int)$belowmax->nextsyncattempt);
+
+        $open = $DB->get_record('googlemeet_events', ['id' => $openid], '*', MUST_EXIST);
+        $this->assertSame(0, (int)$open->autosynced);
+        $this->assertSame(3, (int)$open->syncattempts);
+        $this->assertSame($now + HOURSECS, (int)$open->nextsyncattempt);
+    }
+
+    /**
+     * Enrichment task custom data survives Moodle's JSON round-trip.
+     */
+    public function test_process_recording_enrichment_custom_data_round_trip(): void {
+        $task = new \mod_googlemeet\task\process_recording_enrichment();
+        $task->set_custom_data([
+            'googlemeetid' => 42,
+            'recordingids' => [7, 8],
+        ]);
+
+        $data = $task->get_custom_data();
+        $this->assertSame(42, (int)$data->googlemeetid);
+        $this->assertSame([7, 8], array_map('intval', $data->recordingids));
+    }
+
+    /**
+     * Deleted recordings are skipped before the enrichment task needs Google authentication.
+     */
+    public function test_process_recording_enrichment_skips_deleted_recordings(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->expectOutputRegex('/recording #\d+ is deleted; skipping/');
+        [, $googlemeet] = $this->create_googlemeet_fixture();
+        $recordingid = $this->create_recording($googlemeet->id, 'drive-deleted-enrichment', [
+            'deleted' => 1,
+            'timedeleted' => time(),
+        ]);
+
+        $task = new \mod_googlemeet\task\process_recording_enrichment();
+        $task->set_custom_data([
+            'googlemeetid' => $googlemeet->id,
+            'recordingids' => [$recordingid],
+        ]);
+        $task->execute();
+
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+        $this->assertSame(1, (int)$recording->deleted);
+        $this->assertFalse($DB->record_exists('googlemeet_ai_analysis', ['recordingid' => $recordingid]));
+    }
+
+    /**
+     * Deferred sync queues enrichment and skips immediate AI/notification queues.
+     */
+    public function test_sync_recordings_deferred_queues_enrichment_without_ai_or_notify(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        set_config('enableai', 1, 'googlemeet');
+        set_config('geminiapikey', 'test-key', 'googlemeet');
+        set_config('ai_autogenerate', 1, 'googlemeet');
+
+        [, $googlemeet] = $this->create_googlemeet_fixture();
+        $subscriber = $this->getDataGenerator()->create_user();
+        $DB->insert_record('googlemeet_recording_subs', (object)[
+            'googlemeetid' => $googlemeet->id,
+            'userid' => $subscriber->id,
+            'timecreated' => time(),
+        ]);
+
+        $result = sync_recordings($googlemeet->id, [$this->drive_file('drive-deferred')], true);
+
+        $this->assertSame(1, (int)$result['stats']['inserted']);
+        $this->assertCount(1, $result['newrecordingids']);
+        $recordingid = (int)$result['newrecordingids'][0];
+        $this->assertFalse($DB->record_exists('googlemeet_ai_analysis', ['recordingid' => $recordingid]));
+
+        $enrichmenttasks = \core\task\manager::get_adhoc_tasks(
+            \mod_googlemeet\task\process_recording_enrichment::class
+        );
+        $enrichmenttasks = array_values($enrichmenttasks);
+        $this->assertCount(1, $enrichmenttasks);
+        $data = $enrichmenttasks[0]->get_custom_data();
+        $this->assertSame((int)$googlemeet->id, (int)$data->googlemeetid);
+        $this->assertSame([$recordingid], array_map('intval', $data->recordingids));
+
+        $notificationtasks = \core\task\manager::get_adhoc_tasks(
+            \mod_googlemeet\task\notify_new_recordings::class
+        );
+        $this->assertCount(0, $notificationtasks);
+    }
 }
