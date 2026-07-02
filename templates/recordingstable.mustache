@@ -198,6 +198,12 @@
             <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
             {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
             {{/hasai}}
+            {{#matchsource}}
+            <div class="googlemeet-search-match">
+              <span class="googlemeet-search-match-source">{{matchsource}}</span>
+              {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
+            </div>
+            {{/matchsource}}
             <div class="googlemeet-card-footer">
               <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
               <div class="googlemeet-card-actions googlemeet-recording-actions">
@@ -298,6 +304,12 @@
               {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
             </div>
             {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
+            {{#matchsource}}
+            <div class="googlemeet-search-match">
+              <span class="googlemeet-search-match-source">{{matchsource}}</span>
+              {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
+            </div>
+            {{/matchsource}}
             {{! Materials row (same rules as the card view). }}
             {{#hascapability}}
             <div class="googlemeet-card-materials mt-1">

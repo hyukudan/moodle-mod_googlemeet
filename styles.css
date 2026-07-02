@@ -1495,6 +1495,34 @@
     font-size: 0.85rem; color: #3c4043; margin: 0;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.googlemeet-search-match {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    color: #5f6368;
+}
+.googlemeet-search-match-source {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.05rem 0.45rem;
+    border: 1px solid #dadce0;
+    border-radius: 999px;
+    background: #f1f3f4;
+    color: #3c4043;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+.googlemeet-search-match-snippet {
+    min-width: 0;
+    color: #5f6368;
+    font-style: italic;
+    word-break: break-word;
+}
 .googlemeet-card-topics { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .googlemeet-card-footer { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.5rem; }
 /* Primary CTA stays one line and never wraps; secondary action icons wrap below it instead. */

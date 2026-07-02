@@ -513,6 +513,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     // Apply filters in PHP (topics are stored as JSON; this stays DB-portable).
     if (trim((string)$query) !== '') {
+        $allrecordings = googlemeet_load_recording_search_content($allrecordings);
         $allrecordings = googlemeet_filter_recordings_by_query($allrecordings, (string)$query);
     }
     if (trim((string)$topic) !== '') {
@@ -551,7 +552,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             'text' => $t,
             'url' => (new moodle_url('/mod/googlemeet/view.php',
                 ['id' => $cm->id, 'topic' => $t, 'rorder' => $order]))->out(false),
-            'active' => ($t === $topic),
+            'active' => (googlemeet_fold($t) === googlemeet_fold((string)$topic)),
         ];
     }
     $cansubscriberecordings = has_capability('mod/googlemeet:subscriberecordings', $context);

@@ -511,6 +511,24 @@ function googlemeet_format_date_chip(string $date): string {
 }
 
 /**
+ * Fold Spanish accents for accent-insensitive internal search.
+ *
+ * @param string $s Raw text.
+ * @return string Lowercased text with Spanish accents folded to ASCII.
+ */
+function googlemeet_fold(string $s): string {
+    return strtr(core_text::strtolower($s), [
+        'á' => 'a',
+        'é' => 'e',
+        'í' => 'i',
+        'ó' => 'o',
+        'ú' => 'u',
+        'ü' => 'u',
+        'ñ' => 'n',
+    ]);
+}
+
+/**
  * Build template booleans for an AI analysis status.
  *
  * @param string|null $status One of pending|processing|completed|failed, or null when no row exists.
@@ -559,25 +577,50 @@ function googlemeet_recording_date_group(int $timestamp): string {
  * @return array Filtered recordings, re-indexed.
  */
 function googlemeet_filter_recordings_by_query(array $recordings, string $query): array {
-    $needle = core_text::strtolower(trim($query));
+    $needle = googlemeet_fold(trim($query));
     if ($needle === '') {
         return $recordings;
     }
-    return array_values(array_filter($recordings, static function($r) use ($needle) {
-        $haystacks = [(string)($r->name ?? '')];
+
+    $filtered = [];
+    foreach ($recordings as $r) {
+        $r->matchsource = '';
+        $r->matchsnippet = '';
+
+        $primaryhaystacks = [(string)($r->name ?? '')];
         if (!empty($r->hasai)) {
-            $haystacks[] = (string)($r->aisummary ?? '');
+            $primaryhaystacks[] = (string)($r->aisummary ?? '');
             foreach (($r->aitopics ?? []) as $t) {
-                $haystacks[] = (string)$t;
+                $primaryhaystacks[] = (string)$t;
             }
         }
-        foreach ($haystacks as $h) {
-            if (core_text::strpos(core_text::strtolower($h), $needle) !== false) {
-                return true;
+
+        foreach ($primaryhaystacks as $h) {
+            if (core_text::strpos(googlemeet_fold($h), $needle) !== false) {
+                $filtered[] = $r;
+                continue 2;
             }
         }
-        return false;
-    }));
+
+        // clean_text() stored entities like &amp; in notestext; decode them so the
+        // snippet reads naturally and searches for "&"-style terms can match.
+        $notes = html_entity_decode(strip_tags((string)($r->notestext ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (core_text::strpos(googlemeet_fold($notes), $needle) !== false) {
+            $r->matchsource = get_string('search_match_notes', 'googlemeet');
+            $r->matchsnippet = googlemeet_search_match_snippet($notes, $needle);
+            $filtered[] = $r;
+            continue;
+        }
+
+        $transcript = (string)($r->transcripttext ?? '');
+        if (core_text::strpos(googlemeet_fold($transcript), $needle) !== false) {
+            $r->matchsource = get_string('search_match_transcript', 'googlemeet');
+            $r->matchsnippet = googlemeet_search_match_snippet($transcript, $needle);
+            $filtered[] = $r;
+        }
+    }
+
+    return array_values($filtered);
 }
 
 /**
@@ -588,18 +631,107 @@ function googlemeet_filter_recordings_by_query(array $recordings, string $query)
  * @return array Filtered recordings, re-indexed.
  */
 function googlemeet_filter_recordings_by_topic(array $recordings, string $topic): array {
-    $topic = trim($topic);
-    if ($topic === '') {
+    $foldedtopic = googlemeet_fold(trim($topic));
+    if ($foldedtopic === '') {
         return $recordings;
     }
-    return array_values(array_filter($recordings, static function($r) use ($topic) {
+    return array_values(array_filter($recordings, static function($r) use ($foldedtopic) {
         foreach (($r->aitopics ?? []) as $t) {
-            if ((string)$t === $topic) {
+            if (googlemeet_fold(trim((string)$t)) === $foldedtopic) {
                 return true;
             }
         }
         return false;
     }));
+}
+
+/**
+ * Load searchable large text fields for an already-listed recording set.
+ *
+ * The base recordings list deliberately omits these fields. Search views call this only
+ * after applying the normal googlemeetid/visible/deleted constraints and before PHP filtering.
+ *
+ * @param array $recordings Recording stdClass list.
+ * @return array The same recording list with notestext/transcripttext attached when available.
+ */
+function googlemeet_load_recording_search_content(array $recordings): array {
+    global $DB;
+
+    $ids = [];
+    foreach ($recordings as $recording) {
+        if (!empty($recording->id)) {
+            $ids[] = (int)$recording->id;
+        }
+    }
+    $ids = array_values(array_unique($ids));
+    if (empty($ids)) {
+        return $recordings;
+    }
+
+    $searchrecords = $DB->get_records_list(
+        'googlemeet_recordings',
+        'id',
+        $ids,
+        '',
+        'id, notestext, transcripttext'
+    );
+
+    foreach ($recordings as $recording) {
+        $id = (int)($recording->id ?? 0);
+        if ($id > 0 && isset($searchrecords[$id])) {
+            $recording->notestext = $searchrecords[$id]->notestext ?? '';
+            $recording->transcripttext = $searchrecords[$id]->transcripttext ?? '';
+        }
+    }
+
+    return $recordings;
+}
+
+/**
+ * Build a short plain-text snippet around the first folded search match.
+ *
+ * @param string $text Original, non-folded plain text.
+ * @param string $foldedneedle Already-folded search needle.
+ * @param int $length Target snippet length in characters.
+ * @return string Snippet with ellipses when cropped.
+ */
+function googlemeet_search_match_snippet(string $text, string $foldedneedle, int $length = 120): string {
+    if ($text === '' || $foldedneedle === '') {
+        return '';
+    }
+
+    $foldedtext = googlemeet_fold($text);
+    $pos = core_text::strpos($foldedtext, $foldedneedle);
+    if ($pos === false) {
+        return '';
+    }
+
+    $textlength = core_text::strlen($text);
+    if ($textlength <= $length) {
+        return trim((string)preg_replace('/\s+/u', ' ', $text));
+    }
+
+    $needlelength = core_text::strlen($foldedneedle);
+    $matchlength = min($needlelength, $length);
+    $before = intdiv($length - $matchlength, 2);
+    $start = max(0, $pos - $before);
+    $end = min($textlength, $start + $length);
+    $matchend = min($textlength, $pos + $needlelength);
+    if ($end < $matchend) {
+        $end = $matchend;
+        $start = max(0, $end - $length);
+    }
+
+    $snippet = core_text::substr($text, $start, $end - $start);
+    $snippet = trim((string)preg_replace('/\s+/u', ' ', $snippet));
+    if ($start > 0) {
+        $snippet = '…' . $snippet;
+    }
+    if ($end < $textlength) {
+        $snippet .= '…';
+    }
+
+    return $snippet;
 }
 
 /**
