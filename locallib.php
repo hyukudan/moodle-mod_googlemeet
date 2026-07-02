@@ -532,12 +532,18 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         }
         $urlparams['rorder'] = $order;
         $recording->huburl = (new moodle_url('/mod/googlemeet/view.php', $urlparams))->out(false);
+        $materialsurlparams = $urlparams;
+        $materialsurlparams['tab'] = 'materials';
+        $recording->materialshuburl = (new moodle_url('/mod/googlemeet/view.php', $materialsurlparams))->out(false);
         // Surface attached materials directly in the recordings list so teachers can
         // upload/manage from here and students can download without entering the hub.
         $materials = googlemeet_get_recording_materials($context, $recording->id);
         $recording->materials = $materials;
         $recording->hasmaterials = !empty($materials);
         $recording->materialcount = count($materials);
+        $recording->cardmaterials = array_slice($materials, 0, 2);
+        $recording->cardmaterialoverflow = max(0, count($materials) - count($recording->cardmaterials));
+        $recording->cardhasmaterialoverflow = $recording->cardmaterialoverflow > 0;
         $recording->managematerialsurl = (new moodle_url('/mod/googlemeet/material.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false);
     }
@@ -773,7 +779,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $templatecontext = [
         'cmid' => $cm->id,
         'recordingid' => $recording->id,
-        'name' => format_string($recording->name),
+        'name' => format_string(googlemeet_display_name((string)$recording->name)),
+        'originalname' => $recording->name,
         'duration' => s($recording->duration),
         'webviewlink' => $recording->webviewlink,
         'embedurl' => googlemeet_get_recording_embed_url($recording->webviewlink),

@@ -57,6 +57,14 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:editrecording',
     ),
+    'mod_googlemeet_trash_recording' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'trash_recording',
+        'description' => 'Move a Google Meet recording to the teacher trash',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
     'mod_googlemeet_purge_recording' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'purge_recording',

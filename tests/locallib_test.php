@@ -44,6 +44,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 #[CoversFunction('googlemeet_is_cancelled')]
 #[CoversFunction('googlemeet_clear_url')]
 #[CoversFunction('googlemeet_construct_events_data_for_add')]
+#[CoversFunction('googlemeet_display_name')]
 class locallib_test extends \advanced_testcase {
 
     // -------------------------------------------------------------------------
@@ -76,6 +77,42 @@ class locallib_test extends \advanced_testcase {
         $c->cancelleddate = $cancelleddate;
         $c->reason        = $reason;
         return $c;
+    }
+
+    /**
+     * Recording display names strip generated Drive suffixes without changing meaningful titles.
+     */
+    public function test_display_name_strips_generated_drive_suffixes(): void {
+        $cases = [
+            [
+                'Clases online curso casos prácticos - 2026/06/22 16:53 CEST - Recording',
+                'Clases online curso casos prácticos',
+            ],
+            [
+                'Clases online curso casos prácticos - 2026-06-22 16:53 - Recording.mp4',
+                'Clases online curso casos prácticos',
+            ],
+            [
+                'Nombre ya limpio',
+                'Nombre ya limpio',
+            ],
+            [
+                '',
+                '',
+            ],
+            [
+                'Tema con guiones - parte 2 - casos prácticos - 2026/06/22 16:53 CEST - Recording',
+                'Tema con guiones - parte 2 - casos prácticos',
+            ],
+            [
+                '2026/06/22 16:53 CEST - Recording',
+                '2026/06/22 16:53 CEST - Recording',
+            ],
+        ];
+
+        foreach ($cases as [$input, $expected]) {
+            $this->assertSame($expected, googlemeet_display_name($input));
+        }
     }
 
     // =========================================================================

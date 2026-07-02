@@ -96,7 +96,8 @@ class mod_googlemeet_external extends external_api {
         $DB->update_record('googlemeet_recordings', $recording);
 
         return (object)[
-            'name' => $recording->name
+            'name' => $recording->name,
+            'displayname' => googlemeet_display_name((string)$recording->name),
         ];
     }
 
@@ -109,6 +110,7 @@ class mod_googlemeet_external extends external_api {
         return new external_single_structure(
             [
                 'name' => new external_value(PARAM_RAW, 'New recording name'),
+                'displayname' => new external_value(PARAM_RAW, 'New recording display name'),
             ]
         );
     }
@@ -311,6 +313,71 @@ class mod_googlemeet_external extends external_api {
     public static function restore_recording_returns() {
         return new external_single_structure([
             'success' => new external_value(PARAM_BOOL, 'Whether the restore succeeded'),
+        ]);
+    }
+
+    /**
+     * Describes the parameters for trash_recording.
+     *
+     * @return external_function_parameters
+     */
+    public static function trash_recording_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID'),
+            ]
+        );
+    }
+
+    /**
+     * Move one active recording to the teacher trash.
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID
+     * @return array
+     */
+    public static function trash_recording($recordingid, $coursemoduleid) {
+        global $DB;
+
+        $params = self::validate_parameters(
+            self::trash_recording_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+            ]
+        );
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:editrecording', $context);
+
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
+        if (!$recording || !empty($recording->deleted)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $now = time();
+        $DB->update_record('googlemeet_recordings', (object)[
+            'id' => $recording->id,
+            'deleted' => 1,
+            'timedeleted' => $now,
+            'timemodified' => $now,
+        ]);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Describes the trash_recording return value.
+     *
+     * @return external_single_structure
+     */
+    public static function trash_recording_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether the trash operation succeeded'),
         ]);
     }
 

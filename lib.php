@@ -401,6 +401,8 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
 
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
+        $recording->originalname = $recording->name;
+        $recording->displayname = googlemeet_display_name((string)$recording->name);
         $recording->createdtimeformatted = userdate($recording->createdtime);
         // Compact card date chip: lowercase + no trailing dot, so locale abbreviations
         // like "Mié. 27 May." read as "mié 27 may" in the small chip. This normalization
@@ -429,7 +431,7 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $recording->aikeypointscount = count($recording->aikeypoints);
             $recording->aikeypointslabel = googlemeet_keypoints_label($recording->aikeypointscount);
             $recording->aitopics = json_decode($ai->topics) ?: [];
-            $tp = googlemeet_topic_preview($recording->aitopics, 2);
+            $tp = googlemeet_topic_preview($recording->aitopics, 3);
             $recording->aitopicsvisible = $tp['visible'];
             $recording->aitopicsoverflow = $tp['overflow'];
             $recording->aimodel = $ai->aimodel;
@@ -452,6 +454,40 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     }
 
     return $formattedrecordings;
+}
+
+/**
+ * Build a shorter human-readable recording name for presentation only.
+ *
+ * Google Drive Meet recordings commonly end with a generated date/time block and
+ * the literal "Recording" marker. Keep the stored name intact and only strip the
+ * generated suffixes when the remaining title is non-empty.
+ *
+ * @param string $name Stored Drive recording name.
+ * @return string Display name.
+ */
+function googlemeet_display_name(string $name): string {
+    $original = $name;
+    $display = trim($name);
+
+    if ($display === '') {
+        return $original;
+    }
+
+    // Only strip real file extensions: a generic .\w{2,10} would eat legitimate
+    // endings like "Tema 3.10".
+    $display = preg_replace('/\.(?:mp4|m4v|webm|mkv|mov|avi|pdf|docx?|xlsx?|pptx?|txt)\s*$/iu', '', $display);
+    $display = preg_replace('/\s+-\s+Recording\s*$/iu', '', $display);
+    $display = preg_replace(
+        '/(?:^\s*-?\s*|\s+-\s+)\d{4}[\/-]\d{1,2}[\/-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?' .
+            '(?:\s+(?:[A-Z]{2,8}|(?:UTC|GMT)[+-]?\d{1,2}(?::?\d{2})?|[+-]\d{2}:?\d{2}))?\s*$/u',
+        '',
+        $display
+    );
+
+    $display = trim($display);
+
+    return $display !== '' ? $display : $original;
 }
 
 /**

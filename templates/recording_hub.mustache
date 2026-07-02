@@ -7,13 +7,13 @@
   </div>
 
   <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
-    <iframe src="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{name}}"></iframe>
+    <iframe src="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
   </div>
 
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
       <h3 class="mb-1">
-        <span class="recording-name-text">{{name}}</span>
+        <span class="recording-name-text" title="{{originalname}}" data-originalname="{{originalname}}">{{name}}</span>
         {{#caneditrecording}}
           <button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
             {{# pix }} i/edit, core {{/ pix }}
@@ -23,7 +23,7 @@
       <div class="text-muted">{{duration}}</div>
     </div>
     <div class="d-flex align-items-center gap-2">
-      <a href="{{webviewlink}}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+      <a href="{{webviewlink}}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}">
         {{# pix }} i/externallink, core {{/ pix }} {{# str }} openindrive, mod_googlemeet {{/ str }}
       </a>
       {{#caneditrecording}}
@@ -211,17 +211,20 @@
         </div>
       {{/hasmaterials}}{{/caneditrecording}}
       {{#hasmaterials}}
-        <ul class="list-group">
+        <div class="googlemeet-materials-list googlemeet-hub-materials-list">
           {{#materials}}
-            <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div class="me-auto" style="min-width:0;">
-                <div class="text-break">{{name}}</div>
-                <div class="small text-muted">{{size}} &middot; {{modified}}{{#filepath}} &middot; {{filepath}}{{/filepath}}</div>
-              </div>
+            <div class="googlemeet-material-row googlemeet-hub-material-row">
+              <span class="googlemeet-material-file">
+                <img src="{{icon}}" class="googlemeet-material-icon" alt="" aria-hidden="true">
+                <span class="googlemeet-material-details">
+                  <span class="googlemeet-material-name">{{name}}</span>
+                  <span class="googlemeet-material-meta">{{size}} &middot; {{modified}}{{#filepath}} &middot; {{filepath}}{{/filepath}}</span>
+                </span>
+              </span>
               <a href="{{url}}" class="btn btn-outline-secondary btn-sm flex-shrink-0" aria-label="{{# str }} download {{/ str }}: {{name}}">{{# str }} download {{/ str }}</a>
-            </li>
+            </div>
           {{/materials}}
-        </ul>
+        </div>
       {{/hasmaterials}}
       {{^hasmaterials}}
         {{#caneditrecording}}
@@ -290,9 +293,76 @@
 </div>
 
 {{#js}}
-require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notification) {
+require(['jquery', 'core/ajax', 'core/notification', 'core/modal'], function($, Ajax, Notification, Modal) {
   var cmid = {{cmid}};
   var recordingid = {{recordingid}};
+  var hubStateKey = 'mod_googlemeet_hub_state_' + cmid + '_' + recordingid;
+
+  function activeTabTarget() {
+    return $('#googlemeet-recording-hub .nav-link.active[data-bs-target]').attr('data-bs-target') || '';
+  }
+
+  function rememberHubState() {
+    try {
+      sessionStorage.setItem(hubStateKey, JSON.stringify({
+        tab: activeTabTarget(),
+        y: window.pageYOffset || document.documentElement.scrollTop || 0
+      }));
+    } catch (e) {
+      // Best effort only; actions still reload normally if storage is unavailable.
+    }
+  }
+
+  function reloadHub() {
+    rememberHubState();
+    window.location.reload();
+  }
+
+  function restoreHubState() {
+    var raw = '';
+    try {
+      raw = sessionStorage.getItem(hubStateKey) || '';
+      sessionStorage.removeItem(hubStateKey);
+    } catch (e) {
+      raw = '';
+    }
+    if (!raw) {
+      return;
+    }
+    var state = {};
+    try {
+      state = JSON.parse(raw);
+    } catch (e) {
+      state = {};
+    }
+    if (state.tab) {
+      var tab = $('#googlemeet-recording-hub .nav-link[data-bs-target]').filter(function() {
+        return $(this).attr('data-bs-target') === state.tab;
+      }).get(0);
+      if (tab) {
+        if (window.bootstrap && window.bootstrap.Tab) {
+          window.bootstrap.Tab.getOrCreateInstance(tab).show();
+        } else if (typeof $(tab).tab === 'function') {
+          $(tab).tab('show');
+        }
+      }
+    }
+    setTimeout(function() {
+      window.scrollTo(0, parseInt(state.y, 10) || 0);
+    }, 80);
+  }
+
+  function confirmAction(title, body, label, triggerElement, callback) {
+    Notification.saveCancelPromise(title, body, label, {triggerElement: triggerElement})
+      .then(callback)
+      .catch(function() {});
+  }
+
+  function escapeHtml(value) {
+    return $('<div>').text(value || '').html();
+  }
+
+  restoreHubState();
 
   function selectedIds() {
     return $('.googlemeet-question-select:checked').map(function() {
@@ -302,7 +372,7 @@ require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notifica
 
   function call(methodname, args) {
     return Ajax.call([{methodname: methodname, args: args}])[0]
-      .then(function() { window.location.reload(); })
+      .then(function() { reloadHub(); })
       .fail(Notification.exception);
   }
 
@@ -326,21 +396,41 @@ require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notifica
   });
 
   $('.googlemeet-question-unpublish').on('click', function() {
-    call('mod_googlemeet_unpublish_questions', {
-      recordingid: recordingid,
-      coursemoduleid: cmid,
-      questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
-      sesskey: '{{sesskey}}'
-    });
+    var btn = this;
+    var questionid = parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10);
+    confirmAction(
+      '{{# str }} question_unpublish, mod_googlemeet {{/ str }}',
+      '{{# str }} question_unpublish_confirm, mod_googlemeet {{/ str }}',
+      '{{# str }} question_unpublish, mod_googlemeet {{/ str }}',
+      btn,
+      function() {
+        call('mod_googlemeet_unpublish_questions', {
+          recordingid: recordingid,
+          coursemoduleid: cmid,
+          questionids: [questionid],
+          sesskey: '{{sesskey}}'
+        });
+      }
+    );
   });
 
   $('.googlemeet-question-discard').on('click', function() {
-    call('mod_googlemeet_discard_questions', {
-      recordingid: recordingid,
-      coursemoduleid: cmid,
-      questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
-      sesskey: '{{sesskey}}'
-    });
+    var btn = this;
+    var questionid = parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10);
+    confirmAction(
+      '{{# str }} question_discard, mod_googlemeet {{/ str }}',
+      '{{# str }} question_discard_confirm, mod_googlemeet {{/ str }}',
+      '{{# str }} question_discard, mod_googlemeet {{/ str }}',
+      btn,
+      function() {
+        call('mod_googlemeet_discard_questions', {
+          recordingid: recordingid,
+          coursemoduleid: cmid,
+          questionids: [questionid],
+          sesskey: '{{sesskey}}'
+        });
+      }
+    );
   });
 
   function refreshBulkState() {
@@ -359,7 +449,15 @@ require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notifica
   $('.googlemeet-question-bulk-discard').on('click', function() {
     var ids = selectedIds();
     if (!ids.length) { return; }
-    call('mod_googlemeet_discard_questions', {recordingid: recordingid, coursemoduleid: cmid, questionids: ids, sesskey: '{{sesskey}}'});
+    confirmAction(
+      '{{# str }} question_bulk_discard, mod_googlemeet {{/ str }}',
+      '{{# str }} question_bulk_discard_confirm, mod_googlemeet {{/ str }}',
+      '{{# str }} question_bulk_discard, mod_googlemeet {{/ str }}',
+      this,
+      function() {
+        call('mod_googlemeet_discard_questions', {recordingid: recordingid, coursemoduleid: cmid, questionids: ids, sesskey: '{{sesskey}}'});
+      }
+    );
   });
 
   $('.googlemeet-question-edit').on('click', function() {
@@ -394,11 +492,45 @@ require(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notifica
     call('mod_googlemeet_showhide_recording', {recordingid: recordingid, coursemoduleid: cmid});
   });
   $('.recordingeditname').on('click', function() {
-    var current = $('.recording-name-text').first().text().trim();
-    var name = window.prompt('{{# str }} name, mod_googlemeet {{/ str }}', current);
-    if (name) {
-      call('mod_googlemeet_recording_edit_name', {recordingid: recordingid, name: name, coursemoduleid: cmid});
-    }
+    var trigger = this;
+    var current = $('.recording-name-text').first().attr('data-originalname') || $('.recording-name-text').first().text().trim();
+    Modal.create({
+      title: '{{# str }} recording_rename, mod_googlemeet {{/ str }}',
+      body: '<div class="mb-3">' +
+        '<label class="form-label" for="googlemeet-recording-rename-input">{{# str }} name, mod_googlemeet {{/ str }}</label>' +
+        '<input type="text" class="form-control" id="googlemeet-recording-rename-input">' +
+        '</div>',
+      footer: '<button type="button" class="btn btn-secondary" data-action="hide">{{# str }} cancel {{/ str }}</button>' +
+        '<button type="button" class="btn btn-primary googlemeet-recording-rename-save">{{# str }} savechanges {{/ str }}</button>',
+      removeOnClose: true,
+      show: true,
+      returnElement: trigger
+    }).then(function(modal) {
+      var root = modal.getRoot();
+      root.on('click', '.googlemeet-recording-rename-save', function(e) {
+        e.preventDefault();
+        var savebtn = $(this);
+        var name = root.find('#googlemeet-recording-rename-input').val();
+        if (!name) {
+          root.find('#googlemeet-recording-rename-input').focus();
+          return;
+        }
+        savebtn.prop('disabled', true);
+        modal.destroy();
+        call('mod_googlemeet_recording_edit_name', {recordingid: recordingid, name: name, coursemoduleid: cmid});
+      });
+      root.on('keydown', '#googlemeet-recording-rename-input', function(e) {
+        if ((e.which || e.keyCode) === 13) {
+          e.preventDefault();
+          root.find('.googlemeet-recording-rename-save').trigger('click');
+        }
+      });
+      modal.getBodyPromise().then(function() {
+        // Set via .val() (DOM property), never by HTML concatenation: names may
+        // contain quotes and would break out of the attribute.
+        root.find('#googlemeet-recording-rename-input').val(current).focus().select();
+      });
+    }).catch(Notification.exception);
   });
   {{/caneditrecording}}
 

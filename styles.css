@@ -1651,6 +1651,61 @@
 .googlemeet-material-row:focus .googlemeet-material-download {
     color: #174ea6;
 }
+.googlemeet-material-more {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    color: #174ea6;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+.googlemeet-material-more:hover,
+.googlemeet-material-more:focus {
+    background: #e8f0fe;
+    color: #174ea6;
+    text-decoration: none;
+}
+.googlemeet-hub-materials-list {
+    gap: 0.5rem;
+}
+.googlemeet-hub-material-row {
+    min-height: 58px;
+    padding: 0.7rem 0.8rem;
+}
+.googlemeet-hub-material-row .googlemeet-material-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+}
+.googlemeet-hub-material-row .googlemeet-material-name {
+    white-space: normal;
+}
+.googlemeet-material-meta {
+    color: #5f6368;
+    font-size: 0.78rem;
+    line-height: 1.3;
+}
+.googlemeet-trash-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #5f6368;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.googlemeet-trash-btn:hover,
+.googlemeet-trash-btn:focus {
+    background: #fce8e6;
+    color: #b3261e;
+}
+.googlemeet-trash-btn .icon {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
 /* On the tightest 3-column desktop layout, push the teacher actions onto their own row. */
 @media only screen and (min-width: 1280px) {
     .googlemeet-card-footer { align-items: flex-start; }
@@ -1663,6 +1718,8 @@
 .googlemeet-ai-toggle-btn:focus-visible,
 .recordinghowhide:focus-visible,
 .recordingeditname:focus-visible,
+.googlemeet-trash-recording:focus-visible,
+.googlemeet-material-more:focus-visible,
 .googlemeet-pagination .page-link:focus-visible {
     outline: 3px solid #1a73e8; outline-offset: 2px;
 }
@@ -1706,10 +1763,10 @@
 .googlemeet-ai-topic-tag.googlemeet-topic-active,
 .googlemeet-topic-active { background: #174ea6; color: #fff; }
 .googlemeet-recordings-topicfilter a { text-decoration: none; }
-/* Card topics: a single row of up to 2 chips (capped in PHP via googlemeet_topic_preview),
-   plus a guaranteed-visible "+N" overflow chip that is never clipped. */
-.googlemeet-card-topics { flex-wrap: nowrap; max-height: none; overflow: hidden; }
-.googlemeet-card-topics .googlemeet-ai-topic-tag { flex: 0 1 auto; max-width: min(11rem, 45%); }
+/* Card topics: up to 3 chips (capped in PHP via googlemeet_topic_preview),
+   wrapping to two rows with a guaranteed-visible "+N" overflow chip. */
+.googlemeet-card-topics { flex-wrap: wrap; max-height: 3.8rem; overflow: hidden; align-items: flex-start; }
+.googlemeet-card-topics .googlemeet-ai-topic-tag { flex: 0 1 auto; max-width: 11rem; }
 .googlemeet-card-topics .googlemeet-topic-overflow { flex: 0 0 auto; max-width: none; }
 .googlemeet-ai-topic-tag.googlemeet-topic-overflow { background: #e8eaed; color: #5f6368; border: 1px solid #dadce0; font-weight: 600; }
 

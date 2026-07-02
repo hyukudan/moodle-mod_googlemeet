@@ -234,6 +234,46 @@ class soft_delete_test extends \advanced_testcase {
     }
 
     /**
+     * Trash WS moves own active recordings to trash and rejects other instances or already-deleted rows.
+     */
+    public function test_trash_recording_ws_happy_path_anti_idor_and_already_deleted(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        [, $googlemeet, $cm] = $this->create_googlemeet_fixture();
+        [, $othergooglemeet] = $this->create_googlemeet_fixture();
+
+        $otherid = $this->create_recording($othergooglemeet->id, 'drive-other-trash');
+        try {
+            \mod_googlemeet_external::trash_recording($otherid, $cm->id);
+            $this->fail('Expected invalidrecord for a recording from another instance.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('invalidrecord', $e->errorcode);
+        }
+        $other = $DB->get_record('googlemeet_recordings', ['id' => $otherid], '*', MUST_EXIST);
+        $this->assertSame(0, (int)$other->deleted);
+
+        $alreadydeletedid = $this->create_recording($googlemeet->id, 'drive-already-trash', [
+            'deleted' => 1,
+            'timedeleted' => time(),
+        ]);
+        try {
+            \mod_googlemeet_external::trash_recording($alreadydeletedid, $cm->id);
+            $this->fail('Expected invalidrecord for an already-deleted recording.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('invalidrecord', $e->errorcode);
+        }
+
+        $recordingid = $this->create_recording($googlemeet->id, 'drive-trash');
+        $result = \mod_googlemeet_external::trash_recording($recordingid, $cm->id);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(1, (int)$recording->deleted);
+        $this->assertGreaterThan(0, (int)$recording->timedeleted);
+    }
+
+    /**
      * Purge WS deletes own trashed recordings and their AI analysis, and rejects other instances.
      */
     public function test_purge_recording_ws_happy_path_deletes_ai_and_anti_idor(): void {

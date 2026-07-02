@@ -84,6 +84,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // Adding the "general" fieldset, where all the common settings are shown.
         $mform->addElement('header', 'general', get_string('general', 'form'));
+        $mform->setExpanded('general', true);
 
         // Adding the standard "name" field.
         $mform->addElement('text', 'name', get_string('roomname', 'googlemeet'), array('size' => '50'));
@@ -138,6 +139,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // Recordings display settings header.
         $mform->addElement('header', 'headerrecordingssettings', get_string('recordingssettings', 'googlemeet'));
+        $mform->setExpanded('headerrecordingssettings', true);
 
         // Maximum recordings per page.
         $maxrecordings = [];
@@ -171,9 +173,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // For multiple dates.
         $mform->addElement('header', 'headeraddmultipleeventdates', get_string('recurrenceeventdate', 'googlemeet'));
-        if (!empty($config->multieventdateexpanded) || !empty($this->current->addmultiply)) {
-            $mform->setExpanded('headeraddmultipleeventdates');
-        }
+        $mform->setExpanded('headeraddmultipleeventdates', false);
 
         $mform->addElement('checkbox', 'addmultiply', '', get_string('repeatasfollows', 'googlemeet'));
         $mform->addHelpButton('addmultiply', 'recurrenceeventdate', 'googlemeet');
@@ -227,6 +227,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // Holiday/exclusion periods section.
         $mform->addElement('header', 'headerholidayperiods', get_string('holidayperiods', 'googlemeet'));
+        $mform->setExpanded('headerholidayperiods', false);
         $mform->addHelpButton('headerholidayperiods', 'holidayperiods', 'googlemeet');
 
         // Define the elements for a single holiday period.
@@ -269,6 +270,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // Cancelled dates section.
         $mform->addElement('header', 'headercancelleddates', get_string('cancelleddates', 'googlemeet'));
+        $mform->setExpanded('headercancelleddates', false);
         $mform->addHelpButton('headercancelleddates', 'cancelleddates', 'googlemeet');
 
         // Define the elements for a single cancelled date.
@@ -307,9 +309,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         }
 
         $mform->addElement('header', 'headerroomurl', get_string('roomurl', 'googlemeet'));
-        if (!empty($config->roomurlexpanded)) {
-            $mform->setExpanded('headerroomurl');
-        }
+        $mform->setExpanded('headerroomurl', true);
 
         if (!empty($this->current->instance) && $client->enabled) {
             $mform->addElement('static', 'url_caution', '',
@@ -339,9 +339,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         }
 
         $mform->addElement('header', 'headernotification', get_string('notification', 'googlemeet'));
-        if (!empty($config->notificationexpanded)) {
-            $mform->setExpanded('headernotification');
-        }
+        $mform->setExpanded('headernotification', false);
 
         $mform->addElement('checkbox', 'notify', '', get_string('notify', 'googlemeet'));
         $mform->setDefault('notify', $config->notify);
@@ -359,6 +357,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         // Attachments for students to download.
         $mform->addElement('header', 'headerattachments', get_string('attachmentsheader', 'googlemeet'));
+        $mform->setExpanded('headerattachments', false);
         $mform->addElement('filemanager', 'attachments', get_string('attachments', 'googlemeet'), null, [
             'subdirs' => 0,
             'maxbytes' => $CFG->maxbytes,
