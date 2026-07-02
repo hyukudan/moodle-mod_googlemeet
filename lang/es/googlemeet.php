@@ -30,7 +30,7 @@ $string['at'] = 'a las';
 $string['issuerid'] = 'Servicio OAuth';
 $string['issuerid_desc'] = '<a href="https://github.com/ronefel/moodle-mod_googlemeet/wiki/How-to-create-Client-ID-and-Client-Secret" target="_blank">Cómo configurar un servicio OAuth</a>';
 $string['calendareventname'] = '{$a} está programado para';
-$string['checkweekdays'] = 'Seleccionar los días de la semana que estén dentro del rango de fechas seleccionado.';
+$string['checkweekdays'] = 'Selecciona los días de la semana que estén dentro del rango de fechas seleccionado.';
 $string['creatoremail'] = 'Correo del organizador';
 $string['creatoremail_error'] = 'Introduce una dirección de correo válida';
 $string['creatoremail_help'] = 'Correo del organizador de la sesión';
@@ -114,9 +114,9 @@ $string['recordings'] = 'Grabaciones';
 $string['recordingswiththename'] = 'Grabaciones con el nombre:';
 $string['recurrenceeventdate'] = 'Recurrencia de la fecha de la sesión';
 $string['recurrenceeventdate_help'] = 'Esta función permite crear múltiples recurrencias a partir de la fecha de la sesión.
-<br>* <strong>Repetir en</strong>: Seleccionar los días de la semana en los que se celebrará la clase (por ejemplo, lunes / miércoles / viernes).
-<br>* <strong>Repetir cada</strong>: Permite configurar la frecuencia. Si la clase se celebrará cada semana, seleccionar 1; si será cada dos semanas, seleccionar 2; cada 3 semanas, seleccionar 3, etc.
-<br>* <strong>Repetir hasta</strong>: Seleccionar el último día de la reunión (el último día que se quiere usar para la fecha recurrente de la sesión).';
+<br>* <strong>Repetir en</strong>: Selecciona los días de la semana en los que se celebrará la clase (por ejemplo, lunes / miércoles / viernes).
+<br>* <strong>Repetir cada</strong>: Permite configurar la frecuencia. Si la clase se celebrará cada semana, selecciona 1; si será cada dos semanas, selecciona 2; cada 3 semanas, selecciona 3, etc.
+<br>* <strong>Repetir hasta</strong>: Selecciona el último día de la reunión (el último día que se quiere usar para la fecha recurrente de la sesión).';
 $string['repeatasfollows'] = 'Repetir la fecha de la sesión anterior de la siguiente forma';
 $string['repeatevery'] = 'Repetir cada';
 $string['repeaton'] = 'Repetir en';
@@ -124,7 +124,7 @@ $string['repeatuntil'] = 'Repetir hasta';
 $string['roomcreator'] = 'Organizador:';
 $string['roomname'] = 'Nombre de la sala';
 $string['roomurl'] = 'URL de la sala';
-$string['roomurl_caution'] = '<strong>Atención.</strong> Si se cambia la URL de la sala o el correo del organizador, las grabaciones sincronizadas pueden eliminarse en la siguiente sincronización.';
+$string['roomurl_caution'] = '<strong>¡Atención!</strong> Si se cambia la URL de la sala o el correo del organizador, las grabaciones sincronizadas pueden eliminarse en la siguiente sincronización.';
 $string['roomurl_desc'] = 'La URL de la sala se generará automáticamente.';
 $string['roomurlexpanded'] = 'URL de la sala expandida';
 $string['roomurlexpanded_desc'] = 'Mostrar la configuración de "URL de la sala" expandida por defecto al crear una sala nueva.';
