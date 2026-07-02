@@ -25,6 +25,142 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Cadenas base.
+$string['at'] = 'a las';
+$string['issuerid'] = 'Servicio OAuth';
+$string['issuerid_desc'] = '<a href="https://github.com/ronefel/moodle-mod_googlemeet/wiki/How-to-create-Client-ID-and-Client-Secret" target="_blank">Cómo configurar un servicio OAuth</a>';
+$string['calendareventname'] = '{$a} está programado para';
+$string['checkweekdays'] = 'Seleccionar los días de la semana que estén dentro del rango de fechas seleccionado.';
+$string['creatoremail'] = 'Correo del organizador';
+$string['creatoremail_error'] = 'Introduce una dirección de correo válida';
+$string['creatoremail_help'] = 'Correo del organizador de la sesión';
+$string['date'] = 'Fecha';
+$string['duration'] = 'Duración';
+$string['earlierto'] = 'La fecha de la sesión no puede ser anterior a la fecha de inicio del curso ({$a}).';
+$string['emailcontent'] = 'Contenido del correo';
+$string['emailcontent_default'] = '<p>Hola %userfirstname%,</p>
+<p>Este recordatorio es para avisarte de que habrá una sesión de Google Meet en %coursename%</p>
+<p><b>%googlemeetname%</b></p>
+<p>Cuándo: %eventdate% %duration% %timezone%</p>
+<p>Enlace de acceso: %url%</p>';
+$string['emailcontent_help'] = 'Cuando se envía una notificación a estudiantes, el contenido del correo se toma de este campo. Se pueden usar los siguientes comodines:
+<ul>
+<li>%userfirstname%</li>
+<li>%userlastname%</li>
+<li>%coursename%</li>
+<li>%googlemeetname%</li>
+<li>%eventdate%</li>
+<li>%duration%</li>
+<li>%timezone%</li>
+<li>%url%</li>
+<li>%cmid%</li>
+</ul>';
+$string['entertheroom'] = 'Entrar en la sala';
+$string['eventdate'] = 'Fecha de la sesión';
+$string['eventdetails'] = 'Detalles de la sesión';
+$string['from'] = 'de';
+$string['googlemeet:addinstance'] = 'Añadir una nueva instancia de Google Meet';
+$string['googlemeet:editrecording'] = 'Editar grabaciones';
+$string['googlemeet:removerecording'] = 'Eliminar grabaciones';
+$string['googlemeet:syncgoogledrive'] = 'Sincronizar con Google Drive';
+$string['googlemeet:view'] = 'Ver Google Meet';
+$string['hide'] = 'Ocultar';
+$string['invalideventenddate'] = 'Esta fecha no puede ser anterior a la "Fecha de la sesión"';
+$string['invalideventendtime'] = 'La hora de fin debe ser posterior a la hora de inicio';
+$string['invalidissuerid'] = 'El servicio OAuth seleccionado en la configuración de "Google Meet" no es compatible con Google';
+$string['invalidstoredurl'] = 'No se puede mostrar este recurso; la URL de Google Meet no es válida.';
+$string['isnotcreatoremail'] = 'Iniciar sesión con la cuenta del organizador o cambiar el correo del organizador en la configuración para sincronizar grabaciones.';
+$string['jstableinfo'] = 'Mostrando {start} a {end} de {rows} grabaciones';
+$string['jstableinfofiltered'] = 'Mostrando {start} a {end} de {rows} grabaciones (filtradas de {rowsTotal} grabaciones)';
+$string['jstableloading'] = 'Cargando...';
+$string['jstablenorows'] = 'No se ha encontrado ninguna grabación';
+$string['jstableperpage'] = '{select} grabaciones por página';
+$string['jstablesearch'] = 'Buscar...';
+$string['lastsync'] = 'Última sincronización:';
+$string['loading'] = 'Cargando';
+$string['logintoaccount'] = 'Iniciar sesión con tu cuenta de Google';
+$string['logintoyourgoogleaccount'] = 'Iniciar sesión con tu cuenta de Google para que la URL de Google Meet pueda crearse automáticamente';
+$string['loggedinaccount'] = 'Cuenta de Google conectada';
+$string['logout'] = 'Cerrar sesión';
+$string['manage'] = 'Gestionar';
+$string['messageprovider:notification'] = 'Recordatorio de inicio de la sesión de Google Meet';
+$string['minutesbefore'] = 'Minutos antes';
+$string['minutesbefore_help'] = 'Número de minutos antes del inicio de la sesión en que debe enviarse la notificación.';
+$string['modulename'] = 'Google Meet';
+$string['modulename_help'] = 'El módulo Google Meet permite al profesor crear una sala de Google Meet como recurso del curso y, tras las sesiones, poner a disposición de los estudiantes las grabaciones guardadas en Google Drive.
+<p>©2018 Google LLC All rights reserved.<br/>
+Google Meet and the Google Meet logo are registered trademarks of Google LLC.</p>';
+$string['modulenameplural'] = 'Instancias de Google Meet';
+$string['multieventdateexpanded'] = 'Recurrencia de la fecha de la sesión expandida';
+$string['multieventdateexpanded_desc'] = 'Mostrar la configuración de "Recurrencia de la fecha de la sesión" expandida por defecto al crear una sala nueva.';
+$string['name'] = 'Nombre';
+$string['never'] = 'Nunca';
+$string['notification'] = 'Notificación';
+$string['notificationexpanded'] = 'Notificación expandida';
+$string['notify'] = 'Enviar notificación a estudiantes';
+$string['notify_help'] = 'Si se marca, se enviará una notificación a estudiantes sobre la fecha de inicio de la sesión.';
+$string['notifycationexpanded_desc'] = 'Mostrar la configuración de "Notificación" expandida por defecto al crear una sala nueva.';
+$string['notifytask'] = 'Tarea de notificación de Google Meet';
+$string['or'] = 'o';
+$string['play'] = 'Reproducir';
+$string['pluginadministration'] = 'Administración de Google Meet';
+$string['pluginname'] = 'Google Meet';
+$string['privacy:metadata:googlemeet_notify_done'] = 'Registra las notificaciones enviadas a los usuarios sobre el inicio de las sesiones. Estos datos son temporales y se eliminan tras la fecha de inicio de la sesión.';
+$string['privacy:metadata:googlemeet_notify_done:eventid'] = 'El ID del evento';
+$string['privacy:metadata:googlemeet_notify_done:userid'] = 'El ID del usuario';
+$string['privacy:metadata:googlemeet_notify_done:timesent'] = 'La marca de tiempo que indica cuándo recibió el usuario una notificación';
+$string['recording'] = 'Grabación';
+$string['recordings'] = 'Grabaciones';
+$string['recordingswiththename'] = 'Grabaciones con el nombre:';
+$string['recurrenceeventdate'] = 'Recurrencia de la fecha de la sesión';
+$string['recurrenceeventdate_help'] = 'Esta función permite crear múltiples recurrencias a partir de la fecha de la sesión.
+<br>* <strong>Repetir en</strong>: Seleccionar los días de la semana en los que se celebrará la clase (por ejemplo, lunes / miércoles / viernes).
+<br>* <strong>Repetir cada</strong>: Permite configurar la frecuencia. Si la clase se celebrará cada semana, seleccionar 1; si será cada dos semanas, seleccionar 2; cada 3 semanas, seleccionar 3, etc.
+<br>* <strong>Repetir hasta</strong>: Seleccionar el último día de la reunión (el último día que se quiere usar para la fecha recurrente de la sesión).';
+$string['repeatasfollows'] = 'Repetir la fecha de la sesión anterior de la siguiente forma';
+$string['repeatevery'] = 'Repetir cada';
+$string['repeaton'] = 'Repetir en';
+$string['repeatuntil'] = 'Repetir hasta';
+$string['roomcreator'] = 'Organizador:';
+$string['roomname'] = 'Nombre de la sala';
+$string['roomurl'] = 'URL de la sala';
+$string['roomurl_caution'] = '<strong>Atención.</strong> Si se cambia la URL de la sala o el correo del organizador, las grabaciones sincronizadas pueden eliminarse en la siguiente sincronización.';
+$string['roomurl_desc'] = 'La URL de la sala se generará automáticamente.';
+$string['roomurlexpanded'] = 'URL de la sala expandida';
+$string['roomurlexpanded_desc'] = 'Mostrar la configuración de "URL de la sala" expandida por defecto al crear una sala nueva.';
+$string['servicenotenabled'] = 'Acceso no configurado. Comprueba que los servicios \'Google Drive API\' y \'Google Calendar API\' estén habilitados.';
+$string['sessionexpired'] = 'La sesión de la cuenta de Google ha caducado durante el proceso; iniciar sesión de nuevo.';
+$string['show'] = 'Mostrar';
+$string['strftimedmy'] = '%a. %d %b. %Y';
+$string['strftimedmyhm'] = '%a. %d %b. %Y %H:%M';
+$string['strftimehm'] = '%H:%M';
+$string['syncwithgoogledrive'] = 'Sincronizar con Google Drive';
+$string['sync_info'] = 'Esperar al menos 10 minutos para que el archivo de la grabación se genere y se guarde en "Mi unidad > Meet Recordings" del organizador.
+<p></p>
+Para eliminar una grabación, primero borrar el archivo de la grabación de Google Drive y después hacer clic en el botón de sincronización anterior.
+<p></p>
+Para grabar una reunión, comprobar que:
+<ul>
+    <li>No se haya alcanzado la cuota personal de Drive.</li>
+    <li>La organización no haya alcanzado su cuota de Drive.</li>
+</ul>
+Si hay espacio en tu Drive, pero la organización no tiene espacio, no se puede grabar la reunión.
+<p></p>
+Para más información, consultar este artículo del Centro de Ayuda:
+<br>
+<a href="https://notifications.google.com/g/p/APNL1TjJltVk6EcLPyFTJ8V_9ty1FeTAD0XSSJVLiaWPezIaQKfIPd1kGURFUMVV3I5yHgVZoOgxkl4gySV-4SCf2pZ27Vk8Iy9DnHSQBqtK51uG3Gyz" target="_blank" rel="nofollow noopener">https://support.google.com/meet/answer/9308681</a>';
+$string['sync_notloggedin'] = 'Iniciar sesión con tu cuenta de Google para sincronizar la grabación de Google Meet con Moodle';
+$string['timeahead'] = 'No es posible crear múltiples recurrencias de la fecha de la sesión que superen un año; ajustar las fechas de inicio y fin.';
+$string['timedate'] = '%d/%m/%Y %H:%M';
+$string['to'] = 'a';
+$string['today'] = 'Hoy';
+$string['upcomingevents'] = 'Próximas sesiones';
+$string['url'] = '';
+$string['url_failed'] = 'Se requiere una URL válida de Google Meet';
+$string['url_help'] = 'Ej. https://meet.google.com/aaa-aaaa-aaa';
+$string['visible'] = 'Visible';
+$string['week'] = 'Semana(s)';
+
 // New strings for UI redesign (v2.2.0-custom).
 $string['event_status_live'] = 'En directo';
 $string['event_status_soon'] = 'Comienza pronto';
@@ -106,6 +242,10 @@ $string['ai_settings'] = 'Funciones IA (Gemini)';
 $string['ai_settings_desc'] = 'Configura las funciones impulsadas por IA usando Google Gemini para generar automáticamente resúmenes, puntos clave y transcripciones de las grabaciones.';
 $string['enableai'] = 'Habilitar análisis IA';
 $string['enableai_desc'] = 'Habilitar análisis de grabaciones con IA usando Google Gemini.';
+$string['geminiapikey'] = 'Clave API de Gemini';
+$string['geminiapikey_desc'] = 'Introduce tu clave API de Google Gemini. Puedes obtener una gratis en <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.';
+$string['aimodel'] = 'Modelo de IA';
+$string['aimodel_desc'] = 'Selecciona el modelo de Gemini que se usará para el análisis. Flash es más rápido y tiene un nivel gratuito generoso; Pro ofrece mayor capacidad, pero tiene límites gratuitos más bajos.';
 $string['googlemeet:generateai'] = 'Generar análisis IA';
 $string['ai_autogenerate'] = 'Auto-generar análisis';
 $string['ai_autogenerate_desc'] = 'Generar automáticamente el análisis IA cuando se sincronicen nuevas grabaciones.';

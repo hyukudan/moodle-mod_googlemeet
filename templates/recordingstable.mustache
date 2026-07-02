@@ -139,7 +139,7 @@
           <div class="googlemeet-card-body">
             <div class="googlemeet-card-title">
               <a href="{{huburl}}" class="recording-name-text">{{name}}</a>
-              {{#hascapability}}<a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>{{/hascapability}}
+              {{#hascapability}}<button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>{{/hascapability}}
             </div>
             <div class="googlemeet-card-meta">
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
@@ -162,13 +162,13 @@
               <div class="googlemeet-card-actions googlemeet-recording-actions">
                 <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}">{{# pix }} i/externallink, core {{/ pix }}</a>
                 {{#hascapability}}
-                  <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
-                  <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>
+                  <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
+                  <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
                 {{/hascapability}}
                 {{#aienabled}}{{#hascapability}}
-                  <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
+                  <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
-                  </a>
+                  </button>
                 {{/hascapability}}{{/aienabled}}
               </div>
             </div>
@@ -240,7 +240,7 @@
               {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
               {{#hascapability}}{{^visible}}<span class="googlemeet-listitem-hidden-tag">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</span>{{/visible}}{{/hascapability}}
               {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
-              {{#hascapability}}<a href="javascript:void(0);" class="recordingeditname googlemeet-edit-btn" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>{{/hascapability}}
+              {{#hascapability}}<button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>{{/hascapability}}
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
             </div>
             <div class="googlemeet-listitem-meta googlemeet-card-meta">
@@ -305,13 +305,13 @@
             <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
             <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{name}}">{{# pix }} i/externallink, core {{/ pix }}</a>
             {{#hascapability}}
-              <a href="javascript:void(0);" class="recordinghowhide googlemeet-visibility-btn" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</a>
-              <a href="javascript:void(0);" class="googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</a>
+              <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
+              <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{name}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
             {{/hascapability}}
             {{#aienabled}}{{#hascapability}}
-              <a href="javascript:void(0);" class="googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
+              <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
-              </a>
+              </button>
             {{/hascapability}}{{/aienabled}}
             {{#aienabled}}{{^hascapability}}
               {{#hasai}}<a href="{{huburl}}" class="googlemeet-card-summarylink">{{# str }} recording_view_summary, mod_googlemeet {{/ str }} ›</a>{{/hasai}}
@@ -429,7 +429,7 @@
                 </div>
               </div>
               {{/hasai}}
-              <div class="googlemeet-ai-error" style="display: none;">
+              <div class="googlemeet-ai-error" role="alert" style="display: none;">
                 <div class="alert alert-danger"></div>
               </div>
             </div>
@@ -558,6 +558,26 @@ require([
 ], function($, Ajax, Notification) {
 
   $(document).ready(function() {
+    $(document).on('submit', 'form', function(e) {
+      var form = $(this);
+      var method = (form.attr('method') || '').toLowerCase();
+      var action = form.attr('action') || '';
+      var isSyncForm = method === 'post' && (form.find('input[name="sync"]').length || action.indexOf('sync=') !== -1);
+
+      if (!isSyncForm) {
+        return;
+      }
+
+      if (form.data('googlemeetSyncSubmitting')) {
+        e.preventDefault();
+        return false;
+      }
+
+      form.data('googlemeetSyncSubmitting', true);
+      $('#googlemeet_syncimg').css('display', 'flex');
+      form.find('input[type="submit"], button[type="submit"], button:not([type])').prop('disabled', true);
+    });
+
     $('#googlemeet-topic-select').on('change', function() { this.form.submit(); });
 
     {{#hascapability}}
@@ -768,8 +788,7 @@ require([
             el.text('{{# str }} ai_transcript_unavailable, mod_googlemeet {{/ str }}');
             loadedTranscripts[recordingid] = true;
           }
-        }).fail(function(ex) {
-          console.error('Failed to load transcript:', ex);
+        }).fail(function() {
           $('.googlemeet-ai-transcript-text[data-recordingid="' + recordingid + '"]')
             .text('{{# str }} ai_transcript_unavailable, mod_googlemeet {{/ str }}');
         });
@@ -802,8 +821,6 @@ require([
           loadingEl.find('p').html('{{# str }} ai_generating, mod_googlemeet {{/ str }}' + dots + '<br><small style="opacity: 0.7;">⏱ ' + timeStr + '</small>');
         }, 500);
 
-        console.log('AI Analysis: Starting request for recording ' + recordingid);
-
         Ajax.call([{
           methodname: 'mod_googlemeet_generate_ai_analysis',
           args: {
@@ -815,8 +832,6 @@ require([
           timeout: 180000 // 3 minutes timeout for AI processing
         }])[0].then(function(response) {
           clearInterval(progressInterval);
-          var elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.log('AI Analysis: Response received after ' + elapsed + 's', response);
 
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_regenerate, mod_googlemeet {{/ str }}');
@@ -835,7 +850,6 @@ require([
         }).fail(function(ex) {
           clearInterval(progressInterval);
           var elapsed = Math.floor((Date.now() - startTime) / 1000);
-          console.error('AI Analysis: Failed after ' + elapsed + 's', ex);
 
           content.find('.googlemeet-ai-loading').hide();
           generateBtn.prop('disabled', false).text('{{# str }} ai_generate, mod_googlemeet {{/ str }}');
@@ -1045,7 +1059,7 @@ require([
         content.find('.googlemeet-ai-result').hide();
         content.find('.googlemeet-ai-processing').hide();
 
-        var errorEl = content.find('.googlemeet-ai-error').show();
+        var errorEl = content.find('.googlemeet-ai-error').attr('role', 'alert').show();
         var alert = errorEl.find('.alert');
 
         // Special case: subtitles unavailable → offer opt-in to tier 3 (video download).
@@ -1136,8 +1150,7 @@ require([
           // Still processing - keep waiting
 
           if (callback) callback(response.status);
-        }).fail(function(ex) {
-          console.error('Failed to check status:', ex);
+        }).fail(function() {
           if (callback) callback('error');
         });
       }

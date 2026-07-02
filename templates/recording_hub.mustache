@@ -15,9 +15,9 @@
       <h3 class="mb-1">
         <span class="recording-name-text">{{name}}</span>
         {{#caneditrecording}}
-          <a href="javascript:void(0);" role="button" class="recordingeditname googlemeet-edit-btn ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
+          <button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
             {{# pix }} i/edit, core {{/ pix }}
-          </a>
+          </button>
         {{/caneditrecording}}
       </h3>
       <div class="text-muted">{{duration}}</div>
@@ -27,9 +27,9 @@
         {{# pix }} i/externallink, core {{/ pix }} {{# str }} openindrive, mod_googlemeet {{/ str }}
       </a>
       {{#caneditrecording}}
-        <a href="javascript:void(0);" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}">
+        <button type="button" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}">
           {{# str }} showhide, mod_googlemeet {{/ str }}
-        </a>
+        </button>
       {{/caneditrecording}}
     </div>
   </div>
@@ -96,7 +96,7 @@
       {{^hasanalysis}}
         {{#aistatusisprocessing}}<div class="alert alert-info">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</div>{{/aistatusisprocessing}}
         {{#aistatusispending}}<div class="alert alert-info">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</div>{{/aistatusispending}}
-        {{#aistatusisfailed}}<div class="alert alert-warning">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}{{#aierror}}<div class="small text-muted mt-1">{{aierror}}</div>{{/aierror}}</div>{{/aistatusisfailed}}
+        {{#aistatusisfailed}}<div class="alert alert-warning" role="alert">{{# str }} ai_status_chip_failed_student, mod_googlemeet {{/ str }}{{#aierror}}<div class="small text-muted mt-1">{{aierror}}</div>{{/aierror}}</div>{{/aistatusisfailed}}
         {{^aistatusisprocessing}}{{^aistatusispending}}{{^aistatusisfailed}}
           {{#aienabled}}<div class="alert alert-info">{{# str }} ai_noanalysis, mod_googlemeet {{/ str }}</div>{{/aienabled}}
           {{^aienabled}}<div class="alert alert-secondary">{{# str }} ai_notconfigured, mod_googlemeet {{/ str }}</div>{{/aienabled}}
