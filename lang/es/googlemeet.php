@@ -288,6 +288,7 @@ $string['ai_keypoints_count_plural'] = '{$a} puntos clave';
 $string['ai_transcript_loading'] = 'Cargando transcripción…';
 $string['ai_transcript_unavailable'] = 'Transcripción no disponible para esta grabación.';
 $string['ai_error_unknown'] = 'Ha ocurrido un error desconocido. Por favor, inténtalo de nuevo.';
+$string['ai_timeout_hint'] = 'Tiempo de espera agotado: la solicitud tardó demasiado';
 $string['ai_subtitles_unavailable'] = 'No se han encontrado subtítulos automáticos para esta grabación. Pulsa "Transcribir desde vídeo" para descargar el vídeo completo y generar la transcripción a partir del audio.';
 $string['ai_transcribe_from_video'] = 'Transcribir desde vídeo';
 $string['ai_transcribe_from_video_desc'] = 'Descarga el vídeo completo de Google Drive y deja que Gemini genere la transcripción. Puede tardar varios minutos y usar hasta varios GB de espacio temporal en disco.';

@@ -286,6 +286,7 @@ $string['ai_keypoints_count_plural'] = '{$a} key points';
 $string['ai_transcript_loading'] = 'Loading transcript…';
 $string['ai_transcript_unavailable'] = 'No transcript available for this recording.';
 $string['ai_error_unknown'] = 'An unknown error occurred. Please try again.';
+$string['ai_timeout_hint'] = 'Timeout - the request took too long';
 $string['ai_subtitles_unavailable'] = 'No auto-generated subtitles were found for this recording. Click "Transcribe from video" to download the full recording and generate a transcript instead.';
 $string['ai_transcribe_from_video'] = 'Transcribe from video';
 $string['ai_transcribe_from_video_desc'] = 'Download the full recording from Google Drive and let Gemini generate the transcript. This may take several minutes and use up to several GB of temporary disk space.';
