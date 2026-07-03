@@ -429,6 +429,10 @@ const renderPracticeQuestion = (practice, player) => {
         .attr('aria-label', (player.attr('data-progress-tpl') || (progressCurrent + ' / ' + progressTotal))
             .replace('{$a->current}', progressCurrent)
             .replace('{$a->total}', progressTotal));
+    // Question stem/options/explanation arrive pre-sanitised: the WS builds them
+    // with format_text() (HTMLPurifier) in question_service, the standard Moodle
+    // boundary for question content. Do not client-escape — it would break
+    // legitimate formatting (bold, sub/sup) that questions rely on.
     $('.googlemeet-practice-stem').html(question.stem);
     $('.googlemeet-practice-feedback').addClass('d-none').removeClass('alert alert-success alert-warning').empty();
     $('.googlemeet-practice-check').prop('disabled', true).removeClass('d-none');
