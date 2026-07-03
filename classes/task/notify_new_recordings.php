@@ -109,19 +109,18 @@ class notify_new_recordings extends \core\task\adhoc_task {
                 // other transactional notifications. Falls back to the markdown HTML above.
                 if (class_exists('\\local_achievements\\email_template')) {
                     try {
-                        $et = \local_achievements\email_template::class;
                         $fn = !empty($user->firstname) ? s($user->firstname) : '';
                         $isone = ($newcount == 1);
                         $title = $isone
                             ? '🎥 Nueva grabación disponible'
                             : '🎥 ' . (int)$newcount . ' nuevas grabaciones disponibles';
-                        $hbody  = $et::text(($fn ? 'Hola ' . $fn . ',' : 'Hola,'), 'left');
-                        $hbody .= $et::text($isone
-                            ? 'Ya tienes disponible una nueva grabación en <strong>' . s($a->name) . '</strong>.'
-                            : 'Ya tienes disponibles <strong>' . (int)$newcount . '</strong> nuevas grabaciones en <strong>' . s($a->name) . '</strong>.');
-                        $hbody .= $et::button($url->out(false), $isone ? 'Ver la grabación' : 'Ver las grabaciones', '#2563eb');
-                        $hbody .= $et::text('¡A repasar! Revisar las clases es una de las mejores formas de fijar el temario.', 'center');
-                        $message->fullmessagehtml = $et::wrap($title, $hbody);
+                        $message->fullmessagehtml = self::build_recording_notice_html(
+                            $title,
+                            (string)$a->name,
+                            (int)$newcount,
+                            $url->out(false),
+                            $fn
+                        );
                     } catch (\Throwable $e) {
                         debugging('mod_googlemeet: branded recording notice render failed — ' . $e->getMessage(), DEBUG_DEVELOPER);
                     }
@@ -138,5 +137,34 @@ class notify_new_recordings extends \core\task\adhoc_task {
                     $e->getMessage());
             }
         }
+    }
+
+    /**
+     * Build the branded recording notice HTML without sending.
+     *
+     * @param string $title Wrapper title.
+     * @param string $meetingname Meeting name.
+     * @param int $newcount Number of new recordings.
+     * @param string $url Activity URL.
+     * @param string $firstname Escaped recipient first name, or empty.
+     * @return string Full HTML email.
+     */
+    public static function build_recording_notice_html(
+        string $title,
+        string $meetingname,
+        int $newcount,
+        string $url,
+        string $firstname = ''
+    ): string {
+        $et = \local_achievements\email_template::class;
+        $isone = ($newcount === 1);
+        $hbody  = $et::text(($firstname ? 'Hola ' . $firstname . ',' : 'Hola,'), 'left');
+        $hbody .= $et::text($isone
+            ? 'Ya tienes disponible una nueva grabación en <strong>' . s($meetingname) . '</strong>.'
+            : 'Ya tienes disponibles <strong>' . (int)$newcount . '</strong> nuevas grabaciones en <strong>' . s($meetingname) . '</strong>.');
+        $hbody .= $et::button($url, $isone ? 'Ver la grabación' : 'Ver las grabaciones', '#2563eb');
+        $hbody .= $et::text('¡A repasar! Revisar las clases es una de las mejores formas de fijar el temario.', 'center');
+
+        return $et::wrap($title, $hbody);
     }
 }
