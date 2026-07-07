@@ -124,11 +124,18 @@ if ($recordingid > 0) {
     exit;
 }
 
-if ($hasvalidmeeturl) {
-    echo html_writer::link($googlemeet->url,
-        get_string('entertheroom', 'googlemeet'),
-        ['class' => 'btn btn-primary', 'target' => '_blank', 'title' => get_string('entertheroom', 'googlemeet')]);
-}
+$maxevents = $googlemeet->maxupcomingevents ?? 3;
+$upcomingeventscontext = googlemeet_get_upcoming_events($googlemeet->id, $maxevents);
+$scheduleeventscontext = googlemeet_get_upcoming_events($googlemeet->id, 0, true);
+echo $OUTPUT->render_from_template('mod_googlemeet/hero',
+    googlemeet_get_classroom_hero_context(
+        $googlemeet,
+        $cm,
+        $context,
+        $upcomingeventscontext,
+        $hasvalidmeeturl,
+        $scheduleeventscontext
+    ));
 
 if (has_capability('mod/googlemeet:editrecording', $context)) {
     if ($googlemeet->eventid != null) {
@@ -140,9 +147,6 @@ if (has_capability('mod/googlemeet:editrecording', $context)) {
 
 // Teacher attachments: files the teacher provided for students to download.
 googlemeet_print_attachments($context);
-
-$maxevents = $googlemeet->maxupcomingevents ?? 3;
-echo $OUTPUT->render_from_template('mod_googlemeet/upcomingevents', googlemeet_get_upcoming_events($googlemeet->id, $maxevents));
 
 // Get pagination and order parameters.
 $recordingspage = optional_param('rpage', 0, PARAM_INT);

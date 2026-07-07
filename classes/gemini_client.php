@@ -122,7 +122,7 @@ class gemini_client {
      * @param string $videourl The Google Drive video URL
      * @param string $videoname The name of the video
      * @param string $duration The duration of the video
-     * @return stdClass Object containing summary, keypoints, topics, and transcript
+     * @return stdClass Object containing summary, keypoints, topics, chapters, and transcript
      * @throws moodle_exception If the API call fails
      */
     public function analyze_video(string $videourl, string $videoname, string $duration): stdClass {
@@ -209,6 +209,68 @@ PROMPT;
     }
 
     /**
+     * Generate timestamped chapters from an existing transcript.
+     *
+     * @param string $transcript Transcript text with timestamp marks.
+     * @param string $lang Target language code.
+     * @param string $videoname Optional video name for context.
+     * @param string $duration Optional video duration for context.
+     * @return array Chapter list.
+     * @throws moodle_exception If generation or parsing fails.
+     */
+    public function generate_chapters(string $transcript, string $lang = '', string $videoname = '',
+            string $duration = ''): array {
+        if (!$this->is_configured()) {
+            throw new moodle_exception('ai_not_configured', 'googlemeet');
+        }
+        if (trim($transcript) === '') {
+            throw new moodle_exception('chapter_no_transcript_error', 'googlemeet');
+        }
+
+        $lang = trim($lang) !== '' ? $lang : current_language();
+        $contextinfo = '';
+        if ($videoname !== '' || $duration !== '') {
+            $contextinfo = "Class information:\n";
+            if ($videoname !== '') {
+                $contextinfo .= "- Title: {$videoname}\n";
+            }
+            if ($duration !== '') {
+                $contextinfo .= "- Duration: {$duration}\n";
+            }
+            $contextinfo .= "\n";
+        }
+
+        $prompt = <<<PROMPT
+You are an expert educational editor extracting lesson chapters from a class transcript.
+
+Write chapter titles in this language whenever possible: {$lang}.
+Use ONLY timestamp marks that already appear in the transcript. Do not invent timestamps.
+Ignore greetings, admin chatter, and off-topic discussion unless they are the only content at the beginning.
+
+{$contextinfo}Return STRICT JSON only, no markdown and no code fences. The top-level value MUST be:
+{
+  "chapters": [
+    {"title": "short chapter title", "start": "5:03"}
+  ]
+}
+
+Rules:
+- Create 4 to 10 chapters when the transcript contains enough timestamped educational content.
+- If there are fewer meaningful sections, return the natural smaller number.
+- If no usable transcript timestamp marks exist, return {"chapters": []}.
+- title must be at most 60 characters, in the transcript language.
+- start must be a M:SS, MM:SS, or H:MM:SS timestamp copied from the transcript.
+- Chapters must be ordered by start time and must not duplicate the same moment.
+
+Transcript:
+{$transcript}
+PROMPT;
+
+        $response = $this->call_api($prompt);
+        return $this->parse_chapters_response($response);
+    }
+
+    /**
      * Build the full analysis prompt.
      *
      * @param string $videoname The video name
@@ -220,7 +282,7 @@ PROMPT;
         return <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
-CRITICAL RULE: You MUST write the summary, keypoints, topics, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
 
 Video Information:
 - Title: {$videoname}
@@ -232,13 +294,15 @@ Please analyze this video and provide the following in a structured JSON format:
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
 3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
-4. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions — in the language of the video
+4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript/audio when available; do not invent timestamps. If timestamp marks are not available, return an empty array.
+5. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
     "summary": "Resumen completo aquí (en el idioma del vídeo)...",
     "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
     "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
+    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
     "transcript": "Transcripción condensada o 'No disponible'...",
     "language": "detected language code (e.g., es, en, fr)"
 }
@@ -473,6 +537,7 @@ PROMPT;
         $result->summary = $summary;
         $result->keypoints = is_array($analysis->keypoints ?? null) ? $analysis->keypoints : [];
         $result->topics = is_array($analysis->topics ?? null) ? $analysis->topics : [];
+        $result->chapters = $this->normalise_chapters_for_storage($analysis->chapters ?? []);
         $result->transcript = is_string($analysis->transcript ?? null) ? $analysis->transcript : '';
         $result->language = is_string($analysis->language ?? null) ? $analysis->language : 'es';
 
@@ -543,6 +608,114 @@ PROMPT;
         }
 
         return $questions;
+    }
+
+    /**
+     * Parse Gemini chapter-generation JSON.
+     *
+     * @param string $response Raw API response.
+     * @return array
+     * @throws moodle_exception
+     */
+    private function parse_chapters_response(string $response): array {
+        $decoded = json_decode($response);
+
+        if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
+            throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
+        }
+
+        $text = trim($decoded->candidates[0]->content->parts[0]->text);
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/', $text, $matches)) {
+            $text = trim($matches[1]);
+        }
+        if (preg_match('/(\{[\s\S]*\}|\[[\s\S]*\])/', $text, $matches)) {
+            $text = trim($matches[1]);
+        }
+
+        $items = json_decode($text);
+        if (!is_array($items) && !is_object($items)) {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', json_last_error_msg());
+        }
+
+        $chapters = $this->normalise_chapters_for_storage($items);
+        return $chapters;
+    }
+
+    /**
+     * Normalise generated chapters before storing them as JSON.
+     *
+     * @param mixed $rawchapters Raw decoded model response.
+     * @return array
+     */
+    private function normalise_chapters_for_storage($rawchapters): array {
+        if (is_object($rawchapters) && isset($rawchapters->chapters)) {
+            $rawchapters = $rawchapters->chapters;
+        }
+        if (!is_array($rawchapters)) {
+            return [];
+        }
+
+        $chapters = [];
+        $seen = [];
+        foreach ($rawchapters as $item) {
+            $title = '';
+            $start = '';
+            if (is_array($item)) {
+                $title = trim((string)($item['title'] ?? ''));
+                $start = trim((string)($item['start'] ?? ''));
+            } else if (is_object($item)) {
+                $title = trim((string)($item->title ?? ''));
+                $start = trim((string)($item->start ?? ''));
+            }
+
+            $seconds = $this->chapter_timestamp_to_seconds($start);
+            if ($title === '' || $seconds < 0) {
+                continue;
+            }
+            if (\core_text::strlen($title) > 60) {
+                $title = \core_text::substr($title, 0, 57) . '...';
+            }
+            if (isset($seen[$seconds])) {
+                continue;
+            }
+            $seen[$seconds] = true;
+            $chapters[] = [
+                'title' => $title,
+                'start' => $start,
+                '_seconds' => $seconds,
+            ];
+        }
+
+        usort($chapters, static function(array $a, array $b): int {
+            return $a['_seconds'] <=> $b['_seconds'];
+        });
+
+        $chapters = array_slice($chapters, 0, 10);
+        foreach ($chapters as &$chapter) {
+            unset($chapter['_seconds']);
+        }
+        unset($chapter);
+
+        return $chapters;
+    }
+
+    /**
+     * Convert a chapter timestamp to seconds, keeping 0:00 valid.
+     *
+     * @param string $timestamp Timestamp text.
+     * @return int Seconds, or -1 for invalid values.
+     */
+    private function chapter_timestamp_to_seconds(string $timestamp): int {
+        $timestamp = trim($timestamp);
+        if (!preg_match('/^\d+:[0-5]\d(?::[0-5]\d)?$/', $timestamp)) {
+            return -1;
+        }
+        $parts = array_map('intval', explode(':', $timestamp));
+        $seconds = array_pop($parts);
+        $minutes = array_pop($parts);
+        $hours = !empty($parts) ? array_pop($parts) : 0;
+
+        return ($hours * 3600) + ($minutes * 60) + $seconds;
     }
 
     /**
@@ -791,7 +964,7 @@ PROMPT;
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a class transcript.
 
-CRITICAL RULE: You MUST write the summary, keypoints, and topics in the SAME language as the transcript. If the transcript is in Spanish, your entire response (summary, keypoints, topics) MUST be in Spanish. If the transcript is in English, respond in English. NEVER translate to a different language.
+CRITICAL RULE: You MUST write the summary, keypoints, topics, and chapters in the SAME language as the transcript. If the transcript is in Spanish, your entire response (summary, keypoints, topics, chapters) MUST be in Spanish. If the transcript is in English, respond in English. NEVER translate to a different language.
 
 Focus ONLY on educational content and curriculum topics. Ignore any casual conversation, greetings, small talk, holiday wishes, off-topic discussions, or informal chat.
 
@@ -803,13 +976,15 @@ Based ONLY on the educational content, provide in JSON format:
 1. **Summary**: Summary of the educational content covered (2-3 paragraphs) — MUST be in the same language as the transcript
 2. **Key Points**: 5-10 key learning points from the lesson — MUST be in the same language as the transcript
 3. **Topics**: 3 to 6 SHORT study tags in the same language as the transcript. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
-4. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
+4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript. Do not invent timestamps. If timestamp marks are not available, return an empty array.
+5. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
 
 Respond ONLY with valid JSON (no markdown):
 {
     "summary": "Resumen educativo aquí (en el idioma de la transcripción)...",
     "keypoints": ["Punto clave 1", "Punto clave 2", ...],
     "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
+    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
     "language": "es"
 }
 PROMPT;
@@ -876,7 +1051,7 @@ PROMPT;
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
-CRITICAL RULE: You MUST write the summary, keypoints, topics, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
 
 Video Information:
 - Title: {$videoname}
@@ -887,13 +1062,15 @@ Please analyze this video and provide the following in a structured JSON format:
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
 3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
-4. **Transcript Summary**: Provide a condensed transcript of the main discussions — in the language of the video
+4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript/audio when available; do not invent timestamps. If timestamp marks are not available, return an empty array.
+5. **Transcript Summary**: Provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
     "summary": "Resumen completo aquí (en el idioma del vídeo)...",
     "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
     "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
+    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
     "transcript": "Transcripción condensada del vídeo...",
     "language": "detected language code (e.g., es, en, fr)"
 }
@@ -963,15 +1140,6 @@ PROMPT;
         $info = $curl->get_info();
 
         return $info['http_code'] === 200 || $info['http_code'] === 204;
-    }
-
-    /**
-     * Get the API key (for use by other services that need to download from Drive).
-     *
-     * @return string
-     */
-    public function get_api_key(): string {
-        return $this->apikey;
     }
 
 }

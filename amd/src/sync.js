@@ -24,6 +24,103 @@
 import $ from 'jquery';
 
 let initialised = false;
+let countdownTimer = null;
+
+/**
+ * Format seconds remaining as a compact countdown.
+ *
+ * @param {number} seconds Seconds remaining.
+ * @returns {string}
+ */
+const formatCountdown = seconds => {
+    seconds = Math.max(0, Math.floor(seconds));
+    if (seconds < 3600) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return minutes + ':' + String(secs).padStart(2, '0');
+    }
+    if (seconds < 86400) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return hours + 'h ' + minutes + 'm';
+    }
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    return days + 'd ' + hours + 'h';
+};
+
+/**
+ * Promote a room CTA from soon to live when its countdown reaches zero.
+ *
+ * @param {jQuery} countdown Countdown element inside the CTA.
+ * @returns {void}
+ */
+const refreshRoomCtaOnLive = countdown => {
+    const cta = countdown.closest('.googlemeet-room-cta');
+    if (!cta.length || cta.attr('data-googlemeet-room-live') === '1') {
+        return;
+    }
+
+    const liveLabel = cta.attr('data-live-label') || '';
+    if (liveLabel !== '') {
+        cta.find('.googlemeet-room-cta-label').text(liveLabel);
+    }
+    cta.removeClass('googlemeet-room-cta-soon').addClass('googlemeet-room-cta-live');
+    if (!cta.find('.googlemeet-pulse').length) {
+        $('<span>').addClass('googlemeet-pulse').attr('aria-hidden', 'true').prependTo(cta);
+    }
+    countdown.text('').attr('hidden', 'hidden');
+    cta.attr('data-googlemeet-room-live', '1');
+};
+
+/**
+ * Refresh all countdown elements on the page.
+ *
+ * @returns {void}
+ */
+const refreshCountdowns = () => {
+    $('[data-googlemeet-countdown]').each(function() {
+        const element = $(this);
+        const target = parseInt(element.attr('data-target-ts'), 10);
+        if (!target) {
+            return;
+        }
+
+        const remaining = target - Math.floor(Date.now() / 1000);
+        if (remaining <= 0) {
+            if (element.hasClass('googlemeet-room-cta-countdown')) {
+                refreshRoomCtaOnLive(element);
+                return;
+            }
+
+            const expired = element.attr('data-countdown-expired') || '';
+            if (expired !== '') {
+                element.text(expired);
+            }
+            return;
+        }
+
+        const prefix = element.attr('data-countdown-prefix') || '';
+        const value = formatCountdown(remaining);
+        element.text(prefix !== '' ? prefix + ' ' + value : value);
+    });
+};
+
+/**
+ * Initialise live countdown labels for room and upcoming-event states.
+ *
+ * @returns {void}
+ */
+const initCountdowns = () => {
+    if (!$('[data-googlemeet-countdown]').length) {
+        return;
+    }
+
+    refreshCountdowns();
+    if (countdownTimer === null) {
+        countdownTimer = window.setInterval(refreshCountdowns, 1000);
+    }
+};
 
 /**
  * Initialise sync overlay and topic filter behaviours.
@@ -63,4 +160,6 @@ export const init = () => {
     $('#googlemeet-topic-select').on('change', function() {
         this.form.submit();
     });
+
+    initCountdowns();
 };

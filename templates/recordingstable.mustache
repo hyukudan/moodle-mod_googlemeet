@@ -41,7 +41,7 @@
 <div id="googlemeet_recordings_table" class="googlemeet-recordings-container">
   <div class="googlemeet-recordings-header d-flex justify-content-between align-items-center flex-wrap mb-3">
     <h4 class="googlemeet-section-title mb-0">
-      {{# str }} recordings, mod_googlemeet {{/ str }}
+      {{# str }} classroom_lessons, mod_googlemeet {{/ str }}
       {{#totalrecordings}}<span class="badge bg-secondary ms-2">{{totalrecordings}}</span>{{/totalrecordings}}
     </h4>
 
@@ -69,11 +69,13 @@
       <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group">
         <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
            class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
-          {{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}
+          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
+          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
         </a>
         <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
            class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
-          {{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}
+          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
+          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
         </a>
       </div>
       <label class="ms-3 me-2 mb-0 small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</label>
@@ -144,7 +146,7 @@
     <input type="hidden" name="rorder" value="{{#isorderdesc}}DESC{{/isorderdesc}}{{#isorderasc}}ASC{{/isorderasc}}">
     <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
     <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
-           placeholder="{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}">
+           placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
     {{#alltopics.0}}
     <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
     <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm" style="max-width:260px">
@@ -185,6 +187,7 @@
             <div class="googlemeet-card-meta">
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
               {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
+              {{#haspublishedquestions}}<span class="googlemeet-lesson-test-badge">{{# str }} lesson_has_test, mod_googlemeet {{/ str }}</span>{{/haspublishedquestions}}
               {{^hasai}}
                 {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
                 {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
@@ -198,18 +201,33 @@
             <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
             {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
             {{/hasai}}
-            {{#matchsource}}
+            {{#hascapability}}{{#matchsource}}
             <div class="googlemeet-search-match">
               <span class="googlemeet-search-match-source">{{matchsource}}</span>
               {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
             </div>
-            {{/matchsource}}
+            {{/matchsource}}{{/hascapability}}
+            <div class="googlemeet-card-progress" data-region="recording-progress" aria-label="{{progressarialabel}}">
+              <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}">
+                {{#progresscompleted}}<span aria-hidden="true">&#10003;</span>{{/progresscompleted}}
+                {{#progressunseen}}<span aria-hidden="true">&#9675;</span>{{/progressunseen}}
+                <span class="googlemeet-progress-status-text">{{progressstatuslabel}}</span>
+              </span>
+              {{#showprogressbar}}
+                <div class="googlemeet-progress-line">
+                  <div class="progress googlemeet-progress-meter" role="progressbar" aria-label="{{# str }} recording_progress_meter, mod_googlemeet {{/ str }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{progresspct}}">
+                    <div class="progress-bar" style="{{progressbarstyle}}"></div>
+                  </div>
+                  <span class="googlemeet-progress-percent">{{progresspcttext}}</span>
+                </div>
+              {{/showprogressbar}}
+            </div>
             <div class="googlemeet-card-footer">
               <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
               <div class="googlemeet-card-actions googlemeet-recording-actions">
                 <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>
                 {{#hascapability}}
-                  <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
+                  <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
                   <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
                   <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
                 {{/hascapability}}
@@ -300,6 +318,7 @@
             <div class="googlemeet-listitem-meta googlemeet-card-meta">
               <span class="googlemeet-listitem-duration">{{duration}}</span>
               {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
+              {{#haspublishedquestions}}<span class="googlemeet-lesson-test-badge">{{# str }} lesson_has_test, mod_googlemeet {{/ str }}</span>{{/haspublishedquestions}}
               {{^hasai}}
                 {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
                 {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
@@ -311,12 +330,12 @@
               {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
             </div>
             {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
-            {{#matchsource}}
+            {{#hascapability}}{{#matchsource}}
             <div class="googlemeet-search-match">
               <span class="googlemeet-search-match-source">{{matchsource}}</span>
               {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
             </div>
-            {{/matchsource}}
+            {{/matchsource}}{{/hascapability}}
             {{! Materials row (same rules as the card view). }}
             {{#hascapability}}
             <div class="googlemeet-card-materials mt-1">
@@ -361,11 +380,26 @@
             </div>
             {{/hasmaterials}}{{/hascapability}}
           </div>
+          <div class="googlemeet-listitem-progress" data-region="recording-progress" aria-label="{{progressarialabel}}">
+            <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}">
+              {{#progresscompleted}}<span aria-hidden="true">&#10003;</span>{{/progresscompleted}}
+              {{#progressunseen}}<span aria-hidden="true">&#9675;</span>{{/progressunseen}}
+              <span class="googlemeet-progress-status-text">{{progressstatuslabel}}</span>
+            </span>
+            {{#showprogressbar}}
+              <div class="googlemeet-progress-line">
+                <div class="progress googlemeet-progress-meter" role="progressbar" aria-label="{{# str }} recording_progress_meter, mod_googlemeet {{/ str }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{progresspct}}">
+                  <div class="progress-bar" style="{{progressbarstyle}}"></div>
+                </div>
+                <span class="googlemeet-progress-percent">{{progresspcttext}}</span>
+              </div>
+            {{/showprogressbar}}
+          </div>
           <div class="googlemeet-listitem-actions googlemeet-recording-actions">
             <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
             <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>
             {{#hascapability}}
-              <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
+              <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
               <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
               <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
             {{/hascapability}}
@@ -735,10 +769,15 @@ require([
             coursemoduleid: {{ coursemoduleid }}
           }
         }])[0].then(function(response) {
+          var visible = response.visible === true || response.visible === 1 || response.visible === '1' || response.visible === 'true';
+          var visibilityLabel = btn.attr(visible ? 'data-label-hide' : 'data-label-show');
           var isListRow = card.hasClass('googlemeet-recording-listitem');
-          if (response.visible) {
+          if (visibilityLabel) {
+            btn.attr('title', visibilityLabel);
+            btn.attr('aria-label', visibilityLabel);
+          }
+          if (visible) {
             btn.html('{{# pix }} i/hide, core, {{# str }} hide, mod_googlemeet {{/ str }} {{/ pix }}');
-            btn.attr('aria-label', '{{# str }} recording_hide_from_students, mod_googlemeet {{/ str }}');
             card.removeClass('googlemeet-recording-hidden');
             if (isListRow) {
               card.find('.googlemeet-listitem-hidden-tag').remove();
@@ -747,7 +786,6 @@ require([
             }
           } else {
             btn.html('{{# pix }} i/show, core, {{# str }} show, mod_googlemeet {{/ str }} {{/ pix }}');
-            btn.attr('aria-label', '{{# str }} recording_show_to_students, mod_googlemeet {{/ str }}');
             card.addClass('googlemeet-recording-hidden');
             if (isListRow) {
               if (!card.find('.googlemeet-listitem-hidden-tag').length) {

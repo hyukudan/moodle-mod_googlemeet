@@ -74,6 +74,7 @@ class ai_service {
             // Decode JSON fields.
             $analysis->keypoints = json_decode($analysis->keypoints) ?: [];
             $analysis->topics = json_decode($analysis->topics) ?: [];
+            $analysis->chapters = json_decode($analysis->chapters ?? '') ?: [];
         }
 
         return $analysis ?: null;
@@ -111,6 +112,7 @@ class ai_service {
         if ($existing && !$regenerate && $existing->status === 'completed') {
             $existing->keypoints = json_decode($existing->keypoints) ?: [];
             $existing->topics = json_decode($existing->topics) ?: [];
+            $existing->chapters = json_decode($existing->chapters ?? '') ?: [];
             return $existing;
         }
 
@@ -171,6 +173,7 @@ class ai_service {
         // Return the analysis with processing status.
         $analysis->keypoints = [];
         $analysis->topics = [];
+        $analysis->chapters = [];
         $analysis->summary = '';
         $analysis->transcript = '';
 
@@ -227,6 +230,9 @@ class ai_service {
             $analysis->summary = $result->summary;
             $analysis->keypoints = json_encode($result->keypoints);
             $analysis->topics = json_encode($result->topics);
+            if ($this->chapters_field_exists()) {
+                $analysis->chapters = json_encode($result->chapters ?? []);
+            }
             $analysis->transcript = $result->transcript;
             $analysis->language = $result->language;
             $analysis->status = 'completed';
@@ -239,6 +245,7 @@ class ai_service {
             // Return with decoded arrays.
             $analysis->keypoints = $result->keypoints;
             $analysis->topics = $result->topics;
+            $analysis->chapters = $result->chapters ?? [];
 
             return $analysis;
 
@@ -324,6 +331,68 @@ class ai_service {
         }
 
         return $created;
+    }
+
+    /**
+     * Generate timestamped chapters from an existing recording transcript.
+     *
+     * @param int $recordingid Recording id.
+     * @return array Generated chapters.
+     * @throws moodle_exception
+     */
+    public function generate_chapters_for_recording(int $recordingid): array {
+        global $DB;
+
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
+        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid], '*', MUST_EXIST);
+        if ($analysis->status !== 'completed') {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'Analysis is not completed');
+        }
+
+        $transcript = '';
+        if (!empty($recording->transcripttext)) {
+            $transcript = $recording->transcripttext;
+        } else if (!empty($analysis->transcript)) {
+            $transcript = $analysis->transcript;
+        }
+
+        if (trim($transcript) === '') {
+            throw new moodle_exception('chapter_no_transcript_error', 'googlemeet');
+        }
+
+        $lang = !empty($analysis->language) ? $analysis->language : current_language();
+        $chapters = $this->client->generate_chapters($transcript, $lang, $recording->name, $recording->duration);
+
+        if (!$this->chapters_field_exists()) {
+            throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'Chapters field is not available');
+        }
+
+        $DB->update_record('googlemeet_ai_analysis', (object) [
+            'id' => $analysis->id,
+            'chapters' => json_encode($chapters),
+            'aimodel' => $this->client->get_last_used_model() ?? $this->client->get_model(),
+            'timemodified' => time(),
+        ]);
+
+        return $chapters;
+    }
+
+    /**
+     * Whether the F3 chapters column is available in the active database.
+     *
+     * @return bool
+     */
+    private function chapters_field_exists(): bool {
+        global $DB;
+
+        static $exists = null;
+        if ($exists !== null) {
+            return $exists;
+        }
+
+        $columns = $DB->get_columns('googlemeet_ai_analysis');
+        $exists = array_key_exists('chapters', $columns);
+        return $exists;
     }
 
     /**

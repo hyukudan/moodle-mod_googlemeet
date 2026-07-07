@@ -64,11 +64,28 @@ if (empty($options['googlemeetid'])) {
 
 $dryrun = $options['dry-run'];
 $skipgemini = $options['skip-gemini'];
-$ytdlp = '/tmp/yt-dlp';
+// Resolve yt-dlp the same way subtitle_extractor does: configured path first,
+// then PATH, then the legacy /tmp location. This is only a fast-fail with a
+// helpful hint; the extractor performs its own resolution. Do NOT hard-code
+// /tmp/yt-dlp — systemd-tmpfiles wipes /tmp, which silently broke this cron.
+$ytdlp = trim((string)get_config('googlemeet', 'ytdlppath'));
+if ($ytdlp === '' || !is_executable($ytdlp)) {
+    $which = trim((string)(shell_exec('command -v yt-dlp 2>/dev/null') ?: ''));
+    if ($which !== '' && is_executable($which)) {
+        $ytdlp = $which;
+    } else if (is_executable('/tmp/yt-dlp')) {
+        $ytdlp = '/tmp/yt-dlp';
+    } else {
+        $ytdlp = '';
+    }
+}
 
 // Check yt-dlp is available (kept here for a fast-fail with a helpful install hint).
-if (!file_exists($ytdlp) || !is_executable($ytdlp)) {
-    cli_error("yt-dlp not found at {$ytdlp}. Install it with: curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp");
+if ($ytdlp === '' || !is_executable($ytdlp)) {
+    cli_error("yt-dlp not found. Set the googlemeet/ytdlppath admin setting or install it "
+        . "to a persistent path (NOT /tmp): "
+        . "curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp "
+        . "-o /path/to/bin/yt-dlp && chmod +x /path/to/bin/yt-dlp");
 }
 
 // Resolve subtitle language: explicit CLI param > site setting > 'es'.

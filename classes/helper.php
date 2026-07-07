@@ -77,6 +77,24 @@ class helper {
     }
 
     /**
+     * Decide whether an exception represents Google/API infrastructure trouble.
+     *
+     * @param \Throwable $e The exception to inspect.
+     * @return bool
+     */
+    public static function is_infrastructure_error(\Throwable $e): bool {
+        if ($e instanceof moodle_exception && $e->errorcode === 'servicenotenabled') {
+            return true;
+        }
+
+        if ($e instanceof \Exception) {
+            return self::is_service_not_enabled_error($e) || self::is_transient_google_error($e);
+        }
+
+        return false;
+    }
+
+    /**
      * Detect Google API-disabled errors that should keep the existing user-facing exception.
      *
      * @param \Exception $e The exception thrown by core\oauth2\rest.

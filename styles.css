@@ -93,6 +93,63 @@
 }
 
 /* ===========================================
+   Main room entry CTA
+   =========================================== */
+
+.googlemeet-room-entry {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.75rem;
+    margin: 0 0 1rem;
+}
+
+.googlemeet-room-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    min-height: 42px;
+    white-space: normal;
+    text-align: center;
+}
+
+.googlemeet-room-cta-live {
+    box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.28);
+    animation: googlemeet-room-live-pulse 1.8s ease-out infinite;
+}
+
+.googlemeet-room-cta-countdown {
+    padding-left: 0.45rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.45);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.googlemeet-room-cta-disabled {
+    cursor: default;
+    opacity: 0.72;
+}
+
+.googlemeet-room-note {
+    color: var(--gm-text-muted, #666);
+    font-size: 0.85rem;
+}
+
+@keyframes googlemeet-room-live-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.28);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(217, 48, 37, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(217, 48, 37, 0);
+    }
+}
+
+/* ===========================================
    Upcoming Events Cards
    =========================================== */
 
@@ -300,6 +357,10 @@
 
 .googlemeet-recordings-controls .btn-group .btn + .btn {
     margin-left: 6px !important;
+}
+
+.googlemeet-sort-label-short {
+    display: none;
 }
 
 .googlemeet-recordings-trash > summary {
@@ -1426,7 +1487,9 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    align-items: start;
+    /* stretch: cards in the same row share height even when one carries
+       material rows and its neighbour does not (ragged bottoms otherwise). */
+    align-items: stretch;
 }
 .googlemeet-recordings-group {
     grid-column: 1 / -1;
@@ -1437,6 +1500,7 @@
 .googlemeet-recording-card {
     display: flex;
     flex-direction: column;
+    height: 100%;
     border: 1px solid var(--gm-border, #e0e0e0);
     border-radius: 8px;
     overflow: hidden;
@@ -1465,7 +1529,16 @@
     background: rgba(255,255,255,0.18);
     flex: 0 0 auto;
 }
-.googlemeet-card-play .icon { width: 22px; height: 22px; margin: 0; }
+.googlemeet-card-play .icon {
+    /* RemUI paints .icon slate grey — unreadable over the blue media strip. */
+    color: var(--gm-white, #fff);
+    width: auto;
+    height: auto;
+    font-size: 17px;
+    line-height: 1;
+    /* Optical centering: a play triangle reads left-heavy inside a circle. */
+    margin: 0 0 0 3px;
+}
 .googlemeet-card-date {
     grid-column: 2;
     min-width: 0;
@@ -1500,6 +1573,13 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .googlemeet-card-meta { font-size: 0.8rem; color: var(--gm-muted, #5f6368); display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.googlemeet-card-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin-top: 0.1rem;
+}
 .googlemeet-card-summary {
     font-size: 0.85rem; color: #3c4043; margin: 0;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -1740,6 +1820,10 @@
 @media (prefers-reduced-motion: reduce) {
     .googlemeet-recording-card { transition: none; }
     .googlemeet-recording-card:hover { transform: none; }
+    .googlemeet-room-cta-live,
+    .googlemeet-pulse {
+        animation: none;
+    }
 }
 .googlemeet-card-topics .googlemeet-ai-topic-tag {
     background: #f1f3f4; color: #3c4043; border: 1px solid var(--gm-border, #e0e0e0); font-weight: 500;
@@ -1882,13 +1966,85 @@
     background: #f1f3f4; color: #3c4043; border: 1px solid var(--gm-border, #e0e0e0); font-weight: 500;
     max-width: 11rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.googlemeet-hub-progress,
+.googlemeet-listitem-progress,
+.googlemeet-card-progress {
+    display: flex;
+    gap: 0.35rem;
+}
+.googlemeet-hub-progress {
+    align-items: center;
+    flex-wrap: wrap;
+}
+.googlemeet-listitem-progress {
+    flex: 0 0 138px;
+    min-width: 118px;
+    flex-direction: column;
+    align-items: stretch;
+}
+.googlemeet-progress-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+}
+.googlemeet-progress-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-height: 1.55rem;
+    padding: 0.12rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.googlemeet-progress-badge-completed {
+    background: #e6f4ea;
+    color: #137333;
+    border: 1px solid #b7dfc2;
+}
+.googlemeet-progress-badge-partial {
+    background: #fff7e6;
+    color: #8a5a00;
+    border: 1px solid #f1d38a;
+}
+.googlemeet-progress-badge-unseen {
+    background: #f1f3f4;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+}
+.googlemeet-progress-meter {
+    width: 100%;
+    min-width: 96px;
+    max-width: 180px;
+    height: 0.35rem;
+    background-color: #e8edf3;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.googlemeet-progress-meter .progress-bar {
+    background-color: #1a73e8;
+    border-radius: 999px;
+    transition: width .3s ease;
+}
+.googlemeet-progress-percent {
+    color: var(--gm-muted, #5f6368);
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
 .googlemeet-listitem-summary {
     margin: 0.15rem 0 0;
     font-size: 0.8rem;
     color: var(--gm-muted, #5f6368);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     max-width: 100%;
 }
 .googlemeet-listitem-actions {
@@ -1910,6 +2066,10 @@
     .googlemeet-recording-listitem {
         flex-wrap: wrap;
         align-items: flex-start;
+    }
+    .googlemeet-listitem-progress {
+        flex: 1 1 100%;
+        max-width: 220px;
     }
     /* Keep date + title/meta on the first rows; push actions to a full-width row below. */
     .googlemeet-listitem-actions {
@@ -2012,3 +2172,424 @@
 
 /* "Análisis IA" badge: subtle border so it reads as a pill on white list rows. */
 .googlemeet-card-aibadge { border: 1px solid #C6DAFC; }
+
+/* ===========================================
+   F3 Classroom hero + lesson chapters
+   =========================================== */
+.googlemeet-classroom-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
+    gap: 1rem;
+    align-items: stretch;
+    margin: 0 0 1.25rem;
+}
+.googlemeet-hero-main,
+.googlemeet-hero-continue {
+    border: 1px solid var(--gm-border, #e0e0e0);
+    border-radius: 8px;
+    background: var(--gm-white, #fff);
+    padding: 1rem;
+}
+.googlemeet-hero-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.googlemeet-hero-kicker,
+.googlemeet-continue-label {
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+.googlemeet-hero-title {
+    margin: 0;
+    color: #202124;
+    font-size: 1.35rem;
+    line-height: 1.25;
+}
+.googlemeet-hero-event {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+.googlemeet-hero-status {
+    white-space: nowrap;
+}
+.googlemeet-hero-event-time {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    min-width: 0;
+    color: #3c4043;
+}
+.googlemeet-hero-countdown {
+    color: #174ea6;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.googlemeet-hero-nextclasses {
+    border-top: 1px solid #e8eaed;
+    padding-top: 0.75rem;
+}
+.googlemeet-hero-nextclasses-title {
+    color: #3c4043;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+}
+.googlemeet-hero-nextclasses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.googlemeet-hero-nextclass-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.6rem;
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.84rem;
+}
+.googlemeet-hero-nextclass-row span + span::before {
+    content: "\00b7";
+    margin-right: 0.6rem;
+    color: #9aa0a6;
+}
+.googlemeet-hero-schedule-link {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 0.55rem;
+    color: #174ea6;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+.googlemeet-hero-schedule-link:hover,
+.googlemeet-hero-schedule-link:focus {
+    color: #174ea6;
+    text-decoration: underline;
+}
+.googlemeet-hero-empty {
+    color: var(--gm-muted, #5f6368);
+}
+.googlemeet-hero-room-entry {
+    margin: 0;
+}
+.googlemeet-hero-continue {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.googlemeet-continue-title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+.googlemeet-continue-title a {
+    color: #202124;
+    text-decoration: none;
+}
+.googlemeet-continue-title a:hover,
+.googlemeet-continue-title a:focus {
+    color: #174ea6;
+    text-decoration: underline;
+}
+.googlemeet-continue-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.82rem;
+}
+.googlemeet-continue-summary {
+    margin: 0;
+    color: #3c4043;
+    font-size: 0.86rem;
+}
+.googlemeet-continue-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 220px;
+}
+.googlemeet-continue-cta {
+    align-self: flex-start;
+    margin-top: auto;
+}
+.googlemeet-schedule-section {
+    max-width: 900px;
+    margin: 0 0 1.25rem;
+    border: 1px solid var(--gm-border, #e0e0e0);
+    border-radius: 8px;
+    background: var(--gm-white, #fff);
+}
+.googlemeet-schedule-summary {
+    cursor: pointer;
+    padding: 0.85rem 1rem;
+    color: #202124;
+    font-weight: 700;
+}
+.googlemeet-schedule-summary::marker {
+    color: #5f6368;
+}
+.googlemeet-schedule-list {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #e8eaed;
+}
+.googlemeet-schedule-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(7rem, auto) minmax(4rem, auto);
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid #f1f3f4;
+}
+.googlemeet-schedule-row:last-child {
+    border-bottom: 0;
+}
+.googlemeet-schedule-date {
+    min-width: 0;
+    color: #202124;
+    font-weight: 600;
+}
+.googlemeet-schedule-time,
+.googlemeet-schedule-duration,
+.googlemeet-schedule-note {
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.84rem;
+}
+.googlemeet-schedule-next {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.45rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: #e8f0fe;
+    color: #174ea6;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.googlemeet-schedule-note {
+    border-top: 1px solid #e8eaed;
+    padding: 0.7rem 1rem;
+}
+.googlemeet-lesson-test-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.45rem;
+    padding: 0.05rem 0.5rem;
+    border: 1px solid #c7d7fe;
+    border-radius: 999px;
+    background: #eef3ff;
+    color: #1e3a5f;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.googlemeet-hub-media-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+.googlemeet-hub-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.googlemeet-hub-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.googlemeet-recording-player-empty {
+    display: flex;
+    min-height: 18rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border: 1px dashed #c4c7c5;
+    border-radius: 8px;
+    background: #f8f9fa;
+    color: var(--gm-muted, #5f6368);
+    text-align: center;
+}
+.googlemeet-recording-player-empty p {
+    margin: 0;
+    color: #3c4043;
+    font-weight: 600;
+}
+.googlemeet-recording-player-empty-icon .icon {
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    color: #5f6368;
+}
+.googlemeet-hub-media-with-chapters {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+}
+.googlemeet-chapters-panel {
+    border: 1px solid var(--gm-border, #e0e0e0);
+    border-radius: 8px;
+    background: var(--gm-white, #fff);
+    padding: 0.85rem;
+    max-height: 34rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #c4c7c5 transparent;
+}
+.googlemeet-chapters-panel::-webkit-scrollbar {
+    width: 8px;
+}
+.googlemeet-chapters-panel::-webkit-scrollbar-thumb {
+    background: #c4c7c5;
+    border-radius: 999px;
+}
+.googlemeet-chapters-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.googlemeet-chapters-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+.googlemeet-chapters-mode {
+    flex: 0 0 auto;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: #f1f3f4;
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.googlemeet-chapters-help {
+    margin: 0.45rem 0 0.65rem;
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+.googlemeet-chapters-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.googlemeet-chapter-button {
+    display: grid;
+    grid-template-columns: 4.2rem minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    width: 100%;
+    min-height: 40px;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    background: #f8f9fa;
+    color: #202124;
+    text-align: left;
+}
+.googlemeet-chapter-button:hover,
+.googlemeet-chapter-button:focus {
+    border-color: #b8c0cc;
+    background: #eef3ff;
+}
+.googlemeet-chapter-button:focus-visible {
+    outline: 3px solid var(--gm-blue, #1a73e8);
+    outline-offset: 2px;
+}
+.googlemeet-chapter-time {
+    color: #174ea6;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.googlemeet-chapter-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.googlemeet-chapter-feedback {
+    min-height: 1.2rem;
+    margin-top: 0.55rem;
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.78rem;
+}
+.googlemeet-transcript-highlight {
+    padding: 0.05rem 0.2rem;
+    border-radius: 4px;
+    background: #fff2cc;
+    color: #202124;
+    box-shadow: 0 0 0 2px #f6d365;
+}
+@media only screen and (max-width: 767px) {
+    .googlemeet-classroom-hero,
+    .googlemeet-hub-media-with-chapters {
+        grid-template-columns: 1fr;
+    }
+    .googlemeet-hero-event {
+        grid-template-columns: 1fr;
+    }
+    .googlemeet-hero-countdown {
+        white-space: normal;
+    }
+    .googlemeet-chapters-panel {
+        max-height: none;
+        overflow: visible;
+    }
+    .googlemeet-schedule-row {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+    .googlemeet-schedule-next {
+        margin-left: 0.25rem;
+    }
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-sort-label-full {
+        display: none;
+    }
+    .googlemeet-sort-label-short {
+        display: inline;
+    }
+    #googlemeet_recordings .googlemeet-recordings-filterbar input[type="search"] {
+        flex: 1 1 100%;
+        max-width: 100% !important;
+    }
+    .googlemeet-recordings-controls {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+}
+@media only screen and (max-width: 480px) {
+    .googlemeet-chapter-button {
+        grid-template-columns: 3.5rem minmax(0, 1fr);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .googlemeet-transcript-highlight {
+        scroll-behavior: auto;
+    }
+    .googlemeet-progress-meter .progress-bar {
+        transition: none;
+    }
+}

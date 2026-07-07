@@ -328,6 +328,49 @@ function googlemeet_get_coursemodule_info($coursemodule) {
 }
 
 /**
+ * Provide the Timeline action for Google Meet calendar events.
+ *
+ * @param calendar_event $event Calendar event.
+ * @param \core_calendar\action_factory $factory Action factory.
+ * @param int $userid User id to use for visibility checks.
+ * @return \core_calendar\local\event\entities\action_interface|null
+ */
+function mod_googlemeet_core_calendar_provide_event_action(calendar_event $event,
+        \core_calendar\action_factory $factory, int $userid = 0) {
+    global $USER;
+
+    if ($event->eventtype !== \mod_googlemeet\helper::GOOGLEMEET_EVENT_START) {
+        return null;
+    }
+
+    if (empty($userid)) {
+        $userid = $USER->id;
+    }
+
+    $modinfo = get_fast_modinfo($event->courseid, $userid);
+    if (empty($modinfo->instances['googlemeet'][$event->instance])) {
+        return null;
+    }
+
+    $cm = $modinfo->instances['googlemeet'][$event->instance];
+    if (!$cm->uservisible) {
+        return null;
+    }
+
+    $start = (int)$event->timestart;
+    $end = $start + (int)$event->timeduration;
+    $now = time();
+    $actionable = $now >= ($start - (30 * MINSECS)) && $now <= $end;
+
+    return $factory->create_instance(
+        get_string('calendar_action_enterroom', 'googlemeet'),
+        new \moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]),
+        1,
+        $actionable
+    );
+}
+
+/**
  * Mark the activity completed (if required) and trigger the course_module_viewed event.
  *
  * @param  stdClass $googlemeet googlemeet object
@@ -454,6 +497,202 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     }
 
     return $formattedrecordings;
+}
+
+/**
+ * Parse a stored Drive recording duration into seconds.
+ *
+ * Durations created by the sync are stored as M:SS or H:MM:SS strings.
+ *
+ * @param string|null $duration Stored duration.
+ * @return int Duration in seconds, or 0 when it cannot be parsed.
+ */
+function googlemeet_recording_duration_to_seconds(?string $duration): int {
+    $duration = trim((string)$duration);
+    if ($duration === '') {
+        return 0;
+    }
+
+    $parts = explode(':', $duration);
+    if (count($parts) < 2 || count($parts) > 3) {
+        return 0;
+    }
+
+    $seconds = 0;
+    foreach ($parts as $part) {
+        if ($part === '' || !ctype_digit($part)) {
+            return 0;
+        }
+        $seconds = ($seconds * 60) + (int)$part;
+    }
+
+    return $seconds;
+}
+
+/**
+ * Parse a transcript timestamp into seconds.
+ *
+ * Accepts M:SS, MM:SS or H:MM:SS. Returns -1 for invalid values so 0:00 remains valid.
+ *
+ * @param string|null $timestamp Timestamp text.
+ * @return int Seconds from the start, or -1 when invalid.
+ */
+function googlemeet_timestamp_to_seconds(?string $timestamp): int {
+    $timestamp = trim((string)$timestamp);
+    if ($timestamp === '') {
+        return -1;
+    }
+
+    $parts = explode(':', $timestamp);
+    if (count($parts) < 2 || count($parts) > 3) {
+        return -1;
+    }
+
+    foreach ($parts as $part) {
+        if ($part === '' || !ctype_digit($part)) {
+            return -1;
+        }
+    }
+
+    $parts = array_map('intval', $parts);
+    $seconds = array_pop($parts);
+    $minutes = array_pop($parts);
+    $hours = !empty($parts) ? array_pop($parts) : 0;
+
+    if ($seconds > 59 || $minutes > 59) {
+        return -1;
+    }
+
+    return ($hours * HOURSECS) + ($minutes * MINSECS) + $seconds;
+}
+
+/**
+ * Decode and normalise stored AI chapters for template rendering.
+ *
+ * @param string|array|null $rawchapters Stored JSON or already decoded chapter list.
+ * @return array Template-ready chapters.
+ */
+function googlemeet_normalise_chapters($rawchapters): array {
+    if (is_string($rawchapters)) {
+        $rawchapters = trim($rawchapters);
+        if ($rawchapters === '') {
+            return [];
+        }
+        $decoded = json_decode($rawchapters);
+    } else {
+        $decoded = $rawchapters;
+    }
+
+    if (is_object($decoded) && isset($decoded->chapters)) {
+        $decoded = $decoded->chapters;
+    }
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $chapters = [];
+    $seen = [];
+    foreach ($decoded as $item) {
+        $title = '';
+        $start = '';
+        if (is_array($item)) {
+            $title = trim((string)($item['title'] ?? ''));
+            $start = trim((string)($item['start'] ?? ''));
+        } else if (is_object($item)) {
+            $title = trim((string)($item->title ?? ''));
+            $start = trim((string)($item->start ?? ''));
+        }
+
+        $seconds = googlemeet_timestamp_to_seconds($start);
+        if ($title === '' || $seconds < 0) {
+            continue;
+        }
+        $key = $seconds . ':' . core_text::strtolower($title);
+        if (isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        if (core_text::strlen($title) > 80) {
+            $title = core_text::substr($title, 0, 77) . '...';
+        }
+        $chapters[] = [
+            'title' => $title,
+            'start' => $start,
+            'startseconds' => $seconds,
+            'chapterarialabel' => get_string('chapter_jump_aria', 'googlemeet', (object) [
+                'title' => $title,
+                'timestamp' => $start,
+            ]),
+        ];
+    }
+
+    usort($chapters, static function(array $a, array $b): int {
+        return $a['startseconds'] <=> $b['startseconds'];
+    });
+
+    return array_slice($chapters, 0, 12);
+}
+
+/**
+ * Completion threshold for heartbeat progress.
+ *
+ * The value is intentionally a presence proxy: 60% of the recording duration capped at 8 minutes.
+ * A minimum of one 30-second heartbeat avoids auto-completing very short/unknown durations instantly.
+ *
+ * @param string|null $duration Stored recording duration.
+ * @return int Threshold in seconds.
+ */
+function googlemeet_recording_completion_threshold(?string $duration): int {
+    $durationseconds = googlemeet_recording_duration_to_seconds($duration);
+    if ($durationseconds <= 0) {
+        return 8 * MINSECS;
+    }
+
+    return max(30, min((int)ceil($durationseconds * 0.6), 8 * MINSECS));
+}
+
+/**
+ * Build template fields for one user's progress on a recording.
+ *
+ * @param stdClass $recording Recording object with at least duration.
+ * @param stdClass|null $progress Progress row, if it exists.
+ * @return array Template-safe progress fields.
+ */
+function googlemeet_recording_progress_state(stdClass $recording, ?stdClass $progress): array {
+    $threshold = googlemeet_recording_completion_threshold($recording->duration ?? '');
+    $watchedseconds = $progress ? max(0, (int)$progress->watchedseconds) : 0;
+    $completed = $progress ? !empty($progress->completed) : false;
+    $percent = 0;
+
+    if ($completed) {
+        $percent = 100;
+    } else if ($threshold > 0 && $watchedseconds > 0) {
+        $percent = min(99, max(1, (int)floor(($watchedseconds / $threshold) * 100)));
+    }
+
+    $partial = !$completed && $watchedseconds > 0;
+    $unseen = !$completed && !$partial;
+    if ($completed) {
+        $label = get_string('recording_progress_completed', 'googlemeet');
+    } else if ($partial) {
+        $label = get_string('recording_progress_partial', 'googlemeet');
+    } else {
+        $label = get_string('recording_progress_unseen', 'googlemeet');
+    }
+
+    return [
+        'progresswatchedseconds' => $watchedseconds,
+        'progressthresholdseconds' => $threshold,
+        'progresspct' => $percent,
+        'progresspcttext' => $percent . '%',
+        'progressbarstyle' => 'width: ' . $percent . '%;',
+        'showprogressbar' => $partial,
+        'progresscompleted' => $completed,
+        'progresspartial' => $partial,
+        'progressunseen' => $unseen,
+        'progressstatuslabel' => $label,
+        'progressarialabel' => get_string('recording_progress_aria', 'googlemeet', $label),
+    ];
 }
 
 /**
@@ -610,9 +849,10 @@ function googlemeet_recording_date_group(int $timestamp): string {
  *
  * @param array $recordings Recording stdClass list (post AI-enrichment).
  * @param string $query Raw search query.
+ * @param bool $includeprivatecontent Whether to search notes/transcript fields.
  * @return array Filtered recordings, re-indexed.
  */
-function googlemeet_filter_recordings_by_query(array $recordings, string $query): array {
+function googlemeet_filter_recordings_by_query(array $recordings, string $query, bool $includeprivatecontent = true): array {
     $needle = googlemeet_fold(trim($query));
     if ($needle === '') {
         return $recordings;
@@ -638,21 +878,23 @@ function googlemeet_filter_recordings_by_query(array $recordings, string $query)
             }
         }
 
-        // clean_text() stored entities like &amp; in notestext; decode them so the
-        // snippet reads naturally and searches for "&"-style terms can match.
-        $notes = html_entity_decode(strip_tags((string)($r->notestext ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        if (core_text::strpos(googlemeet_fold($notes), $needle) !== false) {
-            $r->matchsource = get_string('search_match_notes', 'googlemeet');
-            $r->matchsnippet = googlemeet_search_match_snippet($notes, $needle);
-            $filtered[] = $r;
-            continue;
-        }
+        if ($includeprivatecontent) {
+            // clean_text() stored entities like &amp; in notestext; decode them so the
+            // snippet reads naturally and searches for "&"-style terms can match.
+            $notes = html_entity_decode(strip_tags((string)($r->notestext ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if (core_text::strpos(googlemeet_fold($notes), $needle) !== false) {
+                $r->matchsource = get_string('search_match_notes', 'googlemeet');
+                $r->matchsnippet = googlemeet_search_match_snippet($notes, $needle);
+                $filtered[] = $r;
+                continue;
+            }
 
-        $transcript = (string)($r->transcripttext ?? '');
-        if (core_text::strpos(googlemeet_fold($transcript), $needle) !== false) {
-            $r->matchsource = get_string('search_match_transcript', 'googlemeet');
-            $r->matchsnippet = googlemeet_search_match_snippet($transcript, $needle);
-            $filtered[] = $r;
+            $transcript = (string)($r->transcripttext ?? '');
+            if (core_text::strpos(googlemeet_fold($transcript), $needle) !== false) {
+                $r->matchsource = get_string('search_match_transcript', 'googlemeet');
+                $r->matchsnippet = googlemeet_search_match_snippet($transcript, $needle);
+                $filtered[] = $r;
+            }
         }
     }
 
@@ -688,10 +930,15 @@ function googlemeet_filter_recordings_by_topic(array $recordings, string $topic)
  * after applying the normal googlemeetid/visible/deleted constraints and before PHP filtering.
  *
  * @param array $recordings Recording stdClass list.
+ * @param bool $includeprivatecontent Whether to attach notes/transcript text.
  * @return array The same recording list with notestext/transcripttext attached when available.
  */
-function googlemeet_load_recording_search_content(array $recordings): array {
+function googlemeet_load_recording_search_content(array $recordings, bool $includeprivatecontent = true): array {
     global $DB;
+
+    if (!$includeprivatecontent) {
+        return $recordings;
+    }
 
     $ids = [];
     foreach ($recordings as $recording) {

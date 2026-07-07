@@ -354,6 +354,48 @@ function googlemeet_set_events($googlemeet, $events) {
         $event->id = $DB->insert_record('googlemeet_events', $event);
         helper::create_calendar_event($googlemeet, $event);
     }
+
+    googlemeet_reconcile_cancelled_calendar_events($googlemeet);
+}
+
+/**
+ * Reconcile core calendar mirrors with the instance cancelled-date list.
+ *
+ * The session identity is the scheduled start timestamp stored in googlemeet_events.eventdate.
+ * Cancelled sessions are detected with googlemeet_is_cancelled(), the same day-level helper used
+ * by the hero schedule. Core calendar mirrors are matched by instance + eventtype + timestart.
+ *
+ * @param stdClass $googlemeet Activity record.
+ * @return void
+ */
+function googlemeet_reconcile_cancelled_calendar_events(stdClass $googlemeet): void {
+    global $DB;
+
+    $googlemeetid = (int)$googlemeet->id;
+    $events = $DB->get_records('googlemeet_events', ['googlemeetid' => $googlemeetid], 'eventdate ASC',
+        'id,eventdate,duration');
+    if (empty($events)) {
+        return;
+    }
+
+    $cancelleddates = googlemeet_get_cancelled($googlemeetid);
+    foreach ($events as $event) {
+        $match = [
+            'modulename' => 'googlemeet',
+            'instance' => $googlemeetid,
+            'eventtype' => helper::GOOGLEMEET_EVENT_START,
+            'timestart' => $event->eventdate,
+        ];
+
+        if (googlemeet_is_cancelled((int)$event->eventdate, $cancelleddates) !== false) {
+            $DB->delete_records('event', $match);
+            continue;
+        }
+
+        if (!$DB->record_exists('event', $match)) {
+            helper::create_calendar_event($googlemeet, $event);
+        }
+    }
 }
 
 /**
@@ -453,6 +495,281 @@ function googlemeet_merge_events($googlemeet, $events) {
         // Remove the event rows themselves.
         $DB->delete_records_select('googlemeet_events', "id $insql", $params);
     }
+
+    googlemeet_reconcile_cancelled_calendar_events($googlemeet);
+}
+
+/**
+ * Build the redesigned classroom hero context.
+ *
+ * @param object $googlemeet Activity record.
+ * @param object $cm Course-module record.
+ * @param context_module $context Module context.
+ * @param array $upcomingeventscontext Context returned by googlemeet_get_upcoming_events().
+ * @param bool $hasvalidmeeturl Whether the activity has a valid Meet URL.
+ * @param array $scheduleeventscontext Full schedule context returned by googlemeet_get_upcoming_events().
+ * @return array Template context.
+ */
+function googlemeet_get_classroom_hero_context($googlemeet, $cm, context_module $context,
+        array $upcomingeventscontext, bool $hasvalidmeeturl, array $scheduleeventscontext = []): array {
+    $nextevent = null;
+    $upcomingevents = [];
+    $sourceevents = !empty($scheduleeventscontext['upcomingevents'])
+        ? $scheduleeventscontext['upcomingevents']
+        : ($upcomingeventscontext['upcomingevents'] ?? []);
+    $maxupcomingevents = max(1, min(10, (int)($googlemeet->maxupcomingevents ?? 3)));
+    foreach ($sourceevents as $event) {
+        if (!empty($event->iscancelled)) {
+            continue;
+        }
+        $upcomingevents[] = $event;
+        if (!$nextevent) {
+            $nextevent = $event;
+        }
+        if (count($upcomingevents) >= $maxupcomingevents) {
+            break;
+        }
+    }
+
+    $eventcontext = [];
+    if ($nextevent) {
+        $statuslabel = get_string('event_status_scheduled', 'googlemeet');
+        if (!empty($nextevent->islive)) {
+            $statuslabel = get_string('event_status_live', 'googlemeet');
+        } else if (!empty($nextevent->issoon)) {
+            $statuslabel = get_string('event_status_soon', 'googlemeet');
+        }
+        $eventcontext = [
+            'hasnextevent' => true,
+            'nexteventislive' => !empty($nextevent->islive),
+            'nexteventissoon' => !empty($nextevent->issoon),
+            'nexteventisscheduled' => !empty($nextevent->isscheduled),
+            'nexteventstatus' => $nextevent->status,
+            'nexteventstatuslabel' => $statuslabel,
+            'nexteventtoday' => !empty($nextevent->today),
+            'nexteventdate' => $nextevent->startdate,
+            'nexteventstarttime' => $nextevent->starttime,
+            'nexteventendtime' => $nextevent->endtime,
+            'nexteventtimeinfo' => $nextevent->timeinfo,
+            'nexteventtimestamp' => $nextevent->timestamp,
+            'nexteventduration' => $nextevent->durationformatted,
+            'nexteventhascountdown' => empty($nextevent->islive),
+            'countdownprefix' => $nextevent->countdownprefix ?? get_string('event_countdown_starts_in_prefix', 'googlemeet'),
+            'countdownexpired' => $nextevent->countdownexpired ?? get_string('event_countdown_started', 'googlemeet'),
+        ];
+    }
+
+    $nextclassevents = [];
+    foreach (array_slice($upcomingevents, 1) as $event) {
+        $nextclassevents[] = [
+            'date' => $event->compactdate,
+            'starttime' => $event->starttime,
+            'endtime' => $event->endtime,
+            'duration' => $event->durationformatted,
+        ];
+    }
+
+    $scheduleevents = [];
+    foreach (($scheduleeventscontext['upcomingevents'] ?? []) as $event) {
+        if (!empty($event->iscancelled)) {
+            continue;
+        }
+        $scheduleevents[] = [
+            'isnext' => empty($scheduleevents),
+            'date' => $event->startdate,
+            'starttime' => $event->starttime,
+            'endtime' => $event->endtime,
+            'duration' => $event->durationformatted,
+        ];
+    }
+
+    return array_merge([
+        'activityname' => format_string($googlemeet->name),
+        'hasnextevent' => false,
+        'hasnextclassevents' => !empty($nextclassevents),
+        'nextclassevents' => $nextclassevents,
+        'hasscheduleevents' => !empty($scheduleevents),
+        'scheduleevents' => $scheduleevents,
+        'courseid' => (int)$cm->course,
+        'hascontinue' => false,
+        'hasroomcta' => false,
+    ], $eventcontext,
+        googlemeet_get_room_cta_context($googlemeet, $context, $nextevent, $hasvalidmeeturl),
+        googlemeet_get_continue_watching_context($googlemeet, $cm, $context));
+}
+
+/**
+ * Build the Meet room CTA context for the classroom hero.
+ *
+ * @param object $googlemeet Activity record.
+ * @param context_module $context Module context.
+ * @param stdClass|null $nextevent First non-cancelled upcoming/current event.
+ * @param bool $hasvalidmeeturl Whether the activity has a valid Meet URL.
+ * @return array Template context.
+ */
+function googlemeet_get_room_cta_context($googlemeet, context_module $context, ?stdClass $nextevent,
+        bool $hasvalidmeeturl): array {
+    if (!$hasvalidmeeturl) {
+        return ['hasroomcta' => false];
+    }
+
+    $caneditrecording = has_capability('mod/googlemeet:editrecording', $context);
+    $roomactive = false;
+    $roomclasses = 'btn googlemeet-room-cta';
+    $roomlabel = '';
+    $roomnote = '';
+    $roomhascountdown = false;
+
+    if ($caneditrecording) {
+        $roomactive = true;
+        $roomclasses .= ' btn-primary';
+        $roomlabel = get_string('room_enter_teacher', 'googlemeet');
+        $roomnote = get_string('room_teacher_note', 'googlemeet');
+        if ($nextevent && !empty($nextevent->islive)) {
+            $roomclasses .= ' googlemeet-room-cta-live';
+            $roomlabel = get_string('room_enter_live', 'googlemeet');
+        } else if ($nextevent && !empty($nextevent->issoon)) {
+            $roomclasses .= ' googlemeet-room-cta-soon';
+            $roomlabel = get_string('room_enter_soon', 'googlemeet');
+            $roomhascountdown = true;
+        }
+    } else if ($nextevent && !empty($nextevent->islive)) {
+        $roomactive = true;
+        $roomclasses .= ' btn-primary googlemeet-room-cta-live';
+        $roomlabel = get_string('room_enter_live', 'googlemeet');
+    } else if ($nextevent && !empty($nextevent->issoon)) {
+        // "Soon" is currently 30 minutes, satisfying the owner's T-10 minimum.
+        $roomactive = true;
+        $roomclasses .= ' btn-primary googlemeet-room-cta-soon';
+        $roomlabel = get_string('room_enter_soon', 'googlemeet');
+        $roomhascountdown = true;
+    } else if ($nextevent) {
+        $roomclasses .= ' btn-outline-secondary disabled googlemeet-room-cta-disabled';
+        $roomdate = !empty($nextevent->today)
+            ? get_string('today', 'googlemeet') . ' ' . $nextevent->starttime
+            : $nextevent->startdate . ' ' . $nextevent->starttime;
+        $roomlabel = get_string('room_next_class', 'googlemeet', $roomdate);
+    }
+
+    if ($roomlabel === '') {
+        return ['hasroomcta' => false];
+    }
+
+    return [
+        'hasroomcta' => true,
+        'roomactive' => $roomactive,
+        'roomdisabled' => !$roomactive,
+        'roomclasses' => $roomclasses,
+        'roomurl' => $googlemeet->url,
+        'roomlabel' => $roomlabel,
+        'roomnote' => $roomnote,
+        'roomhascountdown' => $roomhascountdown,
+        'roomtargetts' => $nextevent ? $nextevent->timestamp : 0,
+        'roomcountdownprefix' => get_string('event_countdown_starts_in_prefix', 'googlemeet'),
+        'roomcountdownexpired' => get_string('event_countdown_started', 'googlemeet'),
+    ];
+}
+
+/**
+ * Build the "continue watching" card context for the current user.
+ *
+ * @param object $googlemeet Activity record.
+ * @param object $cm Course-module record.
+ * @param context_module $context Module context.
+ * @return array Template context.
+ */
+function googlemeet_get_continue_watching_context($googlemeet, $cm, context_module $context): array {
+    global $DB, $USER;
+
+    $caneditrecording = has_capability('mod/googlemeet:editrecording', $context);
+    $visiblewhere = $caneditrecording ? '' : ' AND r.visible = 1';
+    $params = [
+        'googlemeetid' => $googlemeet->id,
+        'userid' => $USER->id,
+    ];
+
+    $sql = "SELECT r.id,
+                   r.name,
+                   r.createdtime,
+                   r.duration,
+                   r.webviewlink,
+                   grp.watchedseconds AS userwatchedseconds,
+                   grp.completed AS usercompleted,
+                   a.summary
+              FROM {googlemeet_recordings} r
+              JOIN {googlemeet_recording_progress} grp ON grp.recordingid = r.id
+         LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
+             WHERE r.googlemeetid = :googlemeetid
+               AND r.deleted = 0
+               {$visiblewhere}
+               AND grp.userid = :userid
+               AND grp.completed = 0
+               AND grp.watchedseconds > 0
+          ORDER BY grp.timemodified DESC, r.createdtime DESC";
+    $records = $DB->get_records_sql($sql, $params, 0, 1);
+    $recording = reset($records);
+    $fallbackrecording = false;
+
+    if (!$recording) {
+        $sql = "SELECT r.id,
+                       r.name,
+                       r.createdtime,
+                       r.duration,
+                       r.webviewlink,
+                       grp.watchedseconds AS userwatchedseconds,
+                       grp.completed AS usercompleted,
+                       a.summary
+                  FROM {googlemeet_recordings} r
+             LEFT JOIN {googlemeet_recording_progress} grp
+                    ON grp.recordingid = r.id AND grp.userid = :userid
+             LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
+                 WHERE r.googlemeetid = :googlemeetid
+                   AND r.deleted = 0
+                   {$visiblewhere}
+                   AND (grp.id IS NULL OR grp.completed = 0)
+              ORDER BY r.createdtime DESC, r.id DESC";
+        $records = $DB->get_records_sql($sql, $params, 0, 1);
+        $recording = reset($records);
+        $fallbackrecording = true;
+    }
+
+    if (!$recording) {
+        return ['hascontinue' => false];
+    }
+
+    $progress = null;
+    if (isset($recording->userwatchedseconds) || isset($recording->usercompleted)) {
+        $progress = (object) [
+            'watchedseconds' => (int)($recording->userwatchedseconds ?? 0),
+            'completed' => (int)($recording->usercompleted ?? 0),
+        ];
+    }
+    $progressstate = googlemeet_recording_progress_state($recording, $progress);
+    $latestclassfallback = $fallbackrecording && empty($progressstate['progresswatchedseconds']);
+
+    return [
+        'hascontinue' => true,
+        'continueurl' => (new moodle_url('/mod/googlemeet/view.php',
+            ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
+        'continuetitle' => format_string(googlemeet_display_name((string)$recording->name)),
+        'continueoriginaltitle' => $recording->name,
+        'continuedate' => userdate($recording->createdtime, get_string('strftimedmy', 'googlemeet')),
+        'continueduration' => $recording->duration,
+        'continuesummary' => !empty($recording->summary) ? googlemeet_truncate_summary((string)$recording->summary, 180) : '',
+        'continuelabel' => get_string($latestclassfallback ? 'continue_latest_label' : 'continue_watching_label', 'googlemeet'),
+        'continuectalabel' => get_string($latestclassfallback ? 'continue_latest_cta' : 'continue_watching_cta', 'googlemeet'),
+        'continueprogresslabel' => $progressstate['progressstatuslabel'],
+        'continueprogressarialabel' => $progressstate['progressarialabel'],
+        'continueprogresspct' => $progressstate['progresspct'],
+        'continueprogresspcttext' => $progressstate['progresspcttext'],
+        'continueprogressbarstyle' => $progressstate['progressbarstyle'],
+        'continueshowprogressbar' => $progressstate['showprogressbar'],
+        'continueprogresscompleted' => $progressstate['progresscompleted'],
+        'continueprogresspartial' => $progressstate['progresspartial'],
+        'continueprogressunseen' => $progressstate['progressunseen'],
+        'continueprogressbadgeclass' => $progressstate['progresscompleted'] ? 'googlemeet-progress-badge-completed'
+            : ($progressstate['progresspartial'] ? 'googlemeet-progress-badge-partial' : 'googlemeet-progress-badge-unseen'),
+    ];
 }
 
 /**
@@ -513,8 +830,10 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     // Apply filters in PHP (topics are stored as JSON; this stays DB-portable).
     if (trim((string)$query) !== '') {
-        $allrecordings = googlemeet_load_recording_search_content($allrecordings);
-        $allrecordings = googlemeet_filter_recordings_by_query($allrecordings, (string)$query);
+        if ($hascapability) {
+            $allrecordings = googlemeet_load_recording_search_content($allrecordings, true);
+        }
+        $allrecordings = googlemeet_filter_recordings_by_query($allrecordings, (string)$query, $hascapability);
     }
     if (trim((string)$topic) !== '') {
         $allrecordings = googlemeet_filter_recordings_by_topic($allrecordings, (string)$topic);
@@ -525,7 +844,30 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $page = min($page, max(0, $totalpages - 1)); // Ensure page is within bounds.
     $offset = $page * $maxrecordings;
     $recordings = array_slice($allrecordings, $offset, $maxrecordings);
+
+    $progressbyrecording = [];
+    if (!empty($recordings)) {
+        $recordingids = array_map(static function($recording) {
+            return (int)$recording->id;
+        }, $recordings);
+        list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED, 'progressid');
+        $progressbyrecording = $DB->get_records_sql(
+            "SELECT recordingid, watchedseconds, completed
+               FROM {googlemeet_recording_progress}
+              WHERE userid = :userid
+                AND recordingid {$insql}",
+            ['userid' => $USER->id] + $inparams
+        );
+    }
+
+    $questionservice = new question_service();
     foreach ($recordings as $recording) {
+        foreach (googlemeet_recording_progress_state($recording, $progressbyrecording[$recording->id] ?? null) as $key => $value) {
+            $recording->$key = $value;
+        }
+        $publishedquestions = $questionservice->get_questions($googlemeet, $cm, $context, (int)$recording->id, true);
+        $recording->haspublishedquestions = !empty($publishedquestions);
+        $recording->publishedquestioncount = count($publishedquestions);
         $urlparams = ['id' => $cm->id, 'recording' => $recording->id];
         if ($page > 0) {
             $urlparams['rpage'] = $page;
@@ -729,7 +1071,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
  * @return void
  */
 function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) {
-    global $CFG, $DB, $OUTPUT, $PAGE;
+    global $CFG, $DB, $OUTPUT, $PAGE, $USER;
 
     $caneditrecording = has_capability('mod/googlemeet:editrecording', $context);
     $canmanagequestions = has_capability('mod/googlemeet:managequestions', $context);
@@ -752,13 +1094,17 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $statusflags = googlemeet_ai_status_flags($analysis->status ?? null);
     $keypoints = [];
     $topics = [];
+    $chapters = [];
     if ($analysiscompleted) {
         $keypoints = json_decode($analysis->keypoints) ?: [];
         $topics = json_decode($analysis->topics) ?: [];
+        $chapters = googlemeet_normalise_chapters($analysis->chapters ?? '');
     }
 
     $rpage = optional_param('rpage', 0, PARAM_INT);
     $rorder = optional_param('rorder', null, PARAM_ALPHA);
+    $recordingsorder = strtoupper($rorder ?: ($googlemeet->recordingsorder ?? 'DESC'));
+    $recordingsorder = $recordingsorder === 'ASC' ? 'ASC' : 'DESC';
     $backparams = ['id' => $cm->id];
     if ($rpage > 0) {
         $backparams['rpage'] = $rpage;
@@ -766,27 +1112,73 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     if ($rorder) {
         $backparams['rorder'] = $rorder;
     }
+    $recordingnavparams = ['googlemeetid' => $googlemeet->id];
+    if (!$caneditrecording) {
+        $recordingnavparams['visible'] = true;
+    }
+    $recordingnavitems = array_values(googlemeet_list_recordings($recordingnavparams, false, $recordingsorder, 0, 0));
+    $previousrecording = null;
+    $nextrecording = null;
+    foreach ($recordingnavitems as $index => $navrecording) {
+        if ((int)$navrecording->id !== (int)$recording->id) {
+            continue;
+        }
+        if ($index > 0) {
+            $previousrecording = $recordingnavitems[$index - 1];
+        }
+        if ($index < count($recordingnavitems) - 1) {
+            $nextrecording = $recordingnavitems[$index + 1];
+        }
+        break;
+    }
+    $previousparams = $backparams;
+    $nextparams = $backparams;
+    if ($previousrecording) {
+        $previousparams['recording'] = $previousrecording->id;
+    }
+    if ($nextrecording) {
+        $nextparams['recording'] = $nextrecording->id;
+    }
     $activetab = optional_param('tab', '', PARAM_ALPHA);
 
     $materials = googlemeet_get_recording_materials($context, $recording->id);
     $hasmaterials = !empty($materials);
     $showmaterials = $hasmaterials || $caneditrecording;
 
-    $hasstudentsummary = $analysiscompleted && (trim((string)$analysis->summary) !== '' || !empty($keypoints) || !empty($topics));
     $materialsactive = $showmaterials && $activetab === 'materials';
-    $summaryactive = !$materialsactive && ($canmanagequestions || $hasstudentsummary);
+    $summaryactive = !$materialsactive;
+    $progress = $DB->get_record('googlemeet_recording_progress',
+        ['recordingid' => $recording->id, 'userid' => $USER->id],
+        'watchedseconds,completed');
+    $progressstate = googlemeet_recording_progress_state($recording, $progress ?: null);
+    $canembed = googlemeet_recording_can_embed((string)$recording->webviewlink);
+    $embedurl = $canembed ? googlemeet_get_recording_embed_url((string)$recording->webviewlink) : '';
 
-    $templatecontext = [
+    $templatecontext = array_merge([
         'cmid' => $cm->id,
         'recordingid' => $recording->id,
         'name' => format_string(googlemeet_display_name((string)$recording->name)),
         'originalname' => $recording->name,
         'duration' => s($recording->duration),
         'webviewlink' => $recording->webviewlink,
-        'embedurl' => googlemeet_get_recording_embed_url($recording->webviewlink),
+        'canembed' => $canembed,
+        'embedurl' => $embedurl,
         'backurl' => (new moodle_url('/mod/googlemeet/view.php', $backparams))->out(false),
+        'hasrecordingnav' => !empty($previousrecording) || !empty($nextrecording),
+        'haspreviousrecording' => !empty($previousrecording),
+        'previousrecordingurl' => $previousrecording
+            ? (new moodle_url('/mod/googlemeet/view.php', $previousparams))->out(false)
+            : '',
+        'hasnextrecording' => !empty($nextrecording),
+        'nextrecordingurl' => $nextrecording
+            ? (new moodle_url('/mod/googlemeet/view.php', $nextparams))->out(false)
+            : '',
         'caneditrecording' => $caneditrecording,
         'canmanagequestions' => $canmanagequestions,
+        'visibilitybuttonlabel' => get_string(
+            !empty($recording->visible) ? 'recording_hide_from_students_button' : 'recording_show_to_students_button',
+            'googlemeet'
+        ),
         'aienabled' => $aienabled,
         'sesskey' => sesskey(),
         'hasanalysis' => $analysiscompleted,
@@ -801,6 +1193,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'topics' => array_map(static function($topic) {
             return ['text' => s($topic)];
         }, $topics),
+        'chapters' => $chapters,
+        'haschapters' => !empty($chapters),
         'transcript' => $analysiscompleted ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
         'hasnotes' => !empty($recording->notestext),
         'notes' => !empty($recording->notestext)
@@ -814,7 +1208,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'hasdrafts' => $draftcount > 0,
         'generationqueued' => $questionservice->is_generation_queued($recording->id),
         'summaryactive' => $summaryactive,
-        'questionsactive' => !$summaryactive && !$materialsactive,
+        // Preguntas is never the initially-active tab (default is Resumen, or Materiales); always false.
+        'questionsactive' => false,
         'showmaterials' => $showmaterials,
         'materialsactive' => $materialsactive,
         'materials' => $materials,
@@ -822,7 +1217,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'materialcount' => count($materials),
         'managematerialsurl' => (new moodle_url('/mod/googlemeet/material.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
-    ];
+    ], $progressstate);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
@@ -938,6 +1333,16 @@ function googlemeet_print_attachments(context_module $context): void {
 
     echo html_writer::end_tag('ul');
     echo html_writer::end_div();
+}
+
+/**
+ * Whether a Google Drive URL can be embedded with the preview player.
+ *
+ * @param string $webviewlink Drive web view URL.
+ * @return bool
+ */
+function googlemeet_recording_can_embed(string $webviewlink): bool {
+    return preg_match('~/file/d/([^/]+)~', $webviewlink) === 1;
 }
 
 /**
@@ -1196,9 +1601,10 @@ function googlemeet_format_time_diff($seconds) {
  * upcoming googlemeet events.
  *
  * @param int $googlemeetid db record of user
- * @param int $maxevents Maximum number of events to return (default 3)
+ * @param int $maxevents Maximum number of events to return (default 3). Use 0 with $nolimit for all events.
+ * @param bool $nolimit Whether to skip the display limit.
  */
-function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
+function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3, bool $nolimit = false) {
     global $DB, $USER;
 
     $now = time();
@@ -1206,16 +1612,16 @@ function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
     // Get cancelled dates for this instance.
     $cancelleddates = googlemeet_get_cancelled($googlemeetid);
 
-    // Ensure maxevents is within bounds.
+    // Ensure maxevents is within bounds unless the full schedule explicitly requests all rows.
     $maxevents = max(1, min(10, (int)$maxevents));
+    $limitclause = $nolimit ? '' : ' LIMIT ' . $maxevents;
 
     // Get events that are upcoming or currently in progress (started less than duration ago).
     $sql = "SELECT id, eventdate, duration
               FROM {googlemeet_events}
              WHERE googlemeetid = :googlemeetid
                AND (eventdate + duration) > :now
-          ORDER BY eventdate ASC
-             LIMIT " . $maxevents;
+          ORDER BY eventdate ASC" . $limitclause;
 
     $events = $DB->get_records_sql($sql, ['googlemeetid' => $googlemeetid, 'now' => $now]);
     $upcomingevents = [];
@@ -1236,6 +1642,9 @@ function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
             $upcomingevent = new stdClass();
             $upcomingevent->today = ($nowdate === $startdate);
             $upcomingevent->startdate = userdate($start, get_string('strftimedmy', 'googlemeet'), $USER->timezone);
+            $upcomingevent->compactdate = googlemeet_format_date_chip(
+                userdate($start, get_string('strftimedmweekday', 'googlemeet'), $USER->timezone)
+            );
             $upcomingevent->starttime = userdate($start, get_string('strftimehm', 'googlemeet'), $USER->timezone);
             $upcomingevent->endtime = userdate($end, get_string('strftimehm', 'googlemeet'), $USER->timezone);
             $upcomingevent->timestamp = $start;
@@ -1273,6 +1682,8 @@ function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
                     $upcomingevent->islive = false;
                     $upcomingevent->issoon = true;
                     $upcomingevent->isscheduled = false;
+                    $upcomingevent->countdownprefix = get_string('event_countdown_starts_in_prefix', 'googlemeet');
+                    $upcomingevent->countdownexpired = get_string('event_countdown_started', 'googlemeet');
                     $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
                 } else {
                     // Event is scheduled for later.
@@ -1280,6 +1691,8 @@ function googlemeet_get_upcoming_events($googlemeetid, $maxevents = 3) {
                     $upcomingevent->islive = false;
                     $upcomingevent->issoon = false;
                     $upcomingevent->isscheduled = true;
+                    $upcomingevent->countdownprefix = get_string('event_countdown_starts_in_prefix', 'googlemeet');
+                    $upcomingevent->countdownexpired = get_string('event_countdown_started', 'googlemeet');
                     $upcomingevent->timeinfo = get_string('event_starts_in', 'googlemeet', googlemeet_format_time_diff($timediff));
                 }
             }

@@ -27,6 +27,7 @@ namespace mod_googlemeet\task;
 defined('MOODLE_INTERNAL') || die();
 
 use mod_googlemeet\client;
+use mod_googlemeet\helper;
 
 /**
  * For each googlemeet activity that has autosynchours > 0, find events that are due for
@@ -37,7 +38,8 @@ use mod_googlemeet\client;
  *   - mod_googlemeet/maxsyncattempts (int, default 3)
  *   - mod_googlemeet/syncretryinterval (int seconds, default 3600, min 60)
  *
- * Per-attempt outcome is decided by classify_outcome(): 'success', 'retry' or 'permanent'.
+ * Per-attempt outcome is decided by classify_outcome(): 'success', 'retry', 'permanent'
+ * or 'infra_failure'.
  */
 class process_autosync extends \core\task\scheduled_task {
     /**
@@ -91,6 +93,7 @@ class process_autosync extends \core\task\scheduled_task {
         //   - activity opted-in (autosynchours > 0)
         //   - event still open (autosynced = 0)
         //   - attempts not exhausted yet (syncattempts < :maxattempts)
+        //   - retry cooldown has passed (nextsyncattempt <= now; 0 means immediately)
         //   - either first attempt due (syncattempts = 0 AND end + autosynchours <= now)
         //     or scheduled retry due (syncattempts > 0 AND nextsyncattempt <= now)
         $sql = "SELECT ge.id AS eventid,
@@ -106,18 +109,18 @@ class process_autosync extends \core\task\scheduled_task {
                  WHERE gm.autosynchours > 0
                    AND ge.autosynced = 0
                    AND ge.syncattempts < :maxattempts
+                   AND ge.nextsyncattempt <= :nowcooldown
                    AND (
                         (ge.syncattempts = 0
                             AND (ge.eventdate + ge.duration + (gm.autosynchours * 3600)) <= :now1)
-                     OR (ge.syncattempts > 0
-                            AND ge.nextsyncattempt <= :now2)
+                     OR ge.syncattempts > 0
                    )
               ORDER BY ge.googlemeetid, ge.eventdate";
 
         $rows = $DB->get_records_sql($sql, [
             'maxattempts' => $max,
+            'nowcooldown' => $now,
             'now1' => $now,
-            'now2' => $now,
         ]);
 
         if (empty($rows)) {
@@ -186,12 +189,13 @@ class process_autosync extends \core\task\scheduled_task {
             $exception = null;
             $stats = null;
             $identitymissing = false;
+            $authfailure = false;
 
             if (empty($creatoremail)) {
                 mtrace("  no creatoremail recorded for this activity.");
                 $identitymissing = true;
             } else {
-                $creator = $DB->get_record('user', ['email' => $creatoremail, 'deleted' => 0]);
+                $creator = $DB->get_record('user', ['email' => $creatoremail, 'deleted' => 0, 'suspended' => 0]);
                 if (!$creator) {
                     mtrace("  no active Moodle user with email {$creatoremail}.");
                     $identitymissing = true;
@@ -202,9 +206,17 @@ class process_autosync extends \core\task\scheduled_task {
 
                     try {
                         $client = new client();
+                        $hadtoken = $DB->record_exists('oauth2_refresh_token', [
+                            'userid' => $creator->id,
+                            'issuerid' => (int)get_config('googlemeet', 'issuerid'),
+                        ]);
                         if (!$client->enabled || !$client->check_login()) {
+                            $authfailure = $hadtoken;
                             mtrace("  creator {$creator->username} is not logged-in to Google "
                                 . "(token missing/revoked).");
+                            if ($authfailure) {
+                                self::notify_auth_failure($creatoremail, 'oauth_token_expired');
+                            }
                         } else {
                             $loggedin = true;
                             try {
@@ -218,6 +230,9 @@ class process_autosync extends \core\task\scheduled_task {
                             } catch (\Throwable $e) {
                                 $exception = $e;
                                 mtrace("  sync threw: " . $e->getMessage());
+                                if ($e instanceof \moodle_exception && $e->errorcode === 'servicenotenabled') {
+                                    self::notify_auth_failure($creatoremail, 'drive_api_disabled');
+                                }
                             }
                         }
                     } finally {
@@ -236,6 +251,7 @@ class process_autosync extends \core\task\scheduled_task {
                     $exception,
                     $stats,
                     $identitymissing,
+                    $authfailure,
                     $ev,
                     (int) $ev->syncattempts
                 );
@@ -243,6 +259,19 @@ class process_autosync extends \core\task\scheduled_task {
                 if ($outcome === 'success' || $outcome === 'permanent') {
                     $this->close_event((int) $ev->eventid, $newattempts, $now);
                     mtrace("  event #{$ev->eventid}: closed (outcome={$outcome}, attempts={$newattempts}).");
+                    continue;
+                }
+
+                if ($outcome === 'infra_failure') {
+                    $next = $now + max($interval, 6 * 3600);
+                    $DB->execute(
+                        "UPDATE {googlemeet_events}
+                            SET nextsyncattempt = :next
+                          WHERE id = :id",
+                        ['next' => $next, 'id' => $ev->eventid]
+                    );
+                    mtrace("  event #{$ev->eventid}: infra failure; kept OPEN, retry at "
+                        . userdate($next) . ".");
                     continue;
                 }
 
@@ -272,18 +301,20 @@ class process_autosync extends \core\task\scheduled_task {
     /**
      * Decide what to do with a sync attempt.
      *
-     * Policy: retry transient failures until maxsyncattempts is exhausted, and close
-     * without further retries on success or on a permanent error.
-     *   - success   → the sync ran and brought in at least one recording
-     *                 (inserted, updated or restored > 0); the event is done.
-     *   - permanent → a non-recoverable condition that retrying cannot fix: no creator
-     *                 email recorded, or no active Moodle user for it. There is nobody
-     *                 to authenticate as, so stop.
-     *   - retry     → any transient/recoverable condition: token missing/revoked or
-     *                 not logged in (creator may re-link Google), an exception during
-     *                 sync (network/Drive API error), or the sync ran but Drive has no
-     *                 recordings yet (Google may still be processing them). The
-     *                 attempt cap in process_activity() bounds these retries.
+     * Policy: retry recoverable content-timing failures until maxsyncattempts is exhausted,
+     * close without further retries on success or a permanent identity error, and keep
+     * infrastructure failures open without consuming attempts.
+     *   - success       → the sync ran and brought in at least one recording
+     *                     (inserted, updated or restored > 0); the event is done.
+     *   - permanent     → a non-recoverable condition that retrying cannot fix: no creator
+     *                     email recorded, or no active Moodle user for it. There is nobody
+     *                     to authenticate as, so stop.
+     *   - infra_failure → a recoverable platform/auth/API condition outside the event's
+     *                     recording lifecycle; keep the event open and retry later without
+     *                     consuming its bounded attempts.
+     *   - retry         → the sync ran but Drive has no recordings yet (Google may still
+     *                     be processing them). The attempt cap in process_activity()
+     *                     bounds these retries.
      *
      * @param bool $loggedin True iff client->check_login() succeeded for the creator.
      *                       False covers: no creator email, no Moodle user, token revoked.
@@ -292,15 +323,17 @@ class process_autosync extends \core\task\scheduled_task {
      *                          null if sync was skipped (e.g. not logged in).
      * @param bool $identitymissing True when there is no creator email or no Moodle user
      *                              for it (the only permanent, non-recoverable failures).
+     * @param bool $authfailure True when a refresh token existed before check_login() but auth failed.
      * @param \stdClass $event Has fields eventid, eventdate, duration, syncattempts.
      * @param int $attemptsdone Attempts BEFORE this one (so this is attempt #attemptsdone+1).
-     * @return string One of 'success', 'permanent', 'retry'.
+     * @return string One of 'success', 'permanent', 'infra_failure', 'retry'.
      */
     private function classify_outcome(
         bool $loggedin,
         ?\Throwable $exception,
         ?array $stats,
         bool $identitymissing,
+        bool $authfailure,
         \stdClass $event,
         int $attemptsdone
     ): string {
@@ -317,8 +350,16 @@ class process_autosync extends \core\task\scheduled_task {
             return 'permanent';
         }
 
-        // Everything else is transient: not logged in (token revoked/missing), an exception
-        // during sync (network/Drive API), or the sync ran but found no recordings yet.
+        if ($authfailure) {
+            return 'infra_failure';
+        }
+
+        if ($exception !== null && helper::is_infrastructure_error($exception)) {
+            return 'infra_failure';
+        }
+
+        // Everything else is a bounded retry: missing first-time token, or the sync ran but
+        // found no recordings yet.
         return 'retry';
     }
 
@@ -338,5 +379,39 @@ class process_autosync extends \core\task\scheduled_task {
               WHERE id = :id",
             ['now' => $now, 'attempts' => $newattempts, 'id' => $eventid]
         );
+    }
+
+    /**
+     * Notify support that autosync is blocked by an auth/API infrastructure issue.
+     *
+     * @param string $creatoremail Google/Moodle account affected.
+     * @param string $reason Machine-readable reason.
+     */
+    private static function notify_auth_failure(string $creatoremail, string $reason): void {
+        $now = time();
+        $lastalert = (int)get_config('googlemeet', 'lastauthalert');
+        if ($lastalert > 0 && ($now - $lastalert) < DAYSECS) {
+            return;
+        }
+
+        if ($reason === 'drive_api_disabled') {
+            $action = 'API Drive/Calendar deshabilitada en Google Cloud Console';
+        } else {
+            $action = 'Re-vincula Google en una actividad Meet';
+        }
+
+        $subject = '[googlemeet] Autosync bloqueado: ' . $reason;
+        $body = "Autosync de Google Meet bloqueado.\n\n"
+            . "Motivo: {$reason}\n"
+            . "Cuenta afectada: {$creatoremail}\n"
+            . "Accion requerida: {$action}\n";
+
+        email_to_user(
+            \core_user::get_support_user(),
+            \core_user::get_noreply_user(),
+            $subject,
+            $body
+        );
+        set_config('lastauthalert', $now, 'googlemeet');
     }
 }

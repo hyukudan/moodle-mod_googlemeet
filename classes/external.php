@@ -1337,6 +1337,127 @@ class mod_googlemeet_external extends external_api {
     }
 
     /**
+     * Parameters for mark_recording_progress.
+     *
+     * @return external_function_parameters
+     */
+    public static function mark_recording_progress_parameters() {
+        return new external_function_parameters([
+            'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'watchedsecondsdelta' => new external_value(PARAM_INT, 'Visible heartbeat seconds to add', VALUE_DEFAULT, 0),
+            'completed' => new external_value(PARAM_BOOL, 'Mark the recording completed', VALUE_DEFAULT, false),
+        ]);
+    }
+
+    /**
+     * Add heartbeat progress for the current user.
+     *
+     * The stored seconds are a page-visibility proxy, not real playback seconds from Drive.
+     * Completion is idempotent and cannot be unset through this endpoint.
+     *
+     * @param int $recordingid Recording ID.
+     * @param int $coursemoduleid Course module ID.
+     * @param int $watchedsecondsdelta Visible seconds to add.
+     * @param bool $completed Whether to force completion.
+     * @return array
+     */
+    public static function mark_recording_progress($recordingid, $coursemoduleid, $watchedsecondsdelta = 0, $completed = false) {
+        global $DB, $USER;
+
+        $params = self::validate_parameters(self::mark_recording_progress_parameters(), [
+            'recordingid' => $recordingid,
+            'coursemoduleid' => $coursemoduleid,
+            'watchedsecondsdelta' => $watchedsecondsdelta,
+            'completed' => $completed,
+        ]);
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:view', $context);
+
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0],
+            'id,visible,duration',
+            MUST_EXIST);
+        if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $delta = max(0, min(60, (int)$params['watchedsecondsdelta']));
+        $forcecompleted = !empty($params['completed']);
+        $now = time();
+
+        $progress = $DB->get_record('googlemeet_recording_progress', [
+            'recordingid' => $recording->id,
+            'userid' => $USER->id,
+        ]);
+
+        if (!$progress && $delta <= 0 && !$forcecompleted) {
+            return [
+                'watchedseconds' => 0,
+                'completed' => false,
+            ];
+        }
+
+        if (!$progress) {
+            $progress = (object)[
+                'recordingid' => $recording->id,
+                'userid' => $USER->id,
+                'watchedseconds' => 0,
+                'completed' => 0,
+                'timecreated' => $now,
+                'timemodified' => $now,
+            ];
+
+            try {
+                $progress->id = $DB->insert_record('googlemeet_recording_progress', $progress);
+            } catch (\dml_exception $e) {
+                // A second tab may have inserted the same unique row first.
+                $progress = $DB->get_record('googlemeet_recording_progress', [
+                    'recordingid' => $recording->id,
+                    'userid' => $USER->id,
+                ], '*', MUST_EXIST);
+            }
+        } else {
+            // Do not let duplicated/late heartbeats add more time than plausibly elapsed
+            // since the last accepted write. A small grace keeps normal timer drift harmless.
+            $elapsedcap = max(0, $now - (int)$progress->timemodified + 5);
+            $delta = min($delta, $elapsedcap);
+        }
+
+        $threshold = googlemeet_recording_completion_threshold($recording->duration);
+        $watchedseconds = max(0, (int)$progress->watchedseconds) + $delta;
+        $iscompleted = !empty($progress->completed) || $forcecompleted || $watchedseconds >= $threshold;
+
+        $update = (object)[
+            'id' => $progress->id,
+            'watchedseconds' => $watchedseconds,
+            'completed' => $iscompleted ? 1 : 0,
+            'timemodified' => $now,
+        ];
+        $DB->update_record('googlemeet_recording_progress', $update);
+
+        return [
+            'watchedseconds' => $watchedseconds,
+            'completed' => $iscompleted,
+        ];
+    }
+
+    /**
+     * Return description for mark_recording_progress.
+     *
+     * @return external_single_structure
+     */
+    public static function mark_recording_progress_returns() {
+        return new external_single_structure([
+            'watchedseconds' => new external_value(PARAM_INT, 'Accumulated heartbeat seconds'),
+            'completed' => new external_value(PARAM_BOOL, 'Whether the recording is completed'),
+        ]);
+    }
+
+    /**
      * Parameters for get_practice_questions.
      *
      * @return external_function_parameters

@@ -45,6 +45,15 @@ const stringRequests = [
     {key: 'practice_correct_answer', component: COMPONENT},
     {key: 'practice_finish', component: COMPONENT},
     {key: 'practice_next', component: COMPONENT},
+    {key: 'recording_mark_viewed', component: COMPONENT},
+    {key: 'recording_progress_aria', component: COMPONENT},
+    {key: 'recording_progress_completed', component: COMPONENT},
+    {key: 'recording_progress_partial', component: COMPONENT},
+    {key: 'recording_progress_saving', component: COMPONENT},
+    {key: 'recording_progress_unseen', component: COMPONENT},
+    {key: 'chapter_timestamp_copied', component: COMPONENT},
+    {key: 'chapter_timestamp_reference', component: COMPONENT},
+    {key: 'chapter_transcript_highlighted', component: COMPONENT},
     {key: 'name', component: 'core'},
     {key: 'cancel', component: 'core'},
     {key: 'savechanges', component: 'core'},
@@ -53,6 +62,16 @@ const stringRequests = [
 let initialised = false;
 let settings = {};
 let strings = {};
+let progress = {
+    completed: false,
+    watchedseconds: 0,
+    thresholdseconds: 480,
+    pendingseconds: 0,
+    visibleSince: 0,
+    timer: null,
+};
+
+const HEARTBEAT_INTERVAL_MS = 30000;
 
 /**
  * Load and cache the strings used by this module.
@@ -168,6 +187,30 @@ const confirmAction = (title, body, label, triggerElement, callback) => {
 };
 
 /**
+ * Update a recording visibility action after the AJAX toggle response.
+ *
+ * @param {JQuery} button Visibility button.
+ * @param {boolean} visible Whether the recording is now visible to students.
+ * @returns {void}
+ */
+const updateVisibilityButton = (button, visible) => {
+    const label = button.attr(visible ? 'data-label-hide' : 'data-label-show') || '';
+    if (!label) {
+        return;
+    }
+
+    if (button.text().trim()) {
+        button.text(label);
+    }
+    if (button.attr('title')) {
+        button.attr('title', label);
+    }
+    if (button.attr('aria-label')) {
+        button.attr('aria-label', label);
+    }
+};
+
+/**
  * Call an external function and reload on success.
  *
  * @param {string} methodname Web service method name.
@@ -179,6 +222,317 @@ const call = (methodname, args) => Ajax.call([{methodname: methodname, args: arg
         reloadHub();
     })
     .fail(Notification.exception);
+
+/**
+ * Whether the page is currently visible enough to count heartbeat seconds.
+ *
+ * @returns {boolean}
+ */
+const pageIsVisible = () => !document.visibilityState || document.visibilityState === 'visible';
+
+/**
+ * Label and percent for the current progress state.
+ *
+ * @returns {Object}
+ */
+const currentProgressState = () => {
+    let label = strings.recording_progress_unseen;
+    let percent = 0;
+
+    if (progress.completed) {
+        label = strings.recording_progress_completed;
+        percent = 100;
+    } else if (progress.watchedseconds > 0) {
+        label = strings.recording_progress_partial;
+        percent = Math.min(99, Math.max(1, Math.floor((progress.watchedseconds / progress.thresholdseconds) * 100)));
+    }
+
+    return {label: label, percent: percent};
+};
+
+/**
+ * Update the hub progress UI after a web service response.
+ *
+ * @returns {void}
+ */
+const refreshProgressUi = () => {
+    const state = currentProgressState();
+    const badge = $('.googlemeet-hub-progress .googlemeet-progress-badge');
+    const meter = $('.googlemeet-hub-progress .googlemeet-progress-meter');
+    const bar = meter.find('.progress-bar');
+    const button = $('.googlemeet-mark-viewed');
+    const aria = (strings.recording_progress_aria || '{$a}').replace('{$a}', state.label);
+
+    badge
+        .removeClass('googlemeet-progress-badge-completed googlemeet-progress-badge-partial googlemeet-progress-badge-unseen')
+        .addClass(progress.completed
+            ? 'googlemeet-progress-badge-completed'
+            : (progress.watchedseconds > 0 ? 'googlemeet-progress-badge-partial' : 'googlemeet-progress-badge-unseen'))
+        .attr('aria-label', aria);
+    badge.find('[aria-hidden="true"]').text(progress.completed ? '\u2713' : '\u25cb');
+    badge.find('.googlemeet-progress-status-text').text(state.label);
+    meter.attr('aria-valuenow', state.percent);
+    bar.css('width', state.percent + '%');
+
+    if (progress.completed) {
+        button.prop('disabled', true).text(strings.recording_progress_completed);
+    } else {
+        button.prop('disabled', false).text(strings.recording_mark_viewed);
+    }
+};
+
+/**
+ * Add visible elapsed seconds to the pending heartbeat buffer.
+ *
+ * @returns {void}
+ */
+const collectVisibleSeconds = () => {
+    if (progress.completed || !progress.visibleSince) {
+        return;
+    }
+
+    const now = Date.now();
+    const elapsed = Math.floor((now - progress.visibleSince) / 1000);
+    if (elapsed <= 0) {
+        return;
+    }
+
+    progress.pendingseconds += elapsed;
+    progress.visibleSince += elapsed * 1000;
+};
+
+/**
+ * Persist one progress heartbeat.
+ *
+ * @param {number} delta Seconds to add.
+ * @param {boolean} completed Whether to mark completed.
+ * @param {boolean} silent Whether errors should stay silent.
+ * @returns {Promise}
+ */
+const sendProgress = (delta, completed, silent) => {
+    delta = Math.max(0, Math.min(60, parseInt(delta, 10) || 0));
+    if (!delta && !completed) {
+        return Promise.resolve();
+    }
+
+    return Ajax.call([{
+        methodname: 'mod_googlemeet_mark_recording_progress',
+        args: {
+            recordingid: settings.recordingid,
+            coursemoduleid: settings.cmid,
+            watchedsecondsdelta: delta,
+            completed: !!completed,
+        },
+    }])[0].then(response => {
+        progress.watchedseconds = parseInt(response.watchedseconds, 10) || 0;
+        progress.completed = !!response.completed;
+        refreshProgressUi();
+    }).fail(error => {
+        progress.pendingseconds += delta;
+        if (!silent) {
+            refreshProgressUi();
+            Notification.exception(error);
+        }
+    });
+};
+
+/**
+ * Flush pending heartbeat seconds when enough visible time has accumulated.
+ *
+ * @param {boolean} force Send even when below the normal interval.
+ * @returns {void}
+ */
+const flushProgressHeartbeat = force => {
+    if (progress.completed) {
+        return;
+    }
+
+    collectVisibleSeconds();
+    if (!force && progress.pendingseconds < 30) {
+        return;
+    }
+
+    const delta = Math.min(progress.pendingseconds, 60);
+    progress.pendingseconds -= delta;
+    sendProgress(delta, false, true);
+};
+
+/**
+ * Bind recording progress heartbeat and manual completion.
+ *
+ * @returns {void}
+ */
+const bindRecordingProgress = () => {
+    const root = $('.googlemeet-hub-progress');
+    if (!root.length) {
+        return;
+    }
+
+    progress.completed = !!settings.progresscompleted;
+    progress.watchedseconds = Math.max(0, parseInt(settings.progresswatchedseconds, 10) || 0);
+    progress.thresholdseconds = Math.max(30, parseInt(settings.progressthresholdseconds, 10) || 480);
+    progress.pendingseconds = 0;
+    progress.visibleSince = (!progress.completed && pageIsVisible()) ? Date.now() : 0;
+    refreshProgressUi();
+
+    $('.googlemeet-mark-viewed').on('click', function() {
+        if (progress.completed) {
+            return;
+        }
+
+        const button = $(this);
+        collectVisibleSeconds();
+        const delta = Math.min(progress.pendingseconds, 60);
+        progress.pendingseconds -= delta;
+        button.prop('disabled', true).text(strings.recording_progress_saving);
+        sendProgress(delta, true, false).then(() => {
+            refreshProgressUi();
+        });
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (progress.completed) {
+            return;
+        }
+
+        if (pageIsVisible()) {
+            progress.visibleSince = Date.now();
+        } else {
+            flushProgressHeartbeat(true);
+            progress.visibleSince = 0;
+        }
+    });
+
+    progress.timer = window.setInterval(() => {
+        if (!pageIsVisible()) {
+            return;
+        }
+        flushProgressHeartbeat(false);
+    }, HEARTBEAT_INTERVAL_MS);
+};
+
+/**
+ * Show the transcript tab for teacher chapter navigation.
+ *
+ * @returns {void}
+ */
+const showTranscriptTab = () => {
+    const tab = document.getElementById('googlemeet-transcript-tab');
+    if (!tab) {
+        return;
+    }
+    if (window.bootstrap && window.bootstrap.Tab) {
+        window.bootstrap.Tab.getOrCreateInstance(tab).show();
+    } else if (typeof $(tab).tab === 'function') {
+        $(tab).tab('show');
+    }
+};
+
+/**
+ * Highlight a timestamp in the teacher-only transcript panel.
+ *
+ * @param {string} timestamp Timestamp text.
+ * @returns {boolean} Whether a matching timestamp was found.
+ */
+const highlightTranscriptTimestamp = timestamp => {
+    const root = $('.googlemeet-ai-transcript-text').get(0);
+    if (!root || !timestamp) {
+        return false;
+    }
+
+    $('.googlemeet-transcript-highlight').removeClass('googlemeet-transcript-highlight');
+    const existing = $(root).find('[data-chapter-timestamp]').filter(function() {
+        return $(this).attr('data-chapter-timestamp') === timestamp;
+    }).get(0);
+    if (existing) {
+        existing.classList.add('googlemeet-transcript-highlight');
+        existing.scrollIntoView({block: 'center', behavior: 'smooth'});
+        return true;
+    }
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+        const index = node.nodeValue.indexOf(timestamp);
+        if (index !== -1) {
+            const parent = node.parentNode;
+            const before = node.nodeValue.slice(0, index);
+            const match = node.nodeValue.slice(index, index + timestamp.length);
+            const after = node.nodeValue.slice(index + timestamp.length);
+            const highlight = document.createElement('span');
+            highlight.className = 'googlemeet-transcript-highlight';
+            highlight.setAttribute('data-chapter-timestamp', timestamp);
+            highlight.textContent = match;
+
+            if (before !== '') {
+                parent.insertBefore(document.createTextNode(before), node);
+            }
+            parent.insertBefore(highlight, node);
+            node.nodeValue = after;
+            highlight.scrollIntoView({block: 'center', behavior: 'smooth'});
+            return true;
+        }
+        node = walker.nextNode();
+    }
+
+    return false;
+};
+
+/**
+ * Copy a timestamp to the clipboard when possible.
+ *
+ * @param {string} timestamp Timestamp text.
+ * @returns {Promise<void>}
+ */
+const copyTimestamp = timestamp => {
+    const feedback = $('[data-region="chapter-feedback"]');
+    const reference = (strings.chapter_timestamp_reference || '{$a}').replace('{$a}', timestamp);
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        feedback.text(reference);
+        return Promise.resolve();
+    }
+
+    return navigator.clipboard.writeText(timestamp).then(() => {
+        feedback.text((strings.chapter_timestamp_copied || '{$a}').replace('{$a}', timestamp));
+    }).catch(() => {
+        feedback.text(reference);
+    });
+};
+
+/**
+ * Bind timestamped chapter interactions.
+ *
+ * @returns {void}
+ */
+const bindChapters = () => {
+    $('.googlemeet-chapter-button').on('click', function() {
+        const button = $(this);
+        const timestamp = button.attr('data-chapter-timestamp') || '';
+        const seconds = parseInt(button.attr('data-start-seconds'), 10);
+        const nativeVideo = $('#googlemeet-recording-hub video').get(0);
+        const feedback = $('[data-region="chapter-feedback"]');
+
+        if (nativeVideo && !Number.isNaN(seconds) && seconds >= 0) {
+            nativeVideo.currentTime = seconds;
+            nativeVideo.focus();
+            return;
+        }
+
+        if (settings.caneditrecording && $('#googlemeet-transcript-tab').length) {
+            showTranscriptTab();
+            window.setTimeout(() => {
+                if (highlightTranscriptTimestamp(timestamp)) {
+                    feedback.text((strings.chapter_transcript_highlighted || '{$a}').replace('{$a}', timestamp));
+                    return;
+                }
+                copyTimestamp(timestamp);
+            }, 160);
+            return;
+        }
+
+        copyTimestamp(timestamp);
+    });
+};
 
 /**
  * Return selected question IDs.
@@ -335,11 +689,19 @@ const bindQuestionManagement = () => {
  * @returns {void}
  */
 const bindRecordingManagement = () => {
-    $('.recordinghowhide').on('click', () => {
-        call('mod_googlemeet_showhide_recording', {
-            recordingid: settings.recordingid,
-            coursemoduleid: settings.cmid,
-        });
+    $('.recordinghowhide').on('click', function() {
+        const button = $(this);
+        Ajax.call([{
+            methodname: 'mod_googlemeet_showhide_recording',
+            args: {
+                recordingid: settings.recordingid,
+                coursemoduleid: settings.cmid,
+            },
+        }])[0].then(response => {
+            const visible = response.visible === true || response.visible === 1 ||
+                response.visible === '1' || response.visible === 'true';
+            updateVisibilityButton(button, visible);
+        }).fail(Notification.exception);
     });
 
     $('.recordingeditname').on('click', function() {
@@ -598,6 +960,9 @@ const bindPracticePlayer = () => {
  * @param {boolean} config.caneditrecording Whether recording actions are available.
  * @param {boolean} config.canmanagequestions Whether question management is available.
  * @param {boolean} config.hasquestions Whether questions exist for the recording.
+ * @param {boolean} config.progresscompleted Whether this user already completed the recording.
+ * @param {number} config.progresswatchedseconds Accumulated heartbeat seconds.
+ * @param {number} config.progressthresholdseconds Completion threshold in seconds.
  * @returns {void}
  */
 export const init = config => {
@@ -612,6 +977,9 @@ export const init = config => {
         caneditrecording: !!config.caneditrecording,
         canmanagequestions: !!config.canmanagequestions,
         hasquestions: !!config.hasquestions,
+        progresscompleted: !!config.progresscompleted,
+        progresswatchedseconds: parseInt(config.progresswatchedseconds, 10) || 0,
+        progressthresholdseconds: parseInt(config.progressthresholdseconds, 10) || 480,
     };
     settings.hubStateKey = 'mod_googlemeet_hub_state_' + settings.cmid + '_' + settings.recordingid;
 
@@ -622,6 +990,8 @@ export const init = config => {
             if (settings.caneditrecording) {
                 bindRecordingManagement();
             }
+            bindRecordingProgress();
+            bindChapters();
             bindPracticePlayer();
         });
     }).catch(Notification.exception);

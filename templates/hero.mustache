@@ -1,0 +1,138 @@
+{{!
+  @template mod_googlemeet/hero
+}}
+<section class="googlemeet-classroom-hero" aria-labelledby="googlemeet-classroom-hero-title">
+  <div class="googlemeet-hero-main">
+    <div class="googlemeet-hero-kicker">{{# str }} classroom_kicker, mod_googlemeet {{/ str }}</div>
+    <h3 id="googlemeet-classroom-hero-title" class="googlemeet-hero-title">{{activityname}}</h3>
+
+    {{#hasnextevent}}
+      <div class="googlemeet-hero-event googlemeet-hero-event-{{nexteventstatus}}">
+        <span class="googlemeet-badge googlemeet-hero-status">
+          {{#nexteventislive}}<span class="googlemeet-pulse" aria-hidden="true"></span>{{/nexteventislive}}
+          {{nexteventstatuslabel}}
+        </span>
+        <div class="googlemeet-hero-event-time">
+          {{#nexteventtoday}}<strong>{{# str }} today, mod_googlemeet {{/ str }}</strong>{{/nexteventtoday}}
+          {{^nexteventtoday}}{{nexteventdate}}{{/nexteventtoday}}
+          <span>{{nexteventstarttime}} - {{nexteventendtime}}</span>
+          <span>{{nexteventduration}}</span>
+        </div>
+        <div class="googlemeet-hero-countdown">
+          {{#nexteventislive}}
+            <span>{{nexteventtimeinfo}}</span>
+          {{/nexteventislive}}
+          {{#nexteventhascountdown}}
+            <span data-googlemeet-countdown="1" data-target-ts="{{nexteventtimestamp}}" data-countdown-prefix="{{countdownprefix}}" data-countdown-expired="{{countdownexpired}}" aria-live="polite">{{nexteventtimeinfo}}</span>
+          {{/nexteventhascountdown}}
+        </div>
+      </div>
+    {{/hasnextevent}}
+
+    {{#hasnextclassevents}}
+      <div class="googlemeet-hero-nextclasses">
+        <div class="googlemeet-hero-nextclasses-title">{{# str }} hero_next_classes, mod_googlemeet {{/ str }}</div>
+        <div class="googlemeet-hero-nextclasses-list">
+          {{#nextclassevents}}
+            <div class="googlemeet-hero-nextclass-row">
+              <span>{{date}}</span>
+              <span>{{starttime}}&ndash;{{endtime}}</span>
+              <span>{{duration}}</span>
+            </div>
+          {{/nextclassevents}}
+        </div>
+      </div>
+    {{/hasnextclassevents}}
+
+    {{#hasscheduleevents}}
+      <a href="#googlemeet-schedule" class="googlemeet-hero-schedule-link">{{# str }} hero_full_schedule_link, mod_googlemeet {{/ str }}</a>
+    {{/hasscheduleevents}}
+
+    {{^hasnextevent}}
+      <div class="googlemeet-hero-empty">{{# str }} event_no_upcoming, mod_googlemeet {{/ str }}</div>
+    {{/hasnextevent}}
+
+    {{#hasroomcta}}
+      <div class="googlemeet-room-entry googlemeet-hero-room-entry">
+        {{#roomactive}}
+          <a href="{{roomurl}}" class="{{roomclasses}}" target="_blank" rel="noopener noreferrer" title="{{# str }} entertheroom, mod_googlemeet {{/ str }}" data-live-label="{{# str }} room_enter_live, mod_googlemeet {{/ str }}">
+            {{#nexteventislive}}<span class="googlemeet-pulse" aria-hidden="true"></span>{{/nexteventislive}}
+            <span class="googlemeet-room-cta-label">{{roomlabel}}</span>
+            {{#roomhascountdown}}
+              <span class="googlemeet-room-cta-countdown" data-googlemeet-countdown="1" data-target-ts="{{roomtargetts}}" data-countdown-prefix="{{roomcountdownprefix}}" data-countdown-expired="{{roomcountdownexpired}}" aria-live="polite"></span>
+            {{/roomhascountdown}}
+          </a>
+        {{/roomactive}}
+        {{#roomdisabled}}
+          <span class="{{roomclasses}}" role="button" aria-disabled="true">
+            <span class="googlemeet-room-cta-label">{{roomlabel}}</span>
+          </span>
+        {{/roomdisabled}}
+        {{#roomnote}}<span class="googlemeet-room-note">{{roomnote}}</span>{{/roomnote}}
+      </div>
+    {{/hasroomcta}}
+  </div>
+
+  <aside class="googlemeet-hero-continue" aria-labelledby="googlemeet-continue-title">
+    {{#hascontinue}}
+      <div class="googlemeet-continue-label">{{continuelabel}}</div>
+      <h4 id="googlemeet-continue-title" class="googlemeet-continue-title">
+        <a href="{{continueurl}}" title="{{continueoriginaltitle}}">{{continuetitle}}</a>
+      </h4>
+      <div class="googlemeet-continue-meta">
+        <span>{{continuedate}}</span>
+        <span>{{continueduration}}</span>
+      </div>
+      {{#continuesummary}}<p class="googlemeet-continue-summary">{{continuesummary}}</p>{{/continuesummary}}
+      <div class="googlemeet-continue-progress" aria-label="{{continueprogressarialabel}}">
+        <span class="googlemeet-progress-badge {{continueprogressbadgeclass}}">
+          {{#continueprogresscompleted}}<span aria-hidden="true">&#10003;</span>{{/continueprogresscompleted}}
+          {{#continueprogressunseen}}<span aria-hidden="true">&#9675;</span>{{/continueprogressunseen}}
+          <span class="googlemeet-progress-status-text">{{continueprogresslabel}}</span>
+        </span>
+        {{#continueshowprogressbar}}
+          <div class="googlemeet-progress-line">
+            <div class="progress googlemeet-progress-meter" role="progressbar" aria-label="{{# str }} recording_progress_meter, mod_googlemeet {{/ str }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{continueprogresspct}}">
+              <div class="progress-bar" style="{{continueprogressbarstyle}}"></div>
+            </div>
+            <span class="googlemeet-progress-percent">{{continueprogresspcttext}}</span>
+          </div>
+        {{/continueshowprogressbar}}
+      </div>
+      <a href="{{continueurl}}" class="btn btn-primary btn-sm googlemeet-continue-cta">{{continuectalabel}}</a>
+    {{/hascontinue}}
+    {{^hascontinue}}
+      <div class="googlemeet-continue-label">{{# str }} continue_watching_label, mod_googlemeet {{/ str }}</div>
+      <h4 id="googlemeet-continue-title" class="googlemeet-continue-title">{{# str }} continue_watching_empty_title, mod_googlemeet {{/ str }}</h4>
+      <p class="googlemeet-continue-summary">{{# str }} continue_watching_empty, mod_googlemeet {{/ str }}</p>
+    {{/hascontinue}}
+  </aside>
+</section>
+
+{{#hasscheduleevents}}
+  <details id="googlemeet-schedule" class="googlemeet-schedule-section" open>
+    <summary class="googlemeet-schedule-summary">{{# str }} schedule_title, mod_googlemeet {{/ str }}</summary>
+    <div class="googlemeet-schedule-list">
+      {{#scheduleevents}}
+        <div class="googlemeet-schedule-row">
+          <span class="googlemeet-schedule-date">
+            {{date}}
+            {{#isnext}}<span class="googlemeet-schedule-next">{{# str }} schedule_next_badge, mod_googlemeet {{/ str }}</span>{{/isnext}}
+          </span>
+          <span class="googlemeet-schedule-time">{{starttime}}&ndash;{{endtime}}</span>
+          <span class="googlemeet-schedule-duration">{{duration}}</span>
+        </div>
+      {{/scheduleevents}}
+    </div>
+    <div class="googlemeet-schedule-note">
+      {{# str }} schedule_sync_note, mod_googlemeet {{/ str }}<br>
+      <a href="/calendar/view.php?view=upcoming&amp;course={{courseid}}" class="googlemeet-hero-schedule-link">{{# str }} hero_campus_calendar_link, mod_googlemeet {{/ str }}</a>
+    </div>
+  </details>
+{{/hasscheduleevents}}
+
+{{#js}}
+require(['mod_googlemeet/sync'], function(m) {
+  m.init();
+});
+{{/js}}

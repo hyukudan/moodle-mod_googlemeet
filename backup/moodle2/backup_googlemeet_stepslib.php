@@ -104,11 +104,21 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timecreated'
         ]);
 
+        $recordingprogresses = new backup_nested_element('recordingprogresses');
+        $recordingprogress = new backup_nested_element('recordingprogress', ['id'], [
+            'userid',
+            'watchedseconds',
+            'completed',
+            'timecreated',
+            'timemodified'
+        ]);
+
         $aianalysis = new backup_nested_element('aianalysis', ['id'], [
             'summary',
             'keypoints',
             'transcript',
             'topics',
+            'chapters',
             'language',
             'status',
             'error',
@@ -144,6 +154,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         // when the backup carries user information.
         if ($userinfo) {
             $recording->add_child($aianalysis);
+            $recording->add_child($recordingprogresses);
+            $recordingprogresses->add_child($recordingprogress);
             $googlemeet->add_child($recordingsubs);
             $recordingsubs->add_child($recordingsub);
         }
@@ -169,6 +181,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         if ($userinfo) {
             $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
+            $recordingprogress->set_source_table('googlemeet_recording_progress', ['recordingid' => backup::VAR_PARENTID]);
             $recordingsub->set_source_table('googlemeet_recording_subs', ['googlemeetid' => backup::VAR_PARENTID]);
         }
 
@@ -178,6 +191,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         // Define id annotations.
         if ($userinfo) {
+            $recordingprogress->annotate_ids('user', 'userid');
             $recordingsub->annotate_ids('user', 'userid');
         }
 

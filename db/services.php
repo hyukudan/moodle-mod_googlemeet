@@ -169,4 +169,12 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
+    'mod_googlemeet_mark_recording_progress' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'mark_recording_progress',
+        'description' => 'Mark Google Meet recording viewing progress for the current user',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+    ),
 );

@@ -93,7 +93,15 @@
                 {{/cancelledreason}}
               {{/iscancelled}}
               {{^iscancelled}}
-                {{timeinfo}}
+                {{#islive}}
+                  <span>{{timeinfo}}</span>
+                {{/islive}}
+                {{#issoon}}
+                  <span data-googlemeet-countdown="1" data-target-ts="{{timestamp}}" data-countdown-prefix="{{countdownprefix}}" data-countdown-expired="{{countdownexpired}}" aria-live="polite">{{timeinfo}}</span>
+                {{/issoon}}
+                {{#isscheduled}}
+                  <span data-googlemeet-countdown="1" data-target-ts="{{timestamp}}" data-countdown-prefix="{{countdownprefix}}" data-countdown-expired="{{countdownexpired}}">{{timeinfo}}</span>
+                {{/isscheduled}}
               {{/iscancelled}}
             </div>
           </div>

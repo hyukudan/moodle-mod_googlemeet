@@ -37,8 +37,8 @@ require_once($CFG->libdir . '/filelib.php');
  */
 class subtitle_extractor {
 
-    /** @var string Path to the yt-dlp binary */
-    private string $ytdlppath;
+    /** @var string|null Path to the yt-dlp binary */
+    private ?string $ytdlppath = null;
 
     /** @var string Subtitle language to extract */
     private string $language;
@@ -76,6 +76,7 @@ class subtitle_extractor {
      */
     public function extract(string $driveurl): ?string {
         if (!$this->is_available()) {
+            mtrace('subtitle_extractor: yt-dlp no encontrado; se omite la extracción de subtítulos; configure la ruta en Ajustes > googlemeet > ytdlppath o instale yt-dlp en PATH');
             debugging('subtitle_extractor: yt-dlp not available', DEBUG_DEVELOPER);
             return null;
         }
@@ -174,6 +175,11 @@ class subtitle_extractor {
      * @return string|null The timedtext URL or null on failure
      */
     public function get_timedtext_url(string $driveurl): ?string {
+        if (empty($this->ytdlppath)) {
+            mtrace('subtitle_extractor: yt-dlp no encontrado; se omite la extracción de subtítulos; configure la ruta en Ajustes > googlemeet > ytdlppath o instale yt-dlp en PATH');
+            return null;
+        }
+
         $cmd = escapeshellarg($this->ytdlppath)
              . ' --ignore-config --no-playlist'
              . ' -v --write-sub --sub-lang ' . escapeshellarg($this->language)

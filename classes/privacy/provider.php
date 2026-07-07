@@ -71,6 +71,19 @@ class provider implements
             'privacy:metadata:googlemeet_recording_subs'
         );
 
+        $collection->add_database_table(
+            'googlemeet_recording_progress',
+            [
+                'recordingid' => 'privacy:metadata:googlemeet_recording_progress:recordingid',
+                'userid' => 'privacy:metadata:googlemeet_recording_progress:userid',
+                'watchedseconds' => 'privacy:metadata:googlemeet_recording_progress:watchedseconds',
+                'completed' => 'privacy:metadata:googlemeet_recording_progress:completed',
+                'timecreated' => 'privacy:metadata:googlemeet_recording_progress:timecreated',
+                'timemodified' => 'privacy:metadata:googlemeet_recording_progress:timemodified',
+            ],
+            'privacy:metadata:googlemeet_recording_progress'
+        );
+
         // The plugin authenticates against Google using the per-user OAuth 2 tokens managed
         // by the core_oauth2 subsystem (see \core\oauth2\api::get_user_oauth_client). Those
         // tokens are personal data, but they are stored and managed by the subsystem, which
@@ -105,6 +118,7 @@ class provider implements
                 'summary' => 'privacy:metadata:googlemeet_ai_analysis:summary',
                 'keypoints' => 'privacy:metadata:googlemeet_ai_analysis:keypoints',
                 'topics' => 'privacy:metadata:googlemeet_ai_analysis:topics',
+                'chapters' => 'privacy:metadata:googlemeet_ai_analysis:chapters',
                 'transcript' => 'privacy:metadata:googlemeet_ai_analysis:transcript',
             ],
             'privacy:metadata:googlemeet_ai_analysis'
@@ -184,7 +198,16 @@ class provider implements
             INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname2
             INNER JOIN {googlemeet} g ON g.id = cm.instance
             INNER JOIN {googlemeet_recording_subs} grs ON grs.googlemeetid = g.id
-                 WHERE grs.userid = :userid2";
+                 WHERE grs.userid = :userid2
+                 UNION
+                SELECT c.id
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel3
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname3
+            INNER JOIN {googlemeet} g ON g.id = cm.instance
+            INNER JOIN {googlemeet_recordings} gr ON gr.googlemeetid = g.id
+            INNER JOIN {googlemeet_recording_progress} grp ON grp.recordingid = gr.id
+                 WHERE grp.userid = :userid3";
 
         $params = [
             'modname1' => 'googlemeet',
@@ -193,6 +216,9 @@ class provider implements
             'modname2' => 'googlemeet',
             'contextlevel2' => CONTEXT_MODULE,
             'userid2' => $userid,
+            'modname3' => 'googlemeet',
+            'contextlevel3' => CONTEXT_MODULE,
+            'userid3' => $userid,
         ];
 
         $contextlist = new contextlist();
@@ -234,6 +260,16 @@ class provider implements
                   JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
                   JOIN {googlemeet} g ON g.id = cm.instance
                   JOIN {googlemeet_recording_subs} grs ON grs.googlemeetid = g.id
+                 WHERE cm.id = :cmid";
+
+        $userlist->add_from_sql('userid', $sql, $params);
+
+        $sql = "SELECT grp.userid
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
+                  JOIN {googlemeet} g ON g.id = cm.instance
+                  JOIN {googlemeet_recordings} gr ON gr.googlemeetid = g.id
+                  JOIN {googlemeet_recording_progress} grp ON grp.recordingid = gr.id
                  WHERE cm.id = :cmid";
 
         $userlist->add_from_sql('userid', $sql, $params);
@@ -316,6 +352,45 @@ class provider implements
         }
 
         $subscriptions->close();
+
+        $sql = "SELECT cm.id AS cmid,
+                       gr.id AS recordingid,
+                       gr.name AS recordingname,
+                       grp.watchedseconds,
+                       grp.completed,
+                       grp.timecreated,
+                       grp.timemodified
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+            INNER JOIN {googlemeet} g ON g.id = cm.instance
+            INNER JOIN {googlemeet_recordings} gr ON gr.googlemeetid = g.id
+            INNER JOIN {googlemeet_recording_progress} grp ON grp.recordingid = gr.id
+                 WHERE c.id {$contextsql}
+                   AND grp.userid = :userid
+              ORDER BY cm.id, gr.createdtime";
+
+        $progressrecords = $DB->get_recordset_sql($sql, $params);
+
+        foreach ($progressrecords as $progress) {
+            $progressdata = [
+                'recordingid' => (int)$progress->recordingid,
+                'recordingname' => $progress->recordingname,
+                'watchedseconds' => (int)$progress->watchedseconds,
+                'completed' => (bool)$progress->completed,
+                'timecreated' => \core_privacy\local\request\transform::datetime($progress->timecreated),
+                'timemodified' => \core_privacy\local\request\transform::datetime($progress->timemodified),
+            ];
+
+            $context = \context_module::instance($progress->cmid);
+            writer::with_context($context)->export_related_data(
+                [get_string('recordingprogress', 'googlemeet')],
+                'recording_' . $progress->recordingid,
+                (object)$progressdata
+            );
+        }
+
+        $progressrecords->close();
     }
 
     /**
@@ -347,6 +422,7 @@ class provider implements
         $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$cm->instance]);
         if (!empty($recordingids)) {
             list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
+            $DB->delete_records_select('googlemeet_recording_progress', "recordingid $insql", $inparams);
             $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
         }
 
@@ -390,6 +466,14 @@ class provider implements
                 ]
             );
             $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $instanceid, 'userid' => $userid]);
+            $DB->delete_records_select(
+                'googlemeet_recording_progress',
+                "userid = :userid AND recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)",
+                [
+                    'userid' => $userid,
+                    'googlemeetid' => $instanceid,
+                ]
+            );
         }
     }
 
@@ -422,5 +506,9 @@ class provider implements
 
         $select = "googlemeetid = :googlemeetid AND userid $usersql";
         $DB->delete_records_select('googlemeet_recording_subs', $select, $params);
+
+        $select = "recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)
+                   AND userid $usersql";
+        $DB->delete_records_select('googlemeet_recording_progress', $select, $params);
     }
 }

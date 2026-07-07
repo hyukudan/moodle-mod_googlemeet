@@ -1,0 +1,5 @@
+*.bak-*
+*.archived
+*.wip.bak
+.superpowers/
+CLAUDE.md

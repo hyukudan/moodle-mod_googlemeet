@@ -132,6 +132,9 @@ class process_video_analysis extends adhoc_task {
             $analysis->summary = $result->summary;
             $analysis->keypoints = json_encode($result->keypoints);
             $analysis->topics = json_encode($result->topics);
+            if (array_key_exists('chapters', $DB->get_columns('googlemeet_ai_analysis'))) {
+                $analysis->chapters = json_encode($result->chapters ?? []);
+            }
             $analysis->transcript = $result->transcript ?? $recording->transcripttext ?? '';
             $analysis->language = $result->language;
             $analysis->status = 'completed';

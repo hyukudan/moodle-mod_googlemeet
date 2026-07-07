@@ -55,6 +55,8 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         if ($userinfo) {
             $paths[] = new restore_path_element('googlemeet_aianalysis',
                 '/activity/googlemeet/recordings/recording/aianalysis');
+            $paths[] = new restore_path_element('googlemeet_recordingprogress',
+                '/activity/googlemeet/recordings/recording/recordingprogresses/recordingprogress');
             $paths[] = new restore_path_element('googlemeet_recordingsub',
                 '/activity/googlemeet/recordingsubs/recordingsub');
         }
@@ -159,6 +161,31 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
 
         $newitemid = $DB->insert_record('googlemeet_ai_analysis', $data);
         $this->set_mapping('googlemeet_aianalysis', $oldid, $newitemid);
+    }
+
+    /**
+     * Process a recording progress restore.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_recordingprogress($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->recordingid = $this->get_new_parentid('googlemeet_recording');
+        $data->userid = $this->get_mappingid('user', $data->userid);
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        if (empty($data->userid)) {
+            return;
+        }
+
+        if (!$DB->record_exists('googlemeet_recording_progress',
+                ['recordingid' => $data->recordingid, 'userid' => $data->userid])) {
+            $DB->insert_record('googlemeet_recording_progress', $data);
+        }
     }
 
     /**

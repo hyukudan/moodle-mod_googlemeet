@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/googlemeet/db" VERSION="20260702" COMMENT="XMLDB file for Moodle mod_googlemeet"
+<XMLDB PATH="mod/googlemeet/db" VERSION="20260705" COMMENT="XMLDB file for Moodle mod_googlemeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -120,6 +120,25 @@
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="googlemeet_recording_progress" COMMENT="Stores per-user recording viewing progress.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="recordingid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="watchedseconds" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Accumulated visible-page heartbeat seconds, not video playback seconds."/>
+        <FIELD NAME="completed" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="recordingidfk" TYPE="foreign" FIELDS="recordingid" REFTABLE="googlemeet_recordings" REFFIELDS="id"/>
+        <KEY NAME="useridfk" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="recordingid_userid" UNIQUE="true" FIELDS="recordingid, userid"/>
+      </INDEXES>
+    </TABLE>
     <TABLE NAME="googlemeet_holidays" COMMENT="Stores holiday/exclusion periods for recurring events.">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -161,6 +180,7 @@
         <FIELD NAME="keypoints" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of key points extracted from the video."/>
         <FIELD NAME="transcript" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Full transcript of the video."/>
         <FIELD NAME="topics" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of topics discussed in the video."/>
+        <FIELD NAME="chapters" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of timestamped lesson chapters."/>
         <FIELD NAME="language" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Detected language of the video content."/>
         <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="Processing status: pending, processing, completed, failed."/>
         <FIELD NAME="error" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Error message if processing failed."/>

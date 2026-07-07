@@ -2,12 +2,52 @@
   @template mod_googlemeet/recording_hub
 }}
 <div id="googlemeet-recording-hub" class="googlemeet-recording-hub" data-cmid="{{cmid}}" data-recordingid="{{recordingid}}">
-  <div class="mb-3">
+  <div class="googlemeet-hub-nav mb-3">
     <a href="{{backurl}}" class="btn btn-link px-0">&lsaquo; {{# str }} hub_back_to_recordings, mod_googlemeet {{/ str }}</a>
+    {{#hasrecordingnav}}
+      <div class="googlemeet-hub-nav-links">
+        {{#haspreviousrecording}}<a href="{{previousrecordingurl}}" class="btn btn-outline-secondary btn-sm">&lsaquo; {{# str }} hub_previous_recording, mod_googlemeet {{/ str }}</a>{{/haspreviousrecording}}
+        {{#hasnextrecording}}<a href="{{nextrecordingurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} hub_next_recording, mod_googlemeet {{/ str }} &rsaquo;</a>{{/hasnextrecording}}
+      </div>
+    {{/hasrecordingnav}}
   </div>
 
-  <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
-    <iframe src="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+  <div class="googlemeet-hub-media-layout {{#haschapters}}googlemeet-hub-media-with-chapters{{/haschapters}}">
+    {{#canembed}}
+      <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
+        <iframe src="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+      </div>
+    {{/canembed}}
+    {{^canembed}}
+      <div class="googlemeet-recording-player-empty mb-3">
+        <div class="googlemeet-recording-player-empty-icon" aria-hidden="true">{{# pix }} i/externallink, core {{/ pix }}</div>
+        <p>{{# str }} recording_embed_unavailable, mod_googlemeet {{/ str }}</p>
+        <a href="{{webviewlink}}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">{{# str }} openindrive, mod_googlemeet {{/ str }}</a>
+      </div>
+    {{/canembed}}
+    {{#haschapters}}
+    <aside class="googlemeet-chapters-panel mb-3" aria-labelledby="googlemeet-chapters-title">
+      <div class="googlemeet-chapters-header">
+        <h4 id="googlemeet-chapters-title">{{# str }} chapters_title, mod_googlemeet {{/ str }}</h4>
+        <span class="googlemeet-chapters-mode">{{# str }} chapters_mode_reference, mod_googlemeet {{/ str }}</span>
+      </div>
+      <p class="googlemeet-chapters-help">
+        {{#caneditrecording}}{{# str }} chapters_teacher_hint, mod_googlemeet {{/ str }}{{/caneditrecording}}
+        {{^caneditrecording}}{{# str }} chapters_student_hint, mod_googlemeet {{/ str }}{{/caneditrecording}}
+      </p>
+      <ol class="googlemeet-chapters-list">
+        {{#chapters}}
+        <li>
+          <button type="button" class="googlemeet-chapter-button" data-start-seconds="{{startseconds}}" data-chapter-timestamp="{{start}}" aria-label="{{chapterarialabel}}">
+            <span class="googlemeet-chapter-time">{{start}}</span>
+            <span class="googlemeet-chapter-title">{{title}}</span>
+          </button>
+        </li>
+        {{/chapters}}
+      </ol>
+      <div class="googlemeet-chapter-feedback" data-region="chapter-feedback" aria-live="polite"></div>
+    </aside>
+    {{/haschapters}}
   </div>
 
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
@@ -21,14 +61,33 @@
         {{/caneditrecording}}
       </h3>
       <div class="text-muted">{{duration}}</div>
+      <div class="googlemeet-hub-progress mt-2" data-region="recording-progress" data-completed="{{#progresscompleted}}1{{/progresscompleted}}{{^progresscompleted}}0{{/progresscompleted}}" data-watchedseconds="{{progresswatchedseconds}}">
+        <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}" aria-live="polite" aria-label="{{progressarialabel}}">
+          {{#progresscompleted}}<span aria-hidden="true">&#10003;</span>{{/progresscompleted}}
+          {{#progressunseen}}<span aria-hidden="true">&#9675;</span>{{/progressunseen}}
+          <span class="googlemeet-progress-status-text">{{progressstatuslabel}}</span>
+        </span>
+        {{#showprogressbar}}
+          <div class="googlemeet-progress-line">
+            <div class="progress googlemeet-progress-meter" role="progressbar" aria-label="{{# str }} recording_progress_meter, mod_googlemeet {{/ str }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{progresspct}}">
+              <div class="progress-bar" style="{{progressbarstyle}}"></div>
+            </div>
+            <span class="googlemeet-progress-percent">{{progresspcttext}}</span>
+          </div>
+        {{/showprogressbar}}
+      </div>
     </div>
     <div class="d-flex align-items-center gap-2">
+      <button type="button" class="btn btn-outline-primary btn-sm googlemeet-mark-viewed" {{#progresscompleted}}disabled{{/progresscompleted}}>
+        {{#progresscompleted}}{{# str }} recording_progress_completed, mod_googlemeet {{/ str }}{{/progresscompleted}}
+        {{^progresscompleted}}{{# str }} recording_mark_viewed, mod_googlemeet {{/ str }}{{/progresscompleted}}
+      </button>
       <a href="{{webviewlink}}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}">
         {{# pix }} i/externallink, core {{/ pix }} {{# str }} openindrive, mod_googlemeet {{/ str }}
       </a>
       {{#caneditrecording}}
-        <button type="button" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}">
-          {{# str }} showhide, mod_googlemeet {{/ str }}
+        <button type="button" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}">
+          {{visibilitybuttonlabel}}
         </button>
       {{/caneditrecording}}
     </div>
@@ -253,6 +312,16 @@
     {{/hasnotes}}
   </div>
 
+  {{#hasrecordingnav}}
+    <div class="googlemeet-hub-nav googlemeet-hub-nav-bottom mt-3">
+      <span></span>
+      <div class="googlemeet-hub-nav-links">
+        {{#haspreviousrecording}}<a href="{{previousrecordingurl}}" class="btn btn-outline-secondary btn-sm">&lsaquo; {{# str }} hub_previous_recording, mod_googlemeet {{/ str }}</a>{{/haspreviousrecording}}
+        {{#hasnextrecording}}<a href="{{nextrecordingurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} hub_next_recording, mod_googlemeet {{/ str }} &rsaquo;</a>{{/hasnextrecording}}
+      </div>
+    </div>
+  {{/hasrecordingnav}}
+
   <div class="modal fade" id="googlemeet-question-edit-modal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
       <div class="modal-content">
@@ -300,7 +369,10 @@ require(['mod_googlemeet/recording_hub'], function(m) {
     sesskey: {{# quote }}{{sesskey}}{{/ quote }},
     caneditrecording: {{#caneditrecording}}true{{/caneditrecording}}{{^caneditrecording}}false{{/caneditrecording}},
     canmanagequestions: {{#canmanagequestions}}true{{/canmanagequestions}}{{^canmanagequestions}}false{{/canmanagequestions}},
-    hasquestions: {{#hasquestions}}true{{/hasquestions}}{{^hasquestions}}false{{/hasquestions}}
+    hasquestions: {{#hasquestions}}true{{/hasquestions}}{{^hasquestions}}false{{/hasquestions}},
+    progresscompleted: {{#progresscompleted}}true{{/progresscompleted}}{{^progresscompleted}}false{{/progresscompleted}},
+    progresswatchedseconds: {{progresswatchedseconds}},
+    progressthresholdseconds: {{progressthresholdseconds}}
   });
 });
 {{/js}}
