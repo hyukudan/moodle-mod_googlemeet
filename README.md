@@ -151,6 +151,34 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.25.3 (2026-07-06)
+- **Live hide/show toggle** - the "Hide from students" / "Show to students" control now flips its label via AJAX with no page reload.
+- **"View full schedule"** link is always visible in the classroom hero.
+- **Moodle calendar integration** - a `core_calendar` `provide_event_action` callback adds a "Go to classroom" action (actionable from 30 minutes before a class until it ends); the Moodle-side calendar mirror is reconciled on cancel/reschedule, events are named "Live class: {activity}", and a campus-calendar link is exposed.
+
+### Version 2.25.2 (2026-07-06)
+- **Progress indicator redesign** - the per-recording progress bar renders only while watching is in progress (1–99%) and shows the numeric percentage.
+- **Hero refinements** - an "Upcoming classes" block plus a collapsible "Class schedule" section; the "Continue watching" card falls back honestly to the "Latest class" when there is no in-progress recording.
+- **Recording hub navigation** - Previous/Next links between recordings; a player empty-state for Drive links that cannot be embedded; the default tab is always Summary for students.
+- **Consistent recording cards** with a 2-line summary clamp, plus mobile string fixes.
+
+### Version 2.25.1 (2026-07-05) — Virtual classroom (F1–F3)
+- **"Enter room" CTA** with live/soon states and a countdown; the room becomes clickable 30 minutes before a class starts.
+- **Per-student viewing progress** - new `googlemeet_recording_progress` table, an anti-IDOR web service, a 30s visibility-aware heartbeat, Viewed/Partial badges, a "Mark as viewed" action, and a completion threshold (60%, capped at 8 min). Declared in the privacy provider and backup/restore.
+- **Classroom hero** showing the next class and a "Continue watching" entry point.
+- **Per-recording AI chapters** - new `chapters` column plus a `cli/backfill_chapters.php` backfill script; the lesson list is grouped by month.
+- **AI questions backfill CLI** (`cli/backfill_questions.php`).
+- **Hygiene** - removed the dead `get_api_key`, and suspended users are now filtered out of the sync tasks.
+
+### Version 2.20.x – 2.24.x
+- **Soft-delete recordings + teacher trash** - recordings are soft-deleted with a per-recording trash button and restore, backed by a per-instance sync lock and auto-sync reset.
+- **Sync robustness** - Drive listing pagination, retry/back-off, regex-based name matching, and deferred enrichment.
+- **Search across transcripts and Gemini notes** with accent folding and match snippets.
+- **AMD migration** - inline template JavaScript moved to proper AMD modules, with a shared `ai_result` partial and CSS custom properties; documented the server-side `format_text` sanitisation boundary in the practice player.
+- **UX pass** - cleaner recording titles, more readable chips, Material icons in the hub, core Moodle modals for confirmations, and a per-recording trash button.
+- **Complete Spanish translation** (105 keys) with unified *tuteo* in the `_help` strings, dropped dead `.dark` CSS, a sync overlay, and accessibility quick wins.
+- **Mobile-safe recording emails** - the "new recording" notification HTML renders reliably on mobile clients, and recording subjects no longer use emoji (style guide).
+
 ### Version 2.18.x – 2.19.x (Meeting Notes)
 - **Meeting Notes (Notes by Gemini)** - new `notestext`/`notesdocid` columns on recordings; the Gemini meeting-notes Google Doc is matched in Drive (by the meeting-name prefix, since the recording ends `- Recording` and the notes Doc ends `- Notas de Gemini` / `- Notes by Gemini`), exported to HTML, sanitised and trimmed, then shown to students in a **Notes** tab. Declared in the privacy provider and backup/restore (`$userinfo`-gated).
 - **Robust note trimming** - removes the Doc header, the embedded transcript appendix (localised ES/EN/PT markers + a language-agnostic fallback that cuts from the first `HH:MM:SS` heading) and Gemini's promo/disclaimer text; flattens transcript timestamp links to plain text; runs `clean_text()` before trimming so HTML-entity-encoded markers match.
