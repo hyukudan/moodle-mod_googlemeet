@@ -348,7 +348,11 @@ function googlemeet_delete_events($googlemeetid) {
 function googlemeet_set_events($googlemeet, $events) {
     global $DB;
 
-    googlemeet_delete_events($events[0]->googlemeetid);
+    googlemeet_delete_events($googlemeet->id);
+
+    if (empty($events)) {
+        return;
+    }
 
     foreach ($events as $event) {
         $event->id = $DB->insert_record('googlemeet_events', $event);
@@ -570,12 +574,16 @@ function googlemeet_get_classroom_hero_context($googlemeet, $cm, context_module 
     }
 
     $scheduleevents = [];
+    $nextscheduledmarked = false;
     foreach (($scheduleeventscontext['upcomingevents'] ?? []) as $event) {
-        if (!empty($event->iscancelled)) {
-            continue;
+        $isnext = empty($event->iscancelled) && !$nextscheduledmarked;
+        if ($isnext) {
+            $nextscheduledmarked = true;
         }
         $scheduleevents[] = [
-            'isnext' => empty($scheduleevents),
+            'isnext' => $isnext,
+            'iscancelled' => !empty($event->iscancelled),
+            'cancelledreason' => $event->cancelledreason ?? '',
             'date' => $event->startdate,
             'starttime' => $event->starttime,
             'endtime' => $event->endtime,

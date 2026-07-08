@@ -2377,6 +2377,25 @@
     font-size: 0.72rem;
     font-weight: 700;
 }
+.googlemeet-schedule-row-cancelled {
+    background: #f8f9fa;
+}
+.googlemeet-schedule-row-cancelled .googlemeet-schedule-date,
+.googlemeet-schedule-row-cancelled .googlemeet-schedule-time {
+    color: var(--gm-muted, #5f6368);
+    text-decoration: line-through;
+}
+.googlemeet-schedule-cancelled {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.45rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    background: #eef0f2;
+    color: #3c4043;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
 .googlemeet-schedule-note {
     border-top: 1px solid #e8eaed;
     padding: 0.7rem 1rem;

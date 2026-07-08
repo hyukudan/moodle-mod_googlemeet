@@ -29,6 +29,9 @@ defined('MOODLE_INTERNAL') || die();
 use mod_googlemeet\client;
 use mod_googlemeet\helper;
 
+global $CFG;
+require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
+
 /**
  * For each googlemeet activity that has autosynchours > 0, find events that are due for
  * an auto-sync attempt (either the first attempt or a scheduled retry), then run
@@ -127,6 +130,11 @@ class process_autosync extends \core\task\scheduled_task {
             return;
         }
 
+        $rows = $this->close_cancelled_events($rows, $now);
+        if (empty($rows)) {
+            return;
+        }
+
         // Group events by activity so we run syncrecordings() once per activity per task tick.
         $byactivity = [];
         foreach ($rows as $row) {
@@ -137,6 +145,38 @@ class process_autosync extends \core\task\scheduled_task {
         foreach ($byactivity as $googlemeetid => $info) {
             $this->process_activity((int) $googlemeetid, $info['creatoremail'], $info['events'], $now, $max, $interval);
         }
+    }
+
+    /**
+     * Close due events whose session date is now marked as cancelled.
+     *
+     * Cancelled sessions intentionally remain in googlemeet_events so the activity can show
+     * them in its schedule, but auto-sync should not import accidental short recordings for them.
+     *
+     * @param \stdClass[] $rows Due event rows.
+     * @param int $now Current timestamp.
+     * @return \stdClass[] Due rows that still need Drive sync.
+     */
+    private function close_cancelled_events(array $rows, int $now): array {
+        $cancelledbyactivity = [];
+        $remaining = [];
+
+        foreach ($rows as $row) {
+            $googlemeetid = (int)$row->googlemeetid;
+            if (!array_key_exists($googlemeetid, $cancelledbyactivity)) {
+                $cancelledbyactivity[$googlemeetid] = \googlemeet_get_cancelled($googlemeetid);
+            }
+
+            if (\googlemeet_is_cancelled((int)$row->eventdate, $cancelledbyactivity[$googlemeetid]) !== false) {
+                $this->close_event((int)$row->eventid, (int)$row->syncattempts + 1, $now);
+                mtrace("mod_googlemeet autosync: event #{$row->eventid} is cancelled; closed without sync.");
+                continue;
+            }
+
+            $remaining[] = $row;
+        }
+
+        return $remaining;
     }
 
     /**

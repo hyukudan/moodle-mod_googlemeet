@@ -42,8 +42,10 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
  */
 #[CoversFunction('googlemeet_is_holiday')]
 #[CoversFunction('googlemeet_is_cancelled')]
+#[CoversFunction('googlemeet_save_cancelled')]
 #[CoversFunction('googlemeet_clear_url')]
 #[CoversFunction('googlemeet_construct_events_data_for_add')]
+#[CoversFunction('googlemeet_set_events')]
 #[CoversFunction('googlemeet_display_name')]
 class locallib_test extends \advanced_testcase {
 
@@ -297,6 +299,50 @@ class locallib_test extends \advanced_testcase {
         $result = googlemeet_is_cancelled(mktime(9, 0, 0, 4, 1, 2026), $cancelled);
         $this->assertNotFalse($result);
         $this->assertSame('', $result->reason);
+    }
+
+    /**
+     * Saving cancelled sessions deduplicates by day and preserves a non-empty reason.
+     */
+    public function test_save_cancelled_deduplicates_same_day(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $googlemeetid = $DB->insert_record('googlemeet', (object)[
+            'course'       => 1,
+            'name'         => 'Cancelled Save Test',
+            'url'          => 'https://meet.google.com/abc-defg-hij',
+            'timemodified' => time(),
+        ]);
+
+        $googlemeet = (object)[
+            'id' => $googlemeetid,
+            'cancelled_repeats' => 3,
+            'cancelleddate' => [
+                mktime(0, 0, 0, 5, 4, 2026),
+                mktime(0, 0, 0, 5, 4, 2026),
+                mktime(0, 0, 0, 7, 8, 2026),
+            ],
+            'cancelledreason' => [
+                '',
+                'Teacher sick',
+                'Session cancelled',
+            ],
+        ];
+
+        googlemeet_save_cancelled($googlemeet);
+
+        $records = array_values($DB->get_records('googlemeet_cancelled',
+            ['googlemeetid' => $googlemeetid], 'cancelleddate ASC, id ASC'));
+
+        $this->assertCount(2, $records);
+        $this->assertSame(usergetmidnight(mktime(0, 0, 0, 5, 4, 2026)),
+            usergetmidnight((int)$records[0]->cancelleddate));
+        $this->assertSame('Teacher sick', $records[0]->reason);
+        $this->assertSame(usergetmidnight(mktime(0, 0, 0, 7, 8, 2026)),
+            usergetmidnight((int)$records[1]->cancelleddate));
+        $this->assertSame('Session cancelled', $records[1]->reason);
     }
 
     // =========================================================================
@@ -763,5 +809,27 @@ class locallib_test extends \advanced_testcase {
         $this->assertCount(1, $events);
         // 9:30 → 11:00 = 90 minutes = 5400 seconds.
         $this->assertEquals(5400, $events[0]->duration);
+    }
+
+    /**
+     * Creating an activity with all generated dates excluded does not crash event setup.
+     */
+    public function test_set_events_accepts_empty_event_list(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $googlemeet = (object)[
+            'id' => $DB->insert_record('googlemeet', (object)[
+                'course'       => 1,
+                'name'         => 'Empty Events Test',
+                'url'          => 'https://meet.google.com/abc-defg-hij',
+                'timemodified' => time(),
+            ]),
+        ];
+
+        googlemeet_set_events($googlemeet, []);
+
+        $this->assertFalse($DB->record_exists('googlemeet_events', ['googlemeetid' => $googlemeet->id]));
     }
 }

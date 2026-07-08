@@ -268,9 +268,16 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             $mform->disabledIf("holidayenddate[$i]", 'addmultiply', 'notchecked');
         }
 
+        // Determine the number of existing cancelled dates.
+        $cancelledrepeatno = 0;
+        if (!empty($this->current->instance)) {
+            global $DB;
+            $cancelledrepeatno = $DB->count_records('googlemeet_cancelled', ['googlemeetid' => $this->current->instance]);
+        }
+
         // Cancelled dates section.
         $mform->addElement('header', 'headercancelleddates', get_string('cancelleddates', 'googlemeet'));
-        $mform->setExpanded('headercancelleddates', false);
+        $mform->setExpanded('headercancelleddates', $cancelledrepeatno > 0);
         $mform->addHelpButton('headercancelleddates', 'cancelleddates', 'googlemeet');
 
         // Define the elements for a single cancelled date.
@@ -279,13 +286,6 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             get_string('cancelleddate', 'googlemeet'));
         $cancelledelements[] = $mform->createElement('text', 'cancelledreason', get_string('cancelledreason', 'googlemeet'),
             ['size' => '30', 'placeholder' => get_string('cancelledreason_placeholder', 'googlemeet')]);
-
-        // Determine the number of existing cancelled dates.
-        $cancelledrepeatno = 0;
-        if (!empty($this->current->instance)) {
-            global $DB;
-            $cancelledrepeatno = $DB->count_records('googlemeet_cancelled', ['googlemeetid' => $this->current->instance]);
-        }
 
         // Use repeat_elements for dynamic cancelled dates.
         $this->repeat_elements(
@@ -301,12 +301,6 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             true,
             get_string('removecancelleddate', 'googlemeet')
         );
-
-        // Disable cancelled date fields if recurrence is not enabled.
-        for ($i = 0; $i < max($cancelledrepeatno, 1); $i++) {
-            $mform->disabledIf("cancelleddate[$i]", 'addmultiply', 'notchecked');
-            $mform->disabledIf("cancelledreason[$i]", 'addmultiply', 'notchecked');
-        }
 
         $mform->addElement('header', 'headerroomurl', get_string('roomurl', 'googlemeet'));
         $mform->setExpanded('headerroomurl', true);
@@ -405,7 +399,22 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
             // Load cancelled dates from database.
             $cancelleddates = $DB->get_records('googlemeet_cancelled',
-                ['googlemeetid' => $this->current->instance], 'cancelleddate ASC');
+                ['googlemeetid' => $this->current->instance], 'cancelleddate ASC, id ASC');
+            $cancelleddates = array_values($cancelleddates);
+            $today = usergetmidnight(time());
+            usort($cancelleddates, static function($a, $b) use ($today) {
+                $aday = usergetmidnight((int)$a->cancelleddate);
+                $bday = usergetmidnight((int)$b->cancelleddate);
+                $agroup = $aday >= $today ? 0 : 1;
+                $bgroup = $bday >= $today ? 0 : 1;
+                if ($agroup !== $bgroup) {
+                    return $agroup <=> $bgroup;
+                }
+                if ($aday === $bday) {
+                    return ((int)$a->id) <=> ((int)$b->id);
+                }
+                return $agroup === 0 ? $aday <=> $bday : $bday <=> $aday;
+            });
 
             $i = 0;
             foreach ($cancelleddates as $cancelled) {

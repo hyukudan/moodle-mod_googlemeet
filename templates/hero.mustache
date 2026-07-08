@@ -114,13 +114,17 @@
     <summary class="googlemeet-schedule-summary">{{# str }} schedule_title, mod_googlemeet {{/ str }}</summary>
     <div class="googlemeet-schedule-list">
       {{#scheduleevents}}
-        <div class="googlemeet-schedule-row">
+        <div class="googlemeet-schedule-row{{#iscancelled}} googlemeet-schedule-row-cancelled{{/iscancelled}}">
           <span class="googlemeet-schedule-date">
             {{date}}
             {{#isnext}}<span class="googlemeet-schedule-next">{{# str }} schedule_next_badge, mod_googlemeet {{/ str }}</span>{{/isnext}}
+            {{#iscancelled}}<span class="googlemeet-schedule-cancelled">{{# str }} event_status_cancelled, mod_googlemeet {{/ str }}</span>{{/iscancelled}}
           </span>
           <span class="googlemeet-schedule-time">{{starttime}}&ndash;{{endtime}}</span>
-          <span class="googlemeet-schedule-duration">{{duration}}</span>
+          <span class="googlemeet-schedule-duration">
+            {{#iscancelled}}{{#cancelledreason}}{{cancelledreason}}{{/cancelledreason}}{{^cancelledreason}}{{duration}}{{/cancelledreason}}{{/iscancelled}}
+            {{^iscancelled}}{{duration}}{{/iscancelled}}
+          </span>
         </div>
       {{/scheduleevents}}
     </div>

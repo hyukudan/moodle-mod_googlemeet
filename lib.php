@@ -1360,30 +1360,35 @@ function googlemeet_save_cancelled($googlemeet) {
     // Delete all existing cancelled dates for this instance.
     $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $googlemeet->id]);
 
-    // Only save cancelled dates if recurrence is enabled.
-    if (empty($googlemeet->addmultiply) || empty($googlemeet->cancelled_repeats)) {
+    if (empty($googlemeet->cancelled_repeats)) {
         return;
     }
 
-    // Save new cancelled dates.
+    $cancelledbydate = [];
     for ($i = 0; $i < $googlemeet->cancelled_repeats; $i++) {
-        $datekeyarr = "cancelleddate";
-        $reasonkeyarr = "cancelledreason";
+        $cancelleddate = $googlemeet->cancelleddate[$i] ?? null;
+        $reason = trim((string)($googlemeet->cancelledreason[$i] ?? ''));
 
-        // Get data from the repeat elements (they come as arrays).
-        $cancelleddate = $googlemeet->{$datekeyarr}[$i] ?? null;
-        $reason = $googlemeet->{$reasonkeyarr}[$i] ?? '';
-
-        // Only save if date is set.
-        if ($cancelleddate) {
-            $cancelled = new stdClass();
-            $cancelled->googlemeetid = $googlemeet->id;
-            $cancelled->cancelleddate = $cancelleddate;
-            $cancelled->reason = $reason;
-            $cancelled->timemodified = time();
-
-            $DB->insert_record('googlemeet_cancelled', $cancelled);
+        if (empty($cancelleddate)) {
+            continue;
         }
+
+        $datekey = usergetmidnight((int)$cancelleddate);
+        if (isset($cancelledbydate[$datekey]) && $cancelledbydate[$datekey]->reason !== '' && $reason === '') {
+            continue;
+        }
+
+        $cancelled = new stdClass();
+        $cancelled->googlemeetid = $googlemeet->id;
+        $cancelled->cancelleddate = (int)$cancelleddate;
+        $cancelled->reason = $reason;
+        $cancelled->timemodified = time();
+        $cancelledbydate[$datekey] = $cancelled;
+    }
+
+    ksort($cancelledbydate);
+    foreach ($cancelledbydate as $cancelled) {
+        $DB->insert_record('googlemeet_cancelled', $cancelled);
     }
 }
 
