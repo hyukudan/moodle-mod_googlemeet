@@ -1472,6 +1472,51 @@ function googlemeet_get_future_events() {
 }
 
 /**
+ * Find googlemeet instances whose recurrence looks abandoned: they still schedule future
+ * sessions and have recorded at least once, but have had no recording in the last $weeks weeks.
+ *
+ * Read-only. Uses a recordset (not get_records_sql) to avoid first-column indexing pitfalls.
+ *
+ * @param int $weeks Staleness threshold in weeks.
+ * @param int|null $now Reference timestamp (defaults to time()); injectable for tests.
+ * @return array Array of stdClass {id, name, course, coursename, cmid, lastrecording, futurecount}.
+ */
+function googlemeet_get_stale_recurrences(int $weeks, ?int $now = null): array {
+    global $DB;
+
+    $now = $now ?? time();
+    $moduleid = $DB->get_field('modules', 'id', ['name' => 'googlemeet'], MUST_EXIST);
+
+    $sql = "SELECT g.id, g.name, g.course, c.fullname AS coursename, cm.id AS cmid,
+                   (SELECT MAX(r.createdtime)
+                      FROM {googlemeet_recordings} r
+                     WHERE r.googlemeetid = g.id AND r.deleted = 0) AS lastrecording,
+                   (SELECT COUNT(1)
+                      FROM {googlemeet_events} e
+                     WHERE e.googlemeetid = g.id AND e.eventdate > :now1) AS futurecount
+              FROM {googlemeet} g
+              JOIN {course_modules} cm ON cm.instance = g.id AND cm.module = :moduleid
+              JOIN {course} c ON c.id = g.course
+             WHERE EXISTS (SELECT 1 FROM {googlemeet_events} e2
+                            WHERE e2.googlemeetid = g.id AND e2.eventdate > :now2)
+               AND EXISTS (SELECT 1 FROM {googlemeet_recordings} r2
+                            WHERE r2.googlemeetid = g.id AND r2.deleted = 0)";
+    $params = ['now1' => $now, 'now2' => $now, 'moduleid' => $moduleid];
+
+    $threshold = $weeks * 7 * DAYSECS;
+    $stale = [];
+    $rs = $DB->get_recordset_sql($sql, $params);
+    foreach ($rs as $row) {
+        if ($row->lastrecording !== null && ($now - (int) $row->lastrecording) > $threshold) {
+            $stale[] = $row;
+        }
+    }
+    $rs->close();
+
+    return $stale;
+}
+
+/**
  * Send a notification to students in the class about the event.
  *
  * @param object $user
