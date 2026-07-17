@@ -51,5 +51,14 @@ $tasks = [
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
+    ],
+    [
+        'classname' => 'mod_googlemeet\task\check_stale_recurrence',
+        'blocking' => 0,
+        'minute' => '0',
+        'hour' => '4',
+        'day' => '*',
+        'dayofweek' => '1',
+        'month' => '*'
     ]
 ];

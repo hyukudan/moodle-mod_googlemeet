@@ -132,4 +132,85 @@ class stale_recurrence_test extends \advanced_testcase {
         $this->assertStringContainsString('Live classes', $messages[0]->subject);
         $this->assertStringContainsString('update=456', $messages[0]->fullmessagehtml);
     }
+
+    /** Run the scheduled task, swallowing its mtrace output. */
+    private function run_task(): void {
+        $task = new \mod_googlemeet\task\check_stale_recurrence();
+        ob_start();
+        $task->execute();
+        ob_end_clean();
+    }
+
+    public function test_task_notifies_once_then_respects_renotify(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        set_config('stalerecurrence_enabled', 1, 'googlemeet');
+        set_config('stalerecurrence_weeks', 3, 'googlemeet');
+        set_config('stalerecurrence_renotifydays', 28, 'googlemeet');
+
+        $gm = $this->make_module();
+        $this->add_event($gm->id, time() + DAYSECS);
+        $this->add_recording($gm->id, time() - 40 * DAYSECS);
+
+        // First run: notifies once and records state.
+        $sink = $this->redirectMessages();
+        $this->run_task();
+        $this->assertCount(count(get_admins()), $sink->get_messages());
+        $this->assertNotEmpty(get_config('googlemeet', 'stalealert_' . $gm->id));
+        $sink->close();
+
+        // Second run (within renotify window): no new message.
+        $sink = $this->redirectMessages();
+        $this->run_task();
+        $this->assertCount(0, $sink->get_messages());
+        $sink->close();
+
+        // Age the last-alert timestamp beyond the renotify window: notifies again.
+        set_config('stalealert_' . $gm->id, time() - 40 * DAYSECS, 'googlemeet');
+        $sink = $this->redirectMessages();
+        $this->run_task();
+        $this->assertCount(count(get_admins()), $sink->get_messages());
+        $sink->close();
+    }
+
+    public function test_task_clears_state_when_no_longer_stale(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        set_config('stalerecurrence_enabled', 1, 'googlemeet');
+        set_config('stalerecurrence_weeks', 3, 'googlemeet');
+        set_config('stalerecurrence_renotifydays', 28, 'googlemeet');
+
+        $gm = $this->make_module();
+        $eventid = $DB->insert_record('googlemeet_events', (object) [
+            'googlemeetid' => $gm->id, 'eventdate' => time() + DAYSECS,
+            'duration' => 7200, 'timemodified' => time(), 'autosynced' => 0, 'syncattempts' => 0,
+        ]);
+        $this->add_recording($gm->id, time() - 40 * DAYSECS);
+
+        $this->run_task();
+        $this->assertNotEmpty(get_config('googlemeet', 'stalealert_' . $gm->id));
+
+        // Remove the future session → no longer stale → state must be cleared.
+        $DB->delete_records('googlemeet_events', ['id' => $eventid]);
+        $this->run_task();
+        $this->assertFalse(get_config('googlemeet', 'stalealert_' . $gm->id));
+    }
+
+    public function test_task_noop_when_disabled(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        set_config('stalerecurrence_enabled', 0, 'googlemeet');
+
+        $gm = $this->make_module();
+        $this->add_event($gm->id, time() + DAYSECS);
+        $this->add_recording($gm->id, time() - 40 * DAYSECS);
+
+        $sink = $this->redirectMessages();
+        $this->run_task();
+        $this->assertCount(0, $sink->get_messages());
+    }
 }
