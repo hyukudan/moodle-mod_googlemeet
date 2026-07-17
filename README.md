@@ -54,6 +54,23 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **One-at-a-time student practice** with immediate feedback, the correct answer and an explanation/citation (formative, no grade) — also available in the Moodle mobile app
 - **Materials per recording** - teachers attach files to a specific recording; learners download them from the Materials tab
 
+### Abandoned-recurrence alerts
+
+When a course's live classes end, its Google Meet activity can keep its recurrence active,
+generating future "phantom" sessions that still show up in students' Moodle calendar. Because the
+calendar sync is one-way (Moodle → Google Calendar, no reverse webhook), Moodle is the source of
+truth for the schedule — closing the event in Google Calendar does **not** propagate back.
+
+A weekly scheduled task (`\mod_googlemeet\task\check_stale_recurrence`, Mondays 04:00) flags any
+activity that still schedules future sessions, has recorded before, but has had no recording for N
+weeks, and notifies site admins with a link to edit the activity (set *Repeat until* to a past date).
+
+Settings (Site administration → Plugins → Activity modules → Google Meet):
+
+- **Enable abandoned-recurrence alerts** (`stalerecurrence_enabled`, default on)
+- **Weeks without recording** (`stalerecurrence_weeks`, default 3)
+- **Re-notify after (days)** (`stalerecurrence_renotifydays`, default 28)
+
 ## Requirements
 
 - Moodle 4.0 or higher
