@@ -1517,6 +1517,46 @@ function googlemeet_get_stale_recurrences(int $weeks, ?int $now = null): array {
 }
 
 /**
+ * Send the abandoned-recurrence alert to every site admin.
+ *
+ * @param stdClass $info A row returned by googlemeet_get_stale_recurrences().
+ * @return void
+ */
+function googlemeet_send_stale_alert(stdClass $info): void {
+    $editurl = new moodle_url('/course/modedit.php', ['update' => $info->cmid]);
+    $lastrec = $info->lastrecording
+        ? userdate((int) $info->lastrecording, get_string('strftimedate', 'langconfig'))
+        : '-';
+
+    $a = (object) [
+        'activity' => format_string($info->name),
+        'course' => format_string($info->coursename),
+        'lastrecording' => $lastrec,
+        'futurecount' => (int) $info->futurecount,
+        'editurl' => $editurl->out(false),
+    ];
+
+    $subject = get_string('stalerecurrence_subject', 'mod_googlemeet', $a);
+
+    foreach (get_admins() as $admin) {
+        $message = new \core\message\message();
+        $message->component = 'mod_googlemeet';
+        $message->name = 'stalerecurrence';
+        $message->userfrom = \core_user::get_noreply_user();
+        $message->userto = $admin;
+        $message->subject = $subject;
+        $message->fullmessage = get_string('stalerecurrence_body', 'mod_googlemeet', $a);
+        $message->fullmessageformat = FORMAT_PLAIN;
+        $message->fullmessagehtml = get_string('stalerecurrence_body_html', 'mod_googlemeet', $a);
+        $message->smallmessage = $subject;
+        $message->notification = 1;
+        $message->contexturl = $editurl->out(false);
+        $message->contexturlname = get_string('stalerecurrence_editlink', 'mod_googlemeet');
+        message_send($message);
+    }
+}
+
+/**
  * Send a notification to students in the class about the event.
  *
  * @param object $user

@@ -107,4 +107,29 @@ class stale_recurrence_test extends \advanced_testcase {
         $this->add_recording($gm->id, $now - 60 * DAYSECS, 1); // deleted
         $this->assertCount(0, googlemeet_get_stale_recurrences(3, $now));
     }
+
+    public function test_send_stale_alert_notifies_admins(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $sink = $this->redirectMessages();
+
+        $info = (object) [
+            'id' => 123,
+            'name' => 'Live classes',
+            'course' => 7,
+            'coursename' => 'Test course',
+            'cmid' => 456,
+            'lastrecording' => 1795000000,
+            'futurecount' => 3,
+        ];
+
+        googlemeet_send_stale_alert($info);
+
+        $messages = $sink->get_messages();
+        $this->assertCount(count(get_admins()), $messages);
+        $this->assertEquals('mod_googlemeet', $messages[0]->component);
+        $this->assertEquals('stalerecurrence', $messages[0]->eventtype);
+        $this->assertStringContainsString('Live classes', $messages[0]->subject);
+        $this->assertStringContainsString('update=456', $messages[0]->fullmessagehtml);
+    }
 }
