@@ -190,4 +190,34 @@ if ($ADMIN->fulltree) {
         '',
         PARAM_RAW_TRIMMED
     ));
+
+    // Abandoned-recurrence alerts.
+    $settings->add(new admin_setting_heading(
+        'googlemeet/stalerecurrence_heading',
+        get_string('stalerecurrence_heading', 'googlemeet'),
+        get_string('stalerecurrence_heading_desc', 'googlemeet')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'googlemeet/stalerecurrence_enabled',
+        get_string('stalerecurrence_enabled', 'googlemeet'),
+        get_string('stalerecurrence_enabled_desc', 'googlemeet'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/stalerecurrence_weeks',
+        get_string('stalerecurrence_weeks', 'googlemeet'),
+        get_string('stalerecurrence_weeks_desc', 'googlemeet'),
+        3,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/stalerecurrence_renotifydays',
+        get_string('stalerecurrence_renotifydays', 'googlemeet'),
+        get_string('stalerecurrence_renotifydays_desc', 'googlemeet'),
+        28,
+        PARAM_INT
+    ));
 }
