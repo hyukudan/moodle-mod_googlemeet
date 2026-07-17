@@ -514,3 +514,17 @@ $string['question_bulk_discard_confirm'] = '¿Descartar las preguntas en borrado
 $string['question_unpublish_confirm'] = '¿Despublicar esta pregunta? El alumnado dejará de verla.';
 $string['thereisnorecordingtoshow'] = 'Todavía no hay grabaciones.';
 $string['strftimedm'] = '%d %b';
+$string['messageprovider:stalerecurrence'] = 'Aviso de recurrencia de clases en directo abandonada';
+$string['stalerecurrence_task'] = 'Comprobar recurrencias de Google Meet abandonadas';
+$string['stalerecurrence_heading'] = 'Avisos de recurrencia abandonada';
+$string['stalerecurrence_heading_desc'] = 'Avisa a los administradores cuando una actividad de Google Meet sigue programando sesiones futuras pero dejó de grabar — señal de que sus clases en directo terminaron y hay que cerrar la recurrencia.';
+$string['stalerecurrence_enabled'] = 'Activar avisos de recurrencia abandonada';
+$string['stalerecurrence_enabled_desc'] = 'Ejecuta una comprobación semanal y notifica a los administradores sobre recurrencias abandonadas.';
+$string['stalerecurrence_weeks'] = 'Semanas sin grabar';
+$string['stalerecurrence_weeks_desc'] = 'Cuántas semanas sin grabación nueva (con sesiones futuras aún programadas) antes de marcar una actividad como abandonada.';
+$string['stalerecurrence_renotifydays'] = 'Reavisar tras (días)';
+$string['stalerecurrence_renotifydays_desc'] = 'Si la actividad sigue abandonada, recuerda a los administradores de nuevo pasados estos días.';
+$string['stalerecurrence_subject'] = 'Recurrencia de Google Meet posiblemente abandonada: {$a->activity}';
+$string['stalerecurrence_body'] = 'La actividad "{$a->activity}" del curso "{$a->course}" tiene aún {$a->futurecount} sesión(es) futura(s) programada(s), pero su última grabación fue el {$a->lastrecording}. Si sus clases en directo han terminado, cierra la recurrencia poniendo "Repetir hasta" en una fecha pasada aquí: {$a->editurl}';
+$string['stalerecurrence_body_html'] = 'La actividad "<strong>{$a->activity}</strong>" del curso "<strong>{$a->course}</strong>" tiene aún <strong>{$a->futurecount}</strong> sesión(es) futura(s) programada(s), pero su última grabación fue el <strong>{$a->lastrecording}</strong>.<br>Si sus clases en directo han terminado, cierra la recurrencia poniendo <em>Repetir hasta</em> en una fecha pasada: <a href="{$a->editurl}">editar la actividad</a>.';
+$string['stalerecurrence_editlink'] = 'Editar la actividad';
