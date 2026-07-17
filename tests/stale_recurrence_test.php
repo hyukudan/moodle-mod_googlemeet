@@ -53,6 +53,9 @@ class stale_recurrence_test extends \advanced_testcase {
 
     /** Create a googlemeet module and return its instance record (has ->id and ->cmid). */
     private function make_module(): \stdClass {
+        // add_instance() mirrors the session into the core calendar (calendar_event::create),
+        // which requires a user with calendar-manage capability; run as admin in tests.
+        $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         return $this->getDataGenerator()->create_module('googlemeet', ['course' => $course->id]);
     }
@@ -212,5 +215,22 @@ class stale_recurrence_test extends \advanced_testcase {
         $sink = $this->redirectMessages();
         $this->run_task();
         $this->assertCount(0, $sink->get_messages());
+    }
+
+    public function test_task_enabled_by_default_when_unset(): void {
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        // Do NOT set stalerecurrence_enabled: get_config() returns false (unpersisted default),
+        // which must behave as ON.
+        set_config('stalerecurrence_weeks', 3, 'googlemeet');
+        set_config('stalerecurrence_renotifydays', 28, 'googlemeet');
+
+        $gm = $this->make_module();
+        $this->add_event($gm->id, time() + DAYSECS);
+        $this->add_recording($gm->id, time() - 40 * DAYSECS);
+
+        $sink = $this->redirectMessages();
+        $this->run_task();
+        $this->assertCount(count(get_admins()), $sink->get_messages());
     }
 }

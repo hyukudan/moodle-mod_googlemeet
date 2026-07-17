@@ -48,7 +48,13 @@ class check_stale_recurrence extends \core\task\scheduled_task {
     public function execute() {
         global $DB;
 
-        if (!get_config('googlemeet', 'stalerecurrence_enabled')) {
+        // Default ON: settings.php defaults are not persisted until the settings page is saved,
+        // so an unset value (false) must be treated as enabled; only an explicit '0' disables.
+        $enabled = get_config('googlemeet', 'stalerecurrence_enabled');
+        if ($enabled === false) {
+            $enabled = 1;
+        }
+        if (!$enabled) {
             return;
         }
 
