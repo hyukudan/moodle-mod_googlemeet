@@ -53,6 +53,15 @@ class client {
     /** @var int Defensive page cap for Google Drive list calls. */
     private const DRIVE_LIST_MAX_PAGES = 10;
 
+    /** @var int Max depth when enumerating Google Meet Drive folders (root then meeting subfolders). */
+    private const DRIVE_MEET_FOLDER_MAX_DEPTH = 2;
+
+    /** @var int Max total folders collected during Google Meet folder discovery. */
+    private const DRIVE_MEET_FOLDERS_MAX = 500;
+
+    /** @var int Max folder ids per parents clause chunk, keeps the Drive q parameter well under its length limit. */
+    private const DRIVE_PARENTS_CHUNK_SIZE = 50;
+
     /** @var int Max allowed distance between a recording and its Gemini notes doc. */
     private const NOTES_PROXIMITY_SECONDS = 36 * 3600;
 
@@ -178,34 +187,123 @@ class client {
     }
 
     /**
-     * Build the Drive parent query for the localised Meet Recordings folders.
+     * Discover Google Meet Drive folders and return their ids (roots + subfolders).
+     *
+     * Google reorganised Meet artifacts in Drive (Workspace update, July 2026):
+     * recordings now live in a "Google Meet" root folder organised into one subfolder
+     * per meeting, and the old "Meet Recordings" folder was renamed "Legacy Meet
+     * Recordings" and moved inside the new root. Root folders are located by name
+     * because Google localises the auto-created folder name; subfolders are then
+     * enumerated breadth-first up to DRIVE_MEET_FOLDER_MAX_DEPTH levels, which is
+     * enough to reach the per-meeting subfolders that contain the actual files.
      *
      * @param object $service The REST service.
-     * @return string Drive query fragment, or empty string when no folder was found.
+     * @return string[] Flat list of folder ids (roots + descendants), empty when none found.
      */
-    private function get_meet_recordings_parents_query($service): string {
-        // Search for Meet Recordings folder in multiple languages.
-        // Google localises the auto-created folder name to the account language.
-        $folderparams = [
-            'q' => '(name = "Meet Recordings" or name contains "Registros de reuniones") and
+    protected function get_meet_recordings_folder_ids($service): array {
+        // Search roots in multiple languages: the new "Google Meet" folder plus the
+        // legacy "Meet Recordings" name. "name contains" matches both the old
+        // "Meet Recordings" and the renamed "Legacy Meet Recordings".
+        $rootparams = [
+            'q' => '(name = "Google Meet" or name contains "Meet Recordings" or name contains "Registros de reuniones") and
                     trashed = false and
                     mimeType = "application/vnd.google-apps.folder" and
                     "me" in owners',
             'pageSize' => 1000,
-            'fields' => 'nextPageToken, files(id,owners)'
+            'fields' => 'nextPageToken, files(id)'
         ];
 
-        $folders = $this->list_all_pages($service, $folderparams);
-        $parents = '';
-        $folderscount = count($folders);
-        for ($i = 0; $i < $folderscount; $i++) {
-            $parents .= 'parents="' . $this->drive_quote($folders[$i]->id) . '"';
-            if ($i + 1 < $folderscount) {
-                $parents .= ' or ';
+        $folderids = [];
+        $currentlevel = $this->list_all_pages($service, $rootparams);
+        $depth = 1;
+        while (!empty($currentlevel)) {
+            foreach ($currentlevel as $folder) {
+                $folderids[] = $folder->id;
+                if (count($folderids) >= self::DRIVE_MEET_FOLDERS_MAX) {
+                    $message = 'mod_googlemeet: Meet folder discovery stopped after ' .
+                        self::DRIVE_MEET_FOLDERS_MAX . ' folders; recordings beyond the cap are ' .
+                        'only found through the all-Drive fallback.';
+                    debugging($message, DEBUG_DEVELOPER);
+                    if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+                        mtrace($message);
+                    }
+                    return $folderids;
+                }
             }
+
+            if ($depth >= self::DRIVE_MEET_FOLDER_MAX_DEPTH) {
+                break;
+            }
+
+            $nextlevel = [];
+            $parentchunks = $this->build_parents_query_chunks(
+                array_map(static function($folder) {
+                    return $folder->id;
+                }, $currentlevel)
+            );
+            foreach ($parentchunks as $chunk) {
+                $childparams = [
+                    'q' => '(' . $chunk . ') and
+                            trashed = false and
+                            mimeType = "application/vnd.google-apps.folder"',
+                    'pageSize' => 1000,
+                    'fields' => 'nextPageToken, files(id)'
+                ];
+                $nextlevel = array_merge($nextlevel, $this->list_all_pages($service, $childparams));
+            }
+            $currentlevel = $nextlevel;
+            $depth++;
         }
 
-        return $parents;
+        return $folderids;
+    }
+
+    /**
+     * Build chunked OR fragments of Drive `parents` terms for a list of folder ids.
+     *
+     * Chunks keep the Drive files.list q parameter well under its practical length
+     * limit when a host has many meeting subfolders. Ids are escaped with drive_quote().
+     *
+     * @param string[] $folderids Drive folder ids.
+     * @return string[] OR fragments such as 'parents="id1" or parents="id2"', chunk-sized.
+     */
+    protected function build_parents_query_chunks(array $folderids): array {
+        $chunks = [];
+        $folderids = array_values(array_unique($folderids));
+        foreach (array_chunk($folderids, self::DRIVE_PARENTS_CHUNK_SIZE) as $group) {
+            $terms = [];
+            foreach ($group as $id) {
+                $terms[] = 'parents="' . $this->drive_quote($id) . '"';
+            }
+            $chunks[] = implode(' or ', $terms);
+        }
+        return $chunks;
+    }
+
+    /**
+     * List Drive files matching a query scoped to the given folders in chunked parents clauses.
+     *
+     * Runs one files.list per chunk (each following pagination via list_all_pages) and
+     * merges the results. Folder ids are deduplicated across chunks, so a file is never
+     * returned twice.
+     *
+     * @param object $service The REST service.
+     * @param string[] $folderids Folder ids to scope the search to.
+     * @param string $qrest Rest of the Drive query (no parents clause).
+     * @param int $pagesize Drive files.list page size.
+     * @param string $fields Drive files.list fields mask.
+     * @return array Accumulated files from all chunks and pages.
+     */
+    private function list_files_with_parent_chunks($service, array $folderids, string $qrest, int $pagesize, string $fields): array {
+        $files = [];
+        foreach ($this->build_parents_query_chunks($folderids) as $chunk) {
+            $files = array_merge($files, $this->list_all_pages($service, [
+                'q' => '(' . $chunk . ') and ' . $qrest,
+                'pageSize' => $pagesize,
+                'fields' => $fields,
+            ]));
+        }
+        return $files;
     }
 
     /**
@@ -457,7 +555,7 @@ class client {
         if ($this->check_login()) {
             $service = new rest($this->get_user_oauth_client());
 
-            $parents = $this->get_meet_recordings_parents_query($service);
+            $folderids = $this->get_meet_recordings_folder_ids($service);
             $meetingcode = self::extract_meeting_code((string)($googlemeet->url ?? ''));
             if ($meetingcode === null) {
                 debugging('mod_googlemeet: could not extract meeting code from URL for activity #' .
@@ -480,29 +578,29 @@ class client {
             }
             $namefilter = '(' . implode(' or ', $conditions) . ')';
 
+            $recordingfields = 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)';
             // If no folders found, try searching ALL of Drive (no parent filter).
-            if (empty($parents)) {
-                $recordingparams = [
+            if (empty($folderids)) {
+                $recordings = $this->list_all_pages($service, [
                     'q' => 'trashed = false and
                             mimeType = "video/mp4" and
                             "me" in owners and
                             ' . $namefilter,
                     'pageSize' => 100,
-                    'fields' => 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
-                ];
+                    'fields' => $recordingfields
+                ]);
             } else {
-                $recordingparams = [
-                    'q' => '(' . $parents . ') and
-                            trashed = false and
+                $recordings = $this->list_files_with_parent_chunks(
+                    $service,
+                    $folderids,
+                    'trashed = false and
                             mimeType = "video/mp4" and
                             "me" in owners and
                             ' . $namefilter,
-                    'pageSize' => 1000,
-                    'fields' => 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)'
-                ];
+                    1000,
+                    $recordingfields
+                );
             }
-
-            $recordings = $this->list_all_pages($service, $recordingparams);
 
             // Additional filtering for duplicate check across activities.
             $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
@@ -568,7 +666,7 @@ class client {
                         if (!$deferenrichment && !isset($existingids[$recording->id])) {
                             // Only fetch the transcript and run yt-dlp for recordings we are
                             // about to insert. Existing rows are left untouched by sync_recordings().
-                            $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
+                            $transcriptdata = $this->find_transcript_for_recording($service, $folderids, $recording->name);
                             if ($transcriptdata) {
                                 $recordings[$i]->transcriptfileid = $transcriptdata['fileid'];
                                 $recordings[$i]->transcripttext = $transcriptdata['content'];
@@ -592,7 +690,6 @@ class client {
                         if (!$deferenrichment && (!isset($existingids[$recording->id]) || empty($existingnotestext))) {
                             $notesdata = $this->find_notes_for_recording(
                                 $service,
-                                $parents,
                                 $recording->name,
                                 $recordings[$i]->createdTime
                             );
@@ -771,30 +868,33 @@ class client {
      * Find and fetch transcript for a recording.
      *
      * @param rest $service The REST service
-     * @param string $parents The parent folders query
+     * @param string[] $folderids Meet folder ids (empty = search all of Drive)
      * @param string $videoname The video filename
      * @return array|null Array with 'fileid' and 'content' or null if not found
      */
-    private function find_transcript_for_recording($service, $parents, $videoname) {
+    private function find_transcript_for_recording($service, array $folderids, $videoname) {
         // Get the base name without extension.
         $basename = pathinfo($videoname, PATHINFO_FILENAME);
 
-        // Search for transcript files (sbv, vtt, txt) with similar name. When no Meet Recordings
-        // folder was found ($parents empty), search all of Drive instead of emitting an invalid
-        // "() and ..." parent clause (which silently returns nothing), mirroring the all-Drive
-        // fallback used for the recording search.
-        $parentclause = !empty($parents) ? '(' . $parents . ') and ' : '';
-        $transcriptparams = [
-            'q' => $parentclause . 'trashed = false and
-                    "me" in owners and
-                    (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
-                    name contains "'.$this->drive_quote($basename).'"',
-            'pageSize' => 10,
-            'fields' => 'nextPageToken, files(id,name,mimeType)'
-        ];
+        // Search for transcript files (sbv, vtt, txt) with similar name. When no Meet
+        // folder was found ($folderids empty), search all of Drive instead, mirroring
+        // the all-Drive fallback used for the recording search.
+        $transcriptqrest = 'trashed = false and
+                "me" in owners and
+                (mimeType = "text/plain" or mimeType = "text/vtt" or mimeType = "application/x-subrip") and
+                name contains "' . $this->drive_quote($basename) . '"';
+        $transcriptfields = 'nextPageToken, files(id,name,mimeType)';
 
         try {
-            $files = $this->list_all_pages($service, $transcriptparams);
+            if (empty($folderids)) {
+                $files = $this->list_all_pages($service, [
+                    'q' => $transcriptqrest,
+                    'pageSize' => 10,
+                    'fields' => $transcriptfields
+                ]);
+            } else {
+                $files = $this->list_files_with_parent_chunks($service, $folderids, $transcriptqrest, 10, $transcriptfields);
+            }
 
             if (!empty($files)) {
                 // Prefer .sbv or .vtt files, then .txt.
@@ -838,12 +938,11 @@ class client {
      * is called both for new recordings and for existing ones still missing notes.
      *
      * @param rest $service The REST service
-     * @param string $parents The parent folders query (may be empty)
      * @param string $videoname The video filename
      * @param int $recordingcreatedtime Recording creation timestamp.
      * @return array|null ['docid' => string, 'content' => string] or null
      */
-    private function find_notes_for_recording($service, $parents, $videoname, int $recordingcreatedtime) {
+    private function find_notes_for_recording($service, $videoname, int $recordingcreatedtime) {
         if (self::recording_notes_prefix($videoname) === '' || $recordingcreatedtime <= 0) {
             return null;
         }
@@ -904,7 +1003,7 @@ class client {
         }
 
         $service = new rest($this->get_user_oauth_client());
-        $parents = $this->get_meet_recordings_parents_query($service);
+        $folderids = $this->get_meet_recordings_folder_ids($service);
         $processedids = [];
 
         foreach ($recordingids as $recordingid) {
@@ -947,7 +1046,7 @@ class client {
             $haschanges = false;
 
             if (empty($recording->transcripttext)) {
-                $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
+                $transcriptdata = $this->find_transcript_for_recording($service, $folderids, $recording->name);
                 if ($transcriptdata) {
                     $update->transcriptfileid = $transcriptdata['fileid'];
                     $update->transcripttext = $transcriptdata['content'];
@@ -971,7 +1070,6 @@ class client {
             if (empty($recording->notestext)) {
                 $notesdata = $this->find_notes_for_recording(
                     $service,
-                    $parents,
                     $recording->name,
                     (int)$recording->createdtime
                 );

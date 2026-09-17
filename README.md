@@ -168,6 +168,9 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.26.0 (2026-09-15)
+- **Adapted recording sync to Google's new "Google Meet" Drive folder** ([Google Workspace update, July 2026](https://workspaceupdates.googleblog.com/2026/07/google-meet-now-organizes-your-meeting-notes-transcripts-and-recordings-in-your-Google-Drive.html)): recordings now live in a "Google Meet" root folder with one subfolder per meeting, and the old "Meet Recordings" folder is renamed "Legacy Meet Recordings" and moved inside it. Folder discovery now finds both layouts (root search by name, breadth-first subfolder enumeration up to depth 2) and scopes the Drive video/transcript queries to the discovered folders in chunked `parents` clauses (50 ids per chunk, 500 folders cap). The all-Drive name-based fallback is unchanged for accounts without Meet folders. Unit tests for the discovery and chunking in `tests/client_test.php`.
+
 ### Version 2.25.3 (2026-07-06)
 - **Live hide/show toggle** - the "Hide from students" / "Show to students" control now flips its label via AJAX with no page reload.
 - **"View full schedule"** link is always visible in the classroom hero.

@@ -32,6 +32,26 @@ class client_testable_client extends client {
     public function list_all_pages_for_test($service, array $params): array {
         return $this->list_all_pages($service, $params);
     }
+
+    /**
+     * Expose Meet folder discovery for unit tests.
+     *
+     * @param object $service Fake REST service.
+     * @return string[]
+     */
+    public function get_meet_recordings_folder_ids_for_test($service): array {
+        return $this->get_meet_recordings_folder_ids($service);
+    }
+
+    /**
+     * Expose parents query chunking for unit tests.
+     *
+     * @param string[] $folderids Drive folder ids.
+     * @return string[]
+     */
+    public function build_parents_query_chunks_for_test(array $folderids): array {
+        return $this->build_parents_query_chunks($folderids);
+    }
 }
 
 /**
@@ -200,5 +220,82 @@ class client_test extends \advanced_testcase {
         ];
 
         $this->assertNull(client::select_notes_candidate_for_recording($docs, 'Class.mp4', $recordingtime));
+    }
+
+    /**
+     * Folder discovery finds the new "Google Meet" root and its per-meeting subfolders.
+     */
+    public function test_get_meet_recordings_folder_ids_finds_new_topology(): void {
+        $client = $this->make_client();
+        $service = new client_test_fake_drive_service([
+            ['files' => [(object)['id' => 'root-a']]],
+            ['files' => [(object)['id' => 'sub-a1'], (object)['id' => 'sub-a2']]],
+        ]);
+
+        $folderids = $client->get_meet_recordings_folder_ids_for_test($service);
+
+        $this->assertSame(['root-a', 'sub-a1', 'sub-a2'], $folderids);
+        // Root query searches for the new folder name and the legacy names.
+        $this->assertStringContainsString('name = "Google Meet"', $service->calls[0]['params']['q']);
+        $this->assertStringContainsString('name contains "Meet Recordings"', $service->calls[0]['params']['q']);
+        // Second (and last) call lists subfolders of the discovered root: depth cap is 2.
+        $this->assertStringContainsString('parents="root-a"', $service->calls[1]['params']['q']);
+        $this->assertStringContainsString('mimeType = "application/vnd.google-apps.folder"', $service->calls[1]['params']['q']);
+        $this->assertCount(2, $service->calls);
+    }
+
+    /**
+     * Folder discovery detects the renamed legacy folder and stops when it has no subfolders.
+     */
+    public function test_get_meet_recordings_folder_ids_detects_renamed_legacy_folder(): void {
+        $client = $this->make_client();
+        $service = new client_test_fake_drive_service([
+            ['files' => [(object)['id' => 'legacy-1']]],
+            ['files' => []],
+        ]);
+
+        $folderids = $client->get_meet_recordings_folder_ids_for_test($service);
+
+        $this->assertSame(['legacy-1'], $folderids);
+        $this->assertCount(2, $service->calls);
+    }
+
+    /**
+     * Folder discovery returns an empty list (all-Drive fallback) when no folder exists.
+     */
+    public function test_get_meet_recordings_folder_ids_empty_when_no_folders(): void {
+        $client = $this->make_client();
+        $service = new client_test_fake_drive_service([
+            ['files' => []],
+        ]);
+
+        $folderids = $client->get_meet_recordings_folder_ids_for_test($service);
+
+        $this->assertSame([], $folderids);
+        $this->assertCount(1, $service->calls);
+    }
+
+    /**
+     * Parents query chunks are built at the configured size and escape special characters.
+     */
+    public function test_build_parents_query_chunks_size_and_escaping(): void {
+        $client = $this->make_client();
+        $folderids = [];
+        for ($i = 1; $i <= 120; $i++) {
+            $folderids[] = 'folder-' . $i;
+        }
+        $folderids[] = 'quote"back\slash';
+
+        $chunks = $client->build_parents_query_chunks_for_test($folderids);
+
+        $this->assertCount(3, $chunks);
+        $this->assertCount(50, explode(' or ', $chunks[0]));
+        $this->assertCount(50, explode(' or ', $chunks[1]));
+        $this->assertCount(21, explode(' or ', $chunks[2]));
+        $this->assertStringContainsString('parents="quote\"back\\\\slash"', $chunks[2]);
+        // Duplicate ids collapse instead of producing repeated parents terms.
+        $deduped = $client->build_parents_query_chunks_for_test(['a', 'a', 'b']);
+        $this->assertCount(1, $deduped);
+        $this->assertSame('parents="a" or parents="b"', $deduped[0]);
     }
 }
