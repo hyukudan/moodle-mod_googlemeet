@@ -187,6 +187,8 @@ $string['room_teacher_note'] = 'Disponible para el profesorado para preparar la 
 $string['recordings_count'] = '{$a} grabación(es)';
 $string['recording_watch'] = 'Ver grabación';
 $string['recording_hidden'] = 'Oculto para estudiantes';
+$string['recording_move'] = 'Mover a…';
+$string['recording_move_confirm'] = '¿Mover esta grabación a la sala seleccionada? Las futuras grabaciones de la misma carpeta de Google Drive también se asignarán a esa sala.';
 
 $string['sync_settings'] = 'Configuración de sincronización';
 $string['sync_help_title'] = 'Cómo funciona la sincronización';
@@ -439,6 +441,7 @@ $string['privacy:metadata:googlemeet_recordings:transcripttext'] = 'La transcrip
 $string['privacy:metadata:googlemeet_recordings:transcriptfileid'] = 'El identificador del archivo de Google Drive de la transcripción de la grabación.';
 $string['privacy:metadata:googlemeet_recordings:notestext'] = 'Las notas de la reunión generadas por Gemini de la grabación, que pueden contener los nombres o las aportaciones de los participantes de la sesión.';
 $string['privacy:metadata:googlemeet_recordings:notesdocid'] = 'El identificador del documento de Google Drive de las notas de la grabación.';
+$string['privacy:metadata:googlemeet_recordings:drivefolderid'] = 'El identificador de la carpeta de Google Drive que contiene la grabación, usado para agrupar las grabaciones de la misma serie de reuniones.';
 $string['privacy:metadata:google_gemini'] = 'Las transcripciones de las grabaciones y, como alternativa, el vídeo completo de la grabación se envían a la API de Google Gemini para generar el análisis. Pueden contener datos personales como los nombres y las voces de los participantes.';
 $string['privacy:metadata:google_gemini:transcript'] = 'El texto de la transcripción de la grabación enviado para su análisis.';
 $string['privacy:metadata:google_gemini:video'] = 'El archivo de vídeo completo de la grabación, enviado para su análisis cuando no hay transcripción disponible.';

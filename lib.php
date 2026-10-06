@@ -1148,6 +1148,13 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
                 $updatednotes++;
             }
         }
+
+        // Backfill the Drive folder fingerprint for rows synced before it existed.
+        $incoming = $filesbyid[$googlemeetrecording->recordingid] ?? null;
+        if ($incoming && empty($googlemeetrecording->drivefolderid) && !empty($incoming->drivefolderid)) {
+            $DB->set_field('googlemeet_recordings', 'drivefolderid', $incoming->drivefolderid,
+                ['id' => $googlemeetrecording->id]);
+        }
     }
     $stats['updated'] = $updatednotes;
 
@@ -1178,6 +1185,7 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
                 'createdtime' => $restorerecording->createdTime,
                 'duration' => $restorerecording->duration,
                 'webviewlink' => $restorerecording->webViewLink,
+                'drivefolderid' => !empty($restorerecording->drivefolderid) ? $restorerecording->drivefolderid : null,
                 'deleted' => 0,
                 'timedeleted' => 0,
                 'timemodified' => time(),
@@ -1203,6 +1211,7 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
             $recording->createdtime = $insertrecording->createdTime;
             $recording->duration = $insertrecording->duration;
             $recording->webviewlink = $insertrecording->webViewLink;
+            $recording->drivefolderid = !empty($insertrecording->drivefolderid) ? $insertrecording->drivefolderid : null;
             $recording->deleted = 0;
             $recording->timedeleted = 0;
             $recording->timemodified = time();
