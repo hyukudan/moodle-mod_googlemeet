@@ -230,6 +230,12 @@
                   <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
                   <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
                   <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
+                  {{#hasmovetargets}}
+                  <select class="googlemeet-move-select form-select form-select-sm w-auto" data-id="{{id}}" aria-label="{{# str }} recording_move, mod_googlemeet {{/ str }}: {{displayname}}">
+                    <option value="">{{# str }} recording_move, mod_googlemeet {{/ str }}</option>
+                    {{#movetargets}}<option value="{{id}}">{{label}}</option>{{/movetargets}}
+                  </select>
+                  {{/hasmovetargets}}
                 {{/hascapability}}
                 {{#aienabled}}{{#hascapability}}
                   <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
@@ -402,6 +408,12 @@
               <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
               <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
               <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
+              {{#hasmovetargets}}
+              <select class="googlemeet-move-select form-select form-select-sm w-auto" data-id="{{id}}" aria-label="{{# str }} recording_move, mod_googlemeet {{/ str }}: {{displayname}}">
+                <option value="">{{# str }} recording_move, mod_googlemeet {{/ str }}</option>
+                {{#movetargets}}<option value="{{id}}">{{label}}</option>{{/movetargets}}
+              </select>
+              {{/hasmovetargets}}
             {{/hascapability}}
             {{#aienabled}}{{#hascapability}}
               <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
@@ -862,6 +874,39 @@ require([
             reloadRecordingList(btn.attr('data-id'));
           }).fail(function(ex) {
             btn.prop('disabled', false);
+            Notification.exception(ex);
+          });
+        }).catch(function() {});
+      });
+
+      // Move a recording to another Google Meet activity in the same course.
+      $('.googlemeet-move-select').on('change', function() {
+        var select = $(this);
+        var targetid = select.val();
+        var recordingid = select.attr('data-id');
+        select.val('');
+        if (!targetid) {
+          return;
+        }
+        var targetlabel = select.find('option[value="' + targetid + '"]').text();
+        Notification.saveCancelPromise(
+          '{{# str }} recording_move, mod_googlemeet {{/ str }}',
+          '{{# str }} recording_move_confirm, mod_googlemeet {{/ str }}',
+          targetlabel,
+          {triggerElement: select.get(0)}
+        ).then(function() {
+          select.prop('disabled', true);
+          Ajax.call([{
+            methodname: 'mod_googlemeet_move_recording',
+            args: {
+              recordingid: recordingid,
+              coursemoduleid: {{ coursemoduleid }},
+              targetgooglemeetid: parseInt(targetid, 10)
+            }
+          }])[0].then(function() {
+            reloadRecordingList(recordingid);
+          }).fail(function(ex) {
+            select.prop('disabled', false);
             Notification.exception(ex);
           });
         }).catch(function() {});

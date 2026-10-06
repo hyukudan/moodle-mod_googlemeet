@@ -62,6 +62,12 @@ class client {
     /** @var int Max folder ids per parents clause chunk, keeps the Drive q parameter well under its length limit. */
     private const DRIVE_PARENTS_CHUNK_SIZE = 50;
 
+    /** @var int Margin applied around scheduled event slots when time-matching ambiguous recordings. */
+    private const EVENT_MATCH_MARGIN_SECONDS = 900;
+
+    /** @var int Overlap difference under which two event matches count as a tie (no auto-assignment). */
+    private const EVENT_MATCH_TIE_SECONDS = 60;
+
     /** @var int Max allowed distance between a recording and its Gemini notes doc. */
     private const NOTES_PROXIMITY_SECONDS = 36 * 3600;
 
@@ -565,6 +571,15 @@ class client {
             $name = $googlemeet->name;
             $customfilter = trim($googlemeet->recordingfilter ?? '');
 
+            // Same-named activities make name-based matching ambiguous. Detect the
+            // conflict once per sync; when present, name-matched recordings must also
+            // pass folder-fingerprint or event-slot resolution before being imported.
+            $nameconflicts = $this->find_name_conflict_ids($googlemeet);
+            $eventslots = [];
+            if (!empty($nameconflicts)) {
+                $eventslots = $this->load_event_slots(array_merge([(int)$googlemeet->id], $nameconflicts));
+            }
+
             // Build name filter: always include meetingcode + name as fallbacks,
             // plus custom filter if set. This avoids the problem where a custom
             // filter is an incorrect substring that doesn't match the actual filename.
@@ -578,7 +593,7 @@ class client {
             }
             $namefilter = '(' . implode(' or ', $conditions) . ')';
 
-            $recordingfields = 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink)';
+            $recordingfields = 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink,parents)';
             // If no folders found, try searching ALL of Drive (no parent filter).
             if (empty($folderids)) {
                 $recordings = $this->list_all_pages($service, [
@@ -603,7 +618,8 @@ class client {
             }
 
             // Additional filtering for duplicate check across activities.
-            $recordings = $this->filter_recordings_for_activity($recordings, $meetingcode, $name, $googlemeet->id, $customfilter);
+            $recordings = $this->filter_recordings_for_activity(
+                $recordings, $meetingcode, $name, $googlemeet->id, $customfilter, $nameconflicts, $eventslots);
 
             // Remove sync param to avoid redirect loop (skipped when running in cron).
             $url = null;
@@ -663,6 +679,12 @@ class client {
                         $recordings[$i]->duration = $duration;
                         $recordings[$i]->createdTime = $createdtime->getTimestamp();
 
+                        // Keep the Drive parent folder of the video: one folder per meeting
+                        // series, so it acts as the room fingerprint when two activities
+                        // share the same name.
+                        $parents = $recording->parents ?? [];
+                        $recordings[$i]->drivefolderid = is_array($parents) ? (string)($parents[0] ?? '') : '';
+
                         if (!$deferenrichment && !isset($existingids[$recording->id])) {
                             // Only fetch the transcript and run yt-dlp for recordings we are
                             // about to insert. Existing rows are left untouched by sync_recordings().
@@ -702,6 +724,7 @@ class client {
                         unset($recordings[$i]->id);
                         unset($recordings[$i]->permissionIds);
                         unset($recordings[$i]->videoMediaMetadata);
+                        unset($recordings[$i]->parents);
                     } else {
                         $recordings[$i]->unprocessed = true;
                     }
@@ -776,14 +799,22 @@ class client {
      * 3. Or recording name must contain the exact meeting code
      * 4. Recording must not already exist in another activity (avoid duplicates)
      *
+     * When another activity shares the same name ($nameconflicts), name matches
+     * (checks 3 and 4) are ambiguous and must additionally pass
+     * recording_passes_conflict_resolution(): the Drive folder fingerprint first,
+     * then the scheduled event slot with the largest overlap.
+     *
      * @param array $recordings Array of recording objects from Drive API
      * @param string $meetingcode The meeting code (e.g., "abc-defg-hij")
      * @param string $activityname The activity name in Moodle
      * @param int $googlemeetid The current activity ID
      * @param string $customfilter Custom filter pattern set by user
+     * @param int[] $nameconflicts IDs of other activities with the same name
+     * @param array $eventslots Event slots per googlemeetid: id => [ [start, end], ... ]
      * @return array Filtered array of recordings
      */
-    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid, $customfilter = '') {
+    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid,
+            $customfilter = '', array $nameconflicts = [], array $eventslots = []) {
         global $DB;
 
         if (empty($recordings)) {
@@ -848,7 +879,9 @@ class client {
             // Check 3: Recording name starts with the activity name.
             // This handles filenames like "Activity Name (2024-01-15 10:00).mp4".
             if (!empty($activitynamelower) && strpos($recordingnamelower, $activitynamelower) === 0) {
-                $filtered[] = $recording;
+                if ($this->recording_passes_conflict_resolution($recording, $googlemeetid, $nameconflicts, $eventslots)) {
+                    $filtered[] = $recording;
+                }
                 continue;
             }
 
@@ -856,12 +889,187 @@ class client {
             // This handles cases where the name might have a prefix or different format.
             $pattern = preg_quote($activitynamelower, '/');
             if (preg_match('/\b' . $pattern . '\s*[\(\-]/i', $recordingnamelower)) {
-                $filtered[] = $recording;
+                if ($this->recording_passes_conflict_resolution($recording, $googlemeetid, $nameconflicts, $eventslots)) {
+                    $filtered[] = $recording;
+                }
                 continue;
             }
         }
 
         return $filtered;
+    }
+
+    /**
+     * Find activities whose name collides with the given one (same recordings pool).
+     *
+     * The conflict pool is restricted to the same creator email when set: recordings
+     * only appear in the Drive of their owner, so activities owned by other teachers
+     * can never receive the same files.
+     *
+     * @param object $googlemeet Activity instance with id, name and creatoremail.
+     * @return int[] Conflicting googlemeet ids (empty when the name is unique).
+     */
+    protected function find_name_conflict_ids($googlemeet): array {
+        global $DB;
+
+        $sql = 'SELECT id FROM {googlemeet} WHERE name = :name AND id != :id';
+        $params = ['name' => $googlemeet->name, 'id' => $googlemeet->id];
+        if (!empty($googlemeet->creatoremail)) {
+            $sql .= ' AND creatoremail = :creatoremail';
+            $params['creatoremail'] = $googlemeet->creatoremail;
+        }
+
+        return array_map('intval', $DB->get_fieldset_sql($sql, $params));
+    }
+
+    /**
+     * Load scheduled event slots for the given activities.
+     *
+     * @param int[] $googlemeetids Activity ids.
+     * @return array googlemeetid => [ ['start' => int, 'end' => int], ... ]
+     */
+    protected function load_event_slots(array $googlemeetids): array {
+        global $DB;
+
+        $googlemeetids = array_values(array_filter(array_map('intval', $googlemeetids)));
+        if (empty($googlemeetids)) {
+            return [];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($googlemeetids, SQL_PARAMS_NAMED);
+        $rows = $DB->get_records_sql(
+            "SELECT googlemeetid, eventdate, duration
+               FROM {googlemeet_events}
+              WHERE googlemeetid $insql",
+            $params
+        );
+
+        $slots = [];
+        foreach ($rows as $row) {
+            $slots[(int)$row->googlemeetid][] = [
+                'start' => (int)$row->eventdate,
+                'end' => (int)$row->eventdate + max(0, (int)$row->duration),
+            ];
+        }
+
+        return $slots;
+    }
+
+    /**
+     * Decide whether a name-matched recording may be imported into this activity
+     * when other activities share the same name.
+     *
+     * Resolution order:
+     * 1. Drive folder fingerprint: recordings already assigned to a folder win;
+     *    the new recording follows them (one folder per meeting series).
+     * 2. Event-slot bootstrap: the activity whose scheduled slot overlaps the
+     *    recording interval the most wins. Ties are left unassigned on purpose.
+     *
+     * @param object $recording Drive recording object (needs createdTime and parents).
+     * @param int $googlemeetid The current activity ID.
+     * @param int[] $nameconflicts Conflicting activity IDs.
+     * @param array $eventslots Event slots per googlemeetid (see load_event_slots()).
+     * @return bool True when the recording may be imported into this activity.
+     */
+    protected function recording_passes_conflict_resolution($recording, int $googlemeetid, array $nameconflicts, array $eventslots): bool {
+        if (empty($nameconflicts)) {
+            return true;
+        }
+
+        // 1. Folder fingerprint.
+        $parents = $recording->parents ?? [];
+        $folderid = is_array($parents) ? (string)($parents[0] ?? '') : '';
+        if ($folderid !== '') {
+            $assigned = $this->find_folder_assignment($folderid);
+            if ($assigned !== null) {
+                return $assigned === (int)$googlemeetid;
+            }
+        }
+
+        // 2. Event-slot bootstrap.
+        $start = !empty($recording->createdTime) ? strtotime($recording->createdTime) : false;
+        if ($start === false || $start <= 0) {
+            debugging('mod_googlemeet: ambiguous name match without a usable recording timestamp; skipped.', DEBUG_DEVELOPER);
+            return false;
+        }
+        $durationms = (int)($recording->videoMediaMetadata->durationMillis ?? 0);
+        $end = $start + max(60, (int)round($durationms / 1000));
+
+        $candidateids = array_values(array_unique(array_merge([(int)$googlemeetid], array_map('intval', $nameconflicts))));
+        $match = self::best_event_overlap_match($start, $end, $eventslots, $candidateids);
+
+        if ($match['tied']) {
+            debugging('mod_googlemeet: recording matches same-named activities equally; left unassigned.', DEBUG_DEVELOPER);
+            return false;
+        }
+        if ((int)$match['googlemeetid'] !== (int)$googlemeetid) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Find which activity a Drive folder already belongs to, if unambiguously known.
+     *
+     * @param string $folderid Drive folder id.
+     * @return int|null The googlemeet id owning recordings in this folder, or null
+     *                  when the folder is unknown or claimed by several activities.
+     */
+    protected function find_folder_assignment(string $folderid): ?int {
+        global $DB;
+
+        $rows = $DB->get_records('googlemeet_recordings', ['drivefolderid' => $folderid, 'deleted' => 0], '', 'googlemeetid');
+        $ids = array_unique(array_map(static function($row) {
+            return (int)$row->googlemeetid;
+        }, $rows));
+
+        if (count($ids) === 1) {
+            return reset($ids);
+        }
+
+        return null;
+    }
+
+    /**
+     * Pick the activity whose scheduled slots overlap a recording interval the most.
+     *
+     * Slots are widened by EVENT_MATCH_MARGIN_SECONDS on both sides so recordings
+     * that start slightly early/late still match their session. Two candidates whose
+     * overlap differs by less than EVENT_MATCH_TIE_SECONDS count as a tie.
+     *
+     * @param int $start Recording interval start (unix timestamp).
+     * @param int $end Recording interval end (unix timestamp).
+     * @param array $eventslots Event slots per googlemeetid (see load_event_slots()).
+     * @param int[] $candidateids Activities competing for the recording.
+     * @return array With 'googlemeetid' (0 = no overlap), 'overlap' and 'tied' keys.
+     */
+    protected static function best_event_overlap_match(int $start, int $end, array $eventslots, array $candidateids): array {
+        $bestid = 0;
+        $bestoverlap = 0;
+        $tied = false;
+
+        foreach ($candidateids as $id) {
+            $overlap = 0;
+            foreach ($eventslots[$id] ?? [] as $slot) {
+                $slotstart = $slot['start'] - self::EVENT_MATCH_MARGIN_SECONDS;
+                $slotend = $slot['end'] + self::EVENT_MATCH_MARGIN_SECONDS;
+                $overlap += max(0, min($end, $slotend) - max($start, $slotstart));
+            }
+
+            if ($overlap <= 0) {
+                continue;
+            }
+            if ($overlap > $bestoverlap + self::EVENT_MATCH_TIE_SECONDS) {
+                $bestid = (int)$id;
+                $bestoverlap = $overlap;
+                $tied = false;
+            } else if ($bestid !== (int)$id && $overlap + self::EVENT_MATCH_TIE_SECONDS >= $bestoverlap) {
+                $tied = true;
+            }
+        }
+
+        return ['googlemeetid' => $bestid, 'overlap' => $bestoverlap, 'tied' => $tied];
     }
 
     /**

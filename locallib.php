@@ -917,6 +917,24 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         ['googlemeetid' => $googlemeet->id, 'userid' => $USER->id]
     );
     $canpurge = has_capability('mod/googlemeet:removerecording', $context);
+
+    // Other Google Meet activities in the same course that this recording could be
+    // moved to. Labelled with the meeting code so same-named rooms stay tellable apart.
+    $movetargets = [];
+    if ($hascapability) {
+        $siblings = $DB->get_records('googlemeet', ['course' => $cm->course], 'id ASC', 'id,name,url');
+        foreach ($siblings as $sibling) {
+            if ((int)$sibling->id === (int)$googlemeet->id) {
+                continue;
+            }
+            $code = \mod_googlemeet\client::extract_meeting_code((string)$sibling->url);
+            $label = format_string($sibling->name);
+            if ($code !== null) {
+                $label .= ' (' . $code . ')';
+            }
+            $movetargets[] = ['id' => (int)$sibling->id, 'label' => $label];
+        }
+    }
     $deletedrecordings = [];
     if ($hascapability) {
         $deletedrecords = $DB->get_records(
@@ -988,6 +1006,8 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'cansubscriberecordings' => $cansubscriberecordings,
         'issubscribed' => $issubscribed,
         'canpurge' => $canpurge,
+        'movetargets' => $movetargets,
+        'hasmovetargets' => !empty($movetargets),
         'deletedrecordings' => $deletedrecordings,
         'hasdeletedrecordings' => !empty($deletedrecordings),
         'deletedrecordingcount' => count($deletedrecordings),
