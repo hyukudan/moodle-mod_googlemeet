@@ -2640,6 +2640,36 @@
     outline: 3px solid var(--gm-blue, #1a73e8);
     outline-offset: 1px;
 }
+.googlemeet-transcript-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+}
+.googlemeet-transcript-search-input {
+    flex: 1 1 16rem;
+    max-width: 28rem;
+}
+.googlemeet-transcript-search-status {
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.8rem;
+}
+mark.googlemeet-transcript-match {
+    padding: 0 0.1rem;
+    border-radius: 3px;
+    background: #fff2cc;
+    color: inherit;
+}
+mark.googlemeet-transcript-match[data-seek-seconds] {
+    cursor: pointer;
+}
+mark.googlemeet-transcript-match:focus-visible {
+    outline: 3px solid var(--gm-blue, #1a73e8);
+    outline-offset: 1px;
+}
+mark.googlemeet-transcript-match-current {
+    background: #f6d365;
+}
 .googlemeet-transcript-highlight {
     padding: 0.05rem 0.2rem;
     border-radius: 4px;

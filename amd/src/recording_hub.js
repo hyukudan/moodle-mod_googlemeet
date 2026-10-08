@@ -58,6 +58,9 @@ const stringRequests = [
     {key: 'timestamp_seek_aria', component: COMPONENT},
     {key: 'chapter_link_copied', component: COMPONENT},
     {key: 'chapter_link_copy_manual', component: COMPONENT},
+    {key: 'transcript_search_count', component: COMPONENT},
+    {key: 'transcript_search_none', component: COMPONENT},
+    {key: 'transcript_search_match_aria', component: COMPONENT},
     {key: 'name', component: 'core'},
     {key: 'cancel', component: 'core'},
     {key: 'savechanges', component: 'core'},
@@ -915,6 +918,196 @@ const bindTimestampLinks = () => {
 };
 
 /**
+ * Fold text for accent/case-insensitive search, keeping a map back to the original offsets.
+ *
+ * @param {string} text Original text.
+ * @returns {{folded: string, map: number[]}}
+ */
+const foldText = text => {
+    let folded = '';
+    const map = [];
+    for (let index = 0; index < text.length; index++) {
+        const chunk = text[index].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        for (let offset = 0; offset < chunk.length; offset++) {
+            folded += chunk[offset];
+            map.push(index);
+        }
+    }
+    return {folded, map};
+};
+
+/**
+ * Remove previous transcript search highlights.
+ *
+ * @param {Element} root Transcript container.
+ * @returns {void}
+ */
+const clearTranscriptMatches = root => {
+    root.querySelectorAll('mark.googlemeet-transcript-match').forEach(mark => {
+        mark.replaceWith(document.createTextNode(mark.textContent));
+    });
+    root.normalize();
+};
+
+/**
+ * Find the transcript timestamp that precedes a node.
+ *
+ * @param {Element} root Transcript container.
+ * @param {Node} node Node inside the transcript.
+ * @returns {HTMLElement|null}
+ */
+const precedingTimestamp = (root, node) => {
+    let found = null;
+    root.querySelectorAll('.googlemeet-timestamp-link').forEach(link => {
+        // eslint-disable-next-line no-bitwise
+        if (link.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            found = link;
+        }
+    });
+    return found;
+};
+
+/**
+ * Highlight every match of a query inside the transcript.
+ *
+ * @param {Element} root Transcript container.
+ * @param {string} query Search text.
+ * @returns {HTMLElement[]} Marks in document order.
+ */
+const highlightTranscriptMatches = (root, query) => {
+    clearTranscriptMatches(root);
+    const needle = foldText(query.trim()).folded;
+    if (needle.length < 2) {
+        return [];
+    }
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: node => (node.parentElement && node.parentElement.closest('.googlemeet-timestamp-link'))
+            ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+    });
+    const nodes = [];
+    let current = walker.nextNode();
+    while (current) {
+        nodes.push(current);
+        current = walker.nextNode();
+    }
+
+    const marks = [];
+    nodes.forEach(node => {
+        const text = node.nodeValue;
+        const {folded, map} = foldText(text);
+        let from = folded.indexOf(needle);
+        if (from === -1) {
+            return;
+        }
+        const fragment = document.createDocumentFragment();
+        let last = 0;
+        while (from !== -1) {
+            const start = map[from];
+            const end = map[from + needle.length - 1] + 1;
+            if (start >= last) {
+                fragment.appendChild(document.createTextNode(text.slice(last, start)));
+                const mark = document.createElement('mark');
+                mark.className = 'googlemeet-transcript-match';
+                mark.textContent = text.slice(start, end);
+                fragment.appendChild(mark);
+                marks.push(mark);
+                last = end;
+            }
+            from = folded.indexOf(needle, from + needle.length);
+        }
+        fragment.appendChild(document.createTextNode(text.slice(last)));
+        node.parentNode.replaceChild(fragment, node);
+    });
+
+    marks.forEach(mark => {
+        const stamp = precedingTimestamp(root, mark);
+        if (!stamp) {
+            return;
+        }
+        mark.setAttribute('role', 'button');
+        mark.setAttribute('tabindex', '0');
+        mark.setAttribute('data-seek-seconds', stamp.getAttribute('data-seek-seconds'));
+        mark.setAttribute('aria-label', mark.textContent + ' - ' +
+            (strings.transcript_search_match_aria || '{$a}').replace('{$a}', stamp.textContent));
+    });
+
+    return marks;
+};
+
+/**
+ * Bind the teacher transcript search: highlight matches, Enter cycles, clicking a match seeks.
+ *
+ * @returns {void}
+ */
+const bindTranscriptSearch = () => {
+    const input = document.querySelector('#googlemeet-recording-hub .googlemeet-transcript-search-input');
+    const root = document.querySelector('#googlemeet-recording-hub .googlemeet-ai-transcript-text');
+    if (!input || !root) {
+        return;
+    }
+    const status = document.getElementById('googlemeet-transcript-search-status');
+    let marks = [];
+    let cursor = -1;
+    let timer = null;
+
+    const run = () => {
+        marks = highlightTranscriptMatches(root, input.value);
+        cursor = -1;
+        if (!status) {
+            return;
+        }
+        if (input.value.trim().length < 2) {
+            status.textContent = '';
+        } else if (marks.length) {
+            status.textContent = (strings.transcript_search_count || '{$a}').replace('{$a}', marks.length);
+        } else {
+            status.textContent = strings.transcript_search_none || '';
+        }
+    };
+
+    input.addEventListener('input', () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(run, 200);
+    });
+    input.addEventListener('keydown', e => {
+        if (e.key !== 'Enter') {
+            return;
+        }
+        e.preventDefault();
+        window.clearTimeout(timer);
+        if (cursor === -1 && !marks.length) {
+            run();
+        }
+        if (!marks.length) {
+            return;
+        }
+        if (marks[cursor]) {
+            marks[cursor].classList.remove('googlemeet-transcript-match-current');
+        }
+        cursor = (cursor + 1) % marks.length;
+        marks[cursor].classList.add('googlemeet-transcript-match-current');
+        marks[cursor].scrollIntoView({block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth'});
+    });
+
+    const activate = mark => {
+        const seconds = parseInt(mark.getAttribute('data-seek-seconds'), 10);
+        if (!Number.isNaN(seconds)) {
+            seekTo(seconds);
+        }
+    };
+    $(root).on('click', 'mark.googlemeet-transcript-match[data-seek-seconds]', function() {
+        activate(this);
+    });
+    $(root).on('keydown', 'mark.googlemeet-transcript-match[data-seek-seconds]', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate(this);
+        }
+    });
+};
+
+/**
  * Return selected question IDs.
  *
  * @returns {Array}
@@ -1373,6 +1566,7 @@ export const init = config => {
             bindRecordingProgress();
             bindChapters();
             bindTimestampLinks();
+            bindTranscriptSearch();
             bindPracticePlayer();
         });
     }).catch(Notification.exception);

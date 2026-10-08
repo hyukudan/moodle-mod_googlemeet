@@ -320,7 +320,14 @@
 
     {{#caneditrecording}}
     <div class="tab-pane fade" id="googlemeet-transcript-panel" role="tabpanel" aria-labelledby="googlemeet-transcript-tab">
-      {{#hasanalysis}}<div class="googlemeet-ai-transcript-text">{{{transcript}}}</div>{{/hasanalysis}}
+      {{#hasanalysis}}
+        <div class="googlemeet-transcript-search mb-3" role="search">
+          <label class="visually-hidden" for="googlemeet-transcript-search-input">{{# str }} transcript_search_label, mod_googlemeet {{/ str }}</label>
+          <input type="search" id="googlemeet-transcript-search-input" class="form-control form-control-sm googlemeet-transcript-search-input" placeholder="{{# str }} transcript_search_placeholder, mod_googlemeet {{/ str }}" autocomplete="off" aria-describedby="googlemeet-transcript-search-status">
+          <span id="googlemeet-transcript-search-status" class="googlemeet-transcript-search-status" aria-live="polite"></span>
+        </div>
+        <div class="googlemeet-ai-transcript-text">{{{transcript}}}</div>
+      {{/hasanalysis}}
       {{^hasanalysis}}<div class="alert alert-info">{{# str }} ai_transcript_loading, mod_googlemeet {{/ str }}</div>{{/hasanalysis}}
     </div>
     {{/caneditrecording}}
