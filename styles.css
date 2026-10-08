@@ -2535,6 +2535,16 @@
     outline: 3px solid var(--gm-blue, #1a73e8);
     outline-offset: 2px;
 }
+.googlemeet-chapter-button.googlemeet-chapter-active,
+.googlemeet-chapter-button[aria-current="true"] {
+    border-color: var(--gm-blue, #1a73e8);
+    background: #e8f0fe;
+    box-shadow: inset 3px 0 0 var(--gm-blue, #1a73e8);
+}
+.googlemeet-chapters-mode-seek {
+    background: #e8f0fe;
+    color: #174ea6;
+}
 .googlemeet-chapter-time {
     color: #174ea6;
     font-weight: 800;

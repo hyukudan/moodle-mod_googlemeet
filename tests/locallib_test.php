@@ -47,6 +47,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 #[CoversFunction('googlemeet_construct_events_data_for_add')]
 #[CoversFunction('googlemeet_set_events')]
 #[CoversFunction('googlemeet_display_name')]
+#[CoversFunction('googlemeet_get_recording_seek_url')]
 class locallib_test extends \advanced_testcase {
 
     // -------------------------------------------------------------------------
@@ -115,6 +116,22 @@ class locallib_test extends \advanced_testcase {
         foreach ($cases as [$input, $expected]) {
             $this->assertSame($expected, googlemeet_display_name($input));
         }
+    }
+
+    /**
+     * Seek URLs append ?t=<seconds> to the Drive preview URL and leave other links untouched.
+     */
+    public function test_get_recording_seek_url(): void {
+        $view = 'https://drive.google.com/file/d/AbC_123-x/view?usp=drive_link';
+        $preview = 'https://drive.google.com/file/d/AbC_123-x/preview';
+
+        $this->assertSame($preview . '?t=90', googlemeet_get_recording_seek_url($view, 90));
+        $this->assertSame($preview, googlemeet_get_recording_seek_url($view, 0));
+        $this->assertSame($preview, googlemeet_get_recording_seek_url($view, -15));
+        $this->assertSame($preview . '?t=5', googlemeet_get_recording_seek_url($preview . '?t=300#t=1', 5));
+
+        $other = 'https://example.com/video.mp4';
+        $this->assertSame($other, googlemeet_get_recording_seek_url($other, 90));
     }
 
     // =========================================================================

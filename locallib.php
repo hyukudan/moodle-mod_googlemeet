@@ -1360,10 +1360,30 @@ function googlemeet_recording_can_embed(string $webviewlink): bool {
  * @return string
  */
 function googlemeet_get_recording_embed_url(string $webviewlink): string {
-    if (preg_match('~/file/d/([^/]+)~', $webviewlink, $matches)) {
+    if (preg_match('~/file/d/([^/?#]+)~', $webviewlink, $matches)) {
         return 'https://drive.google.com/file/d/' . rawurlencode($matches[1]) . '/preview';
     }
     return $webviewlink;
+}
+
+/**
+ * Build the Drive preview URL that starts playback at a given second.
+ *
+ * Google Drive's /preview player honours a `t` query parameter (seconds), so seeking is done by
+ * reloading the iframe with `?t=<seconds>`. Returns the plain embed URL when no offset is needed,
+ * and the original link untouched when it is not an embeddable Drive file.
+ *
+ * @param string $webviewlink Drive web view URL.
+ * @param int $seconds Start offset in seconds (negative values are clamped to 0).
+ * @return string
+ */
+function googlemeet_get_recording_seek_url(string $webviewlink, int $seconds): string {
+    if (!googlemeet_recording_can_embed($webviewlink)) {
+        return $webviewlink;
+    }
+    $url = googlemeet_get_recording_embed_url($webviewlink);
+    $seconds = max(0, $seconds);
+    return $seconds > 0 ? $url . '?t=' . $seconds : $url;
 }
 
 /**

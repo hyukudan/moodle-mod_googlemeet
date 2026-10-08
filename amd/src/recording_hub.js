@@ -54,6 +54,7 @@ const stringRequests = [
     {key: 'chapter_timestamp_copied', component: COMPONENT},
     {key: 'chapter_timestamp_reference', component: COMPONENT},
     {key: 'chapter_transcript_highlighted', component: COMPONENT},
+    {key: 'chapter_seek_announce', component: COMPONENT},
     {key: 'name', component: 'core'},
     {key: 'cancel', component: 'core'},
     {key: 'savechanges', component: 'core'},
@@ -500,6 +501,113 @@ const copyTimestamp = timestamp => {
 };
 
 /**
+ * Whether the user asked the browser to reduce motion.
+ *
+ * @returns {boolean}
+ */
+const prefersReducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/**
+ * Format seconds as m:ss or h:mm:ss.
+ *
+ * @param {number} total Seconds.
+ * @returns {string}
+ */
+const formatSeconds = total => {
+    const value = Math.max(0, Math.floor(total || 0));
+    const hours = Math.floor(value / 3600);
+    const minutes = Math.floor((value % 3600) / 60);
+    const seconds = value % 60;
+    const pad = number => String(number).padStart(2, '0');
+    return hours > 0 ? hours + ':' + pad(minutes) + ':' + pad(seconds) : minutes + ':' + pad(seconds);
+};
+
+/**
+ * Get the embedded Drive preview iframe, if any.
+ *
+ * @returns {HTMLIFrameElement|null}
+ */
+const getPlayerIframe = () => document.querySelector('#googlemeet-recording-hub [data-region="recording-player-iframe"]');
+
+/**
+ * Build a Drive /preview URL that starts at the given second.
+ *
+ * Drive's preview player honours `?t=<seconds>`; any existing query or hash is stripped first.
+ *
+ * @param {string} base Embed URL.
+ * @param {number} seconds Start offset.
+ * @returns {string}
+ */
+const buildSeekUrl = (base, seconds) => {
+    const clean = String(base || '').split(/[?#]/)[0];
+    return seconds > 0 ? clean + '?t=' + seconds : clean;
+};
+
+/**
+ * Mark the chapter that contains the given second as the current one.
+ *
+ * @param {number} seconds Playback offset.
+ * @returns {void}
+ */
+const markActiveChapter = seconds => {
+    let active = null;
+    $('.googlemeet-chapter-button').each(function() {
+        const start = parseInt(this.getAttribute('data-start-seconds'), 10);
+        if (!Number.isNaN(start) && start <= seconds) {
+            active = this;
+        }
+    }).removeAttr('aria-current').removeClass('googlemeet-chapter-active');
+    if (active) {
+        active.setAttribute('aria-current', 'true');
+        active.classList.add('googlemeet-chapter-active');
+    }
+};
+
+/**
+ * Seek the recording player to a second.
+ *
+ * A native <video> is seeked in place; the Drive /preview iframe is reloaded with `?t=<seconds>`.
+ *
+ * @param {number} rawseconds Offset in seconds.
+ * @param {object} [options] Options.
+ * @param {boolean} [options.scroll=true] Scroll the player into view.
+ * @param {boolean} [options.announce=true] Announce the jump to assistive technology.
+ * @returns {boolean} Whether a player was found and seeked.
+ */
+const seekTo = (rawseconds, {scroll = true, announce = true} = {}) => {
+    const seconds = Math.max(0, Math.floor(Number(rawseconds) || 0));
+    const nativeVideo = $('#googlemeet-recording-hub video').get(0);
+    const iframe = nativeVideo ? null : getPlayerIframe();
+    if (!nativeVideo && !iframe) {
+        return false;
+    }
+
+    if (nativeVideo) {
+        nativeVideo.currentTime = seconds;
+    } else {
+        iframe.src = buildSeekUrl(iframe.getAttribute('data-embed-base') || iframe.src, seconds);
+    }
+
+    markActiveChapter(seconds);
+
+    if (scroll) {
+        const player = (nativeVideo || iframe).closest('.googlemeet-recording-player') || nativeVideo || iframe;
+        const rect = player.getBoundingClientRect();
+        if (rect.top < 0 || rect.bottom > (window.innerHeight || document.documentElement.clientHeight)) {
+            player.scrollIntoView({block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth'});
+        }
+    }
+
+    if (announce) {
+        $('[data-region="seek-feedback"]').text(
+            (strings.chapter_seek_announce || '{$a}').replace('{$a}', formatSeconds(seconds))
+        );
+    }
+
+    return true;
+};
+
+/**
  * Bind timestamped chapter interactions.
  *
  * @returns {void}
@@ -509,12 +617,9 @@ const bindChapters = () => {
         const button = $(this);
         const timestamp = button.attr('data-chapter-timestamp') || '';
         const seconds = parseInt(button.attr('data-start-seconds'), 10);
-        const nativeVideo = $('#googlemeet-recording-hub video').get(0);
         const feedback = $('[data-region="chapter-feedback"]');
 
-        if (nativeVideo && !Number.isNaN(seconds) && seconds >= 0) {
-            nativeVideo.currentTime = seconds;
-            nativeVideo.focus();
+        if (!Number.isNaN(seconds) && seconds >= 0 && seekTo(seconds)) {
             return;
         }
 
