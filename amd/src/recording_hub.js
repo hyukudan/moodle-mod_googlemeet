@@ -45,6 +45,10 @@ const stringRequests = [
     {key: 'practice_correct_answer', component: COMPONENT},
     {key: 'practice_finish', component: COMPONENT},
     {key: 'practice_next', component: COMPONENT},
+    {key: 'practice_round_review', component: COMPONENT},
+    {key: 'practice_right_option', component: COMPONENT},
+    {key: 'practice_your_answer', component: COMPONENT},
+    {key: 'practice_live_score', component: COMPONENT},
     {key: 'recording_mark_viewed', component: COMPONENT},
     {key: 'recording_progress_aria', component: COMPONENT},
     {key: 'recording_progress_completed', component: COMPONENT},
@@ -1346,6 +1350,33 @@ const findCorrectOption = (question, answerid) => {
 };
 
 /**
+ * Update the practice header (position, live score and progress bar).
+ *
+ * @param {Object} practice Practice state.
+ * @param {JQuery} player Practice player.
+ * @param {boolean} answered Whether the current question has been answered.
+ * @returns {void}
+ */
+const updatePracticeHeader = (practice, player, answered) => {
+    const total = practice.queue.length;
+    const current = Math.min(practice.index + 1, total);
+    const done = practice.index + (answered ? 1 : 0);
+    const label = (player.attr('data-progress-tpl') || '{$a->current} / {$a->total}')
+        .replace('{$a->current}', current)
+        .replace('{$a->total}', total);
+    let roundLabel = '';
+    if (practice.reviewing) {
+        roundLabel = strings.practice_round_review + ' · ';
+    }
+    $('.googlemeet-practice-progress').text(roundLabel + label);
+    const live = $('.googlemeet-practice-livescore');
+    live.removeClass('d-none').text((live.attr('data-template') || '{$a}').replace('{$a}', practice.correct));
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    $('.googlemeet-practice-meter').removeClass('d-none').attr('aria-valuenow', pct)
+        .find('.progress-bar').css('width', pct + '%');
+};
+
+/**
  * Render the current practice question.
  *
  * @param {Object} practice Practice state.
@@ -1353,19 +1384,14 @@ const findCorrectOption = (question, answerid) => {
  * @returns {void}
  */
 const renderPracticeQuestion = (practice, player) => {
-    const question = practice.questions[practice.index];
-    const progressCurrent = practice.index + 1;
-    const progressTotal = practice.questions.length;
+    const question = practice.queue[practice.index];
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     let optionsHtml = '';
 
     practice.checked = false;
     $('.googlemeet-practice-loading, .googlemeet-practice-complete, .googlemeet-practice-error').addClass('d-none');
     $('.googlemeet-practice-question').removeClass('d-none');
-    $('.googlemeet-practice-progress')
-        .text(progressCurrent + ' / ' + progressTotal)
-        .attr('aria-label', (player.attr('data-progress-tpl') || (progressCurrent + ' / ' + progressTotal))
-            .replace('{$a->current}', progressCurrent)
-            .replace('{$a->total}', progressTotal));
+    updatePracticeHeader(practice, player, false);
     // Question stem/options/explanation arrive pre-sanitised: the WS builds them
     // with format_text() (HTMLPurifier) in question_service, the standard Moodle
     // boundary for question content. Do not client-escape — it would break
@@ -1375,27 +1401,53 @@ const renderPracticeQuestion = (practice, player) => {
     $('.googlemeet-practice-check').prop('disabled', true).removeClass('d-none');
     $('.googlemeet-practice-next').addClass('d-none');
 
-    question.options.forEach(option => {
+    question.options.forEach((option, index) => {
         const inputid = 'googlemeet-practice-' + question.questionid + '-' + option.answerid;
-        optionsHtml += '<div class="form-check mb-2">' +
+        optionsHtml += '<label class="googlemeet-practice-option" for="' + inputid + '">' +
             '<input class="form-check-input googlemeet-practice-answer" type="radio" ' +
             'name="googlemeet-practice-answer" id="' + inputid + '" value="' + option.answerid + '">' +
-            '<label class="form-check-label" for="' + inputid + '">' + option.text + '</label>' +
-            '</div>';
+            '<span class="googlemeet-practice-letter" aria-hidden="true">' + (letters[index] || index + 1) + '</span>' +
+            '<span class="googlemeet-practice-option-text">' + option.text + '</span>' +
+            '<span class="googlemeet-practice-option-state"></span>' +
+            '</label>';
     });
     $('.googlemeet-practice-options').html(optionsHtml);
 };
 
 /**
- * Show the practice completion state.
+ * Show the practice completion state with the score of the round just finished.
  *
  * @param {Object} practice Practice state.
+ * @param {JQuery} player Practice player.
  * @returns {void}
  */
-const showPracticeComplete = practice => {
+const showPracticeComplete = (practice, player) => {
+    const total = practice.queue.length;
+    const pct = total ? Math.round((practice.correct / total) * 100) : 0;
+    const complete = $('.googlemeet-practice-complete');
+    const message = complete.find('.googlemeet-practice-message');
+    const scoreText = complete.find('.googlemeet-practice-score-text');
+    let level = 'low';
+    if (pct >= 80) {
+        level = 'great';
+    } else if (pct >= 50) {
+        level = 'good';
+    }
+
+    updatePracticeHeader(practice, player, true);
     $('.googlemeet-practice-question, .googlemeet-practice-loading, .googlemeet-practice-error').addClass('d-none');
-    $('.googlemeet-practice-progress').text(practice.questions.length + ' / ' + practice.questions.length);
-    $('.googlemeet-practice-complete').removeClass('d-none');
+    complete.removeClass('d-none googlemeet-practice-level-great googlemeet-practice-level-good googlemeet-practice-level-low')
+        .addClass('googlemeet-practice-level-' + level);
+    complete.find('.googlemeet-practice-score-value').text(pct + '%');
+    scoreText.text((scoreText.attr('data-template') || '{$a->correct}/{$a->total}')
+        .replace('{$a->correct}', practice.correct)
+        .replace('{$a->total}', total));
+    message.text(message.attr('data-' + level) || '');
+
+    const review = complete.find('.googlemeet-practice-review');
+    review.toggleClass('d-none', practice.wrong.length === 0)
+        .text((review.attr('data-template') || '{$a}').replace('{$a}', practice.wrong.length));
+    complete.trigger('focus');
 };
 
 /**
@@ -1411,8 +1463,22 @@ const bindPracticePlayer = () => {
 
     const practice = {
         questions: [],
+        queue: [],
         index: 0,
         checked: false,
+        correct: 0,
+        wrong: [],
+        reviewing: false,
+    };
+
+    const startRound = (queue, reviewing) => {
+        practice.queue = queue.slice();
+        practice.index = 0;
+        practice.correct = 0;
+        practice.wrong = [];
+        practice.reviewing = reviewing;
+        renderPracticeQuestion(practice, player);
+        $('.googlemeet-practice-stem').attr('tabindex', '-1').trigger('focus');
     };
 
     const loadPracticeQuestions = () => {
@@ -1428,7 +1494,6 @@ const bindPracticePlayer = () => {
             },
         }])[0].then(response => {
             practice.questions = response.questions || [];
-            practice.index = 0;
             if (!practice.questions.length) {
                 $('.googlemeet-practice-loading')
                     .removeClass('alert-info')
@@ -1436,6 +1501,8 @@ const bindPracticePlayer = () => {
                     .text(strings.question_empty_student);
                 return;
             }
+            practice.queue = practice.questions.slice();
+            practice.index = 0;
             renderPracticeQuestion(practice, player);
         }).fail(error => {
             $('.googlemeet-practice-loading').addClass('d-none');
@@ -1450,7 +1517,9 @@ const bindPracticePlayer = () => {
         loadPracticeQuestions();
     }
 
-    player.on('change', '.googlemeet-practice-answer', () => {
+    player.on('change', '.googlemeet-practice-answer', function() {
+        player.find('.googlemeet-practice-option').removeClass('googlemeet-practice-option-selected');
+        $(this).closest('.googlemeet-practice-option').addClass('googlemeet-practice-option-selected');
         $('.googlemeet-practice-check').prop('disabled', false);
     });
 
@@ -1458,7 +1527,7 @@ const bindPracticePlayer = () => {
         if (practice.checked) {
             return;
         }
-        const question = practice.questions[practice.index];
+        const question = practice.queue[practice.index];
         const answerid = parseInt($('.googlemeet-practice-answer:checked').val(), 10);
         if (!answerid) {
             return;
@@ -1475,13 +1544,24 @@ const bindPracticePlayer = () => {
             },
         }])[0].then(response => {
             practice.checked = true;
+            if (response.correct) {
+                practice.correct++;
+            } else {
+                practice.wrong.push(question);
+            }
             $('.googlemeet-practice-answer').prop('disabled', true);
+            player.find('.googlemeet-practice-options').addClass('googlemeet-practice-options-answered');
             $('.googlemeet-practice-answer').each(function() {
-                const wrapper = $(this).closest('.form-check');
+                const option = $(this).closest('.googlemeet-practice-option');
+                const state = option.find('.googlemeet-practice-option-state');
                 if (parseInt($(this).val(), 10) === parseInt(response.correctanswerid, 10)) {
-                    wrapper.addClass('text-success fw-bold');
-                } else if ($(this).is(':checked') && !response.correct) {
-                    wrapper.addClass('text-danger text-decoration-line-through');
+                    option.addClass('googlemeet-practice-option-correct');
+                    state.html('<span aria-hidden="true">&#10003;</span><span class="visually-hidden">' +
+                        escapeHtml(strings.practice_right_option) + '</span>');
+                } else if ($(this).is(':checked')) {
+                    option.addClass('googlemeet-practice-option-incorrect');
+                    state.html('<span aria-hidden="true">&#10007;</span><span class="visually-hidden">' +
+                        escapeHtml(strings.practice_your_answer) + '</span>');
                 }
             });
 
@@ -1489,18 +1569,20 @@ const bindPracticePlayer = () => {
             const correctText = correctOption ? correctOption.text : '';
             const feedbackClass = response.correct ? 'alert-success' : 'alert-warning';
             const statusText = response.correct ? strings.practice_correct : strings.practice_incorrect;
-            const icon = response.correct ? '&#10003;' : '!';
+            const icon = response.correct ? '&#10003;' : '&#10007;';
             $('.googlemeet-practice-feedback')
                 .removeClass('d-none alert-success alert-warning')
                 .addClass('alert ' + feedbackClass)
                 .html('<div class="fw-bold"><span aria-hidden="true">' + icon + '</span> ' +
                     escapeHtml(statusText) + '</div>' +
-                    '<div class="mt-2"><strong>' + escapeHtml(strings.practice_correct_answer) + '</strong> ' +
-                    correctText + '</div>' +
-                    '<div class="mt-2">' + response.explanation + '</div>');
+                    (response.correct ? '' : '<div class="mt-2"><strong>' + escapeHtml(strings.practice_correct_answer) +
+                        '</strong> ' + correctText + '</div>') +
+                    (response.explanation ? '<div class="mt-2">' + response.explanation + '</div>' : ''));
+            updatePracticeHeader(practice, player, true);
+            $('.googlemeet-practice-check').addClass('d-none');
             $('.googlemeet-practice-next').removeClass('d-none').text(
-                practice.index + 1 >= practice.questions.length ? strings.practice_finish : strings.practice_next
-            ).focus();
+                practice.index + 1 >= practice.queue.length ? strings.practice_finish : strings.practice_next
+            ).trigger('focus');
         }).fail(error => {
             $('.googlemeet-practice-check').prop('disabled', false);
             $('.googlemeet-practice-error')
@@ -1511,17 +1593,22 @@ const bindPracticePlayer = () => {
 
     $('.googlemeet-practice-next').on('click', () => {
         practice.index++;
-        if (practice.index >= practice.questions.length) {
-            showPracticeComplete(practice);
+        if (practice.index >= practice.queue.length) {
+            showPracticeComplete(practice, player);
         } else {
             renderPracticeQuestion(practice, player);
-            $('.googlemeet-practice-stem').attr('tabindex', '-1').focus();
+            $('.googlemeet-practice-stem').attr('tabindex', '-1').trigger('focus');
         }
     });
 
-    $('.googlemeet-practice-retry').on('click', () => {
-        practice.index = 0;
-        renderPracticeQuestion(practice, player);
+    $('.googlemeet-practice-review').on('click', () => startRound(practice.wrong, true));
+    $('.googlemeet-practice-retry').on('click', () => startRound(practice.questions, false));
+    player.on('click', '[data-hub-goto]', function() {
+        const tab = document.querySelector('[data-hub-tab="' + this.getAttribute('data-hub-goto') + '"]');
+        if (tab) {
+            showTab(tab);
+            tab.focus();
+        }
     });
 };
 

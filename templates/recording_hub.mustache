@@ -286,26 +286,41 @@
       {{^canmanagequestions}}
         {{#hasquestions}}
           <div class="googlemeet-practice-player" data-loaded="0" data-progress-tpl="{{# str }} practice_progress, mod_googlemeet {{/ str }}">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-              <h5 class="mb-0">{{# str }} practice_title, mod_googlemeet {{/ str }}</h5>
-              <span class="badge bg-secondary googlemeet-practice-progress" aria-live="polite"></span>
+            <div class="googlemeet-practice-head">
+              <h4 class="googlemeet-hub-section-title mb-0">{{# str }} practice_title, mod_googlemeet {{/ str }}</h4>
+              <span class="googlemeet-practice-progress" aria-live="polite"></span>
+              <span class="googlemeet-practice-livescore d-none" data-template="{{# str }} practice_live_score, mod_googlemeet {{/ str }}"></span>
+            </div>
+            <div class="progress googlemeet-practice-meter d-none" role="progressbar" aria-label="{{# str }} practice_title, mod_googlemeet {{/ str }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="progress-bar"></div>
             </div>
             <div class="googlemeet-practice-loading alert alert-info">{{# str }} practice_loading, mod_googlemeet {{/ str }}</div>
             <div class="googlemeet-practice-error alert alert-danger d-none" role="alert"></div>
             <div class="googlemeet-practice-question d-none">
-              <fieldset class="border rounded p-3 mb-3">
-                <legend class="googlemeet-practice-stem h6 mb-3"></legend>
+              <fieldset class="googlemeet-practice-fieldset">
+                <legend class="googlemeet-practice-stem"></legend>
                 <div class="googlemeet-practice-options"></div>
               </fieldset>
-              <div class="googlemeet-practice-feedback d-none mb-3" aria-live="polite"></div>
-              <div class="d-flex gap-2 flex-wrap">
+              <div class="googlemeet-practice-feedback d-none" aria-live="polite"></div>
+              <div class="googlemeet-practice-actions">
                 <button type="button" class="btn btn-primary googlemeet-practice-check" disabled>{{# str }} practice_check, mod_googlemeet {{/ str }}</button>
-                <button type="button" class="btn btn-secondary googlemeet-practice-next d-none">{{# str }} practice_next, mod_googlemeet {{/ str }}</button>
+                <button type="button" class="btn btn-primary googlemeet-practice-next d-none">{{# str }} practice_next, mod_googlemeet {{/ str }}</button>
               </div>
             </div>
-            <div class="googlemeet-practice-complete alert alert-success d-none">
-              <div class="fw-bold mb-2">{{# str }} practice_finished, mod_googlemeet {{/ str }}</div>
-              <button type="button" class="btn btn-outline-primary btn-sm googlemeet-practice-retry">{{# str }} practice_retry, mod_googlemeet {{/ str }}</button>
+            <div class="googlemeet-practice-complete d-none" tabindex="-1">
+              <div class="googlemeet-practice-score" aria-live="polite">
+                <span class="googlemeet-practice-score-value"></span>
+                <span class="googlemeet-practice-score-text" data-template="{{# str }} practice_score, mod_googlemeet {{/ str }}"></span>
+              </div>
+              <p class="googlemeet-practice-message mb-3"
+                 data-great="{{# str }} practice_result_great, mod_googlemeet {{/ str }}"
+                 data-good="{{# str }} practice_result_good, mod_googlemeet {{/ str }}"
+                 data-low="{{# str }} practice_result_low, mod_googlemeet {{/ str }}"></p>
+              <div class="googlemeet-practice-actions">
+                <button type="button" class="btn btn-primary googlemeet-practice-review d-none" data-template="{{# str }} practice_review_wrong, mod_googlemeet {{/ str }}"></button>
+                <button type="button" class="btn btn-outline-primary googlemeet-practice-retry">{{# str }} practice_retry_all, mod_googlemeet {{/ str }}</button>
+                <button type="button" class="btn btn-link googlemeet-practice-tosummary" data-hub-goto="summary">{{# str }} practice_back_to_summary, mod_googlemeet {{/ str }}</button>
+              </div>
             </div>
           </div>
         {{/hasquestions}}

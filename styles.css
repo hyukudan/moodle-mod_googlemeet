@@ -3185,3 +3185,188 @@ mark.googlemeet-transcript-match-current {
         padding-inline: 0.75rem;
     }
 }
+/* Student practice: large tappable options, explicit right/wrong states, score summary. */
+.googlemeet-practice-player {
+    max-width: 46rem;
+}
+.googlemeet-practice-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.googlemeet-practice-progress {
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.googlemeet-practice-livescore {
+    margin-left: auto;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    background: var(--bs-success-bg-subtle, #d1e7dd);
+    color: var(--bs-success-text-emphasis, #0a3622);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.googlemeet-practice-meter {
+    height: 0.35rem;
+    margin-bottom: 1rem;
+}
+.googlemeet-practice-fieldset {
+    margin: 0 0 1rem;
+    padding: 0;
+    border: 0;
+}
+.googlemeet-practice-stem {
+    float: none;
+    width: 100%;
+    margin-bottom: 0.85rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+.googlemeet-practice-stem p:last-child {
+    margin-bottom: 0;
+}
+.googlemeet-practice-stem:focus {
+    outline: none;
+}
+.googlemeet-practice-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.googlemeet-practice-option {
+    display: grid;
+    grid-template-columns: auto 1.75rem minmax(0, 1fr) auto;
+    gap: 0.6rem;
+    align-items: center;
+    min-height: 3rem;
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.6rem;
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
+    line-height: 1.4;
+    cursor: pointer;
+}
+.googlemeet-practice-option .form-check-input {
+    margin: 0;
+}
+.googlemeet-practice-option:hover {
+    border-color: var(--bs-primary, #0d6efd);
+}
+.googlemeet-practice-option:focus-within {
+    outline: 3px solid var(--bs-focus-ring-color, rgba(13, 110, 253, 0.35));
+    outline-offset: 1px;
+}
+.googlemeet-practice-option-selected {
+    border-color: var(--bs-primary, #0d6efd);
+    background: var(--bs-primary-bg-subtle, #e8f0fe);
+}
+.googlemeet-practice-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--bs-secondary-bg, #e9ecef);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.googlemeet-practice-option-text p {
+    margin: 0;
+}
+.googlemeet-practice-option-state {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.googlemeet-practice-options-answered .googlemeet-practice-option {
+    cursor: default;
+}
+.googlemeet-practice-options-answered .googlemeet-practice-option:hover {
+    border-color: var(--bs-border-color, #dee2e6);
+}
+.googlemeet-practice-option.googlemeet-practice-option-correct {
+    border-color: var(--bs-success, #198754);
+    background: var(--bs-success-bg-subtle, #d1e7dd);
+    color: var(--bs-success-text-emphasis, #0a3622);
+    font-weight: 600;
+}
+.googlemeet-practice-option.googlemeet-practice-option-incorrect {
+    border-color: var(--bs-danger, #dc3545);
+    background: var(--bs-danger-bg-subtle, #f8d7da);
+    color: var(--bs-danger-text-emphasis, #58151c);
+}
+.googlemeet-practice-option-correct .googlemeet-practice-letter {
+    background: var(--bs-success, #198754);
+    color: #fff;
+}
+.googlemeet-practice-option-incorrect .googlemeet-practice-letter {
+    background: var(--bs-danger, #dc3545);
+    color: #fff;
+}
+/* Disabled radios must not fade the answer text (Bootstrap dims disabled labels). */
+.googlemeet-practice-options-answered .form-check-input:disabled {
+    opacity: 0.8;
+}
+.googlemeet-practice-feedback {
+    margin-bottom: 1rem;
+}
+.googlemeet-practice-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.googlemeet-practice-actions .btn {
+    min-height: 2.75rem;
+    font-weight: 600;
+}
+.googlemeet-practice-complete {
+    padding: 1.25rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.75rem;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+}
+.googlemeet-practice-complete:focus {
+    outline: none;
+}
+.googlemeet-practice-score {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.googlemeet-practice-score-value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.googlemeet-practice-level-great .googlemeet-practice-score-value {
+    color: var(--bs-success-text-emphasis, #146c43);
+}
+.googlemeet-practice-level-good .googlemeet-practice-score-value {
+    color: var(--bs-primary-text-emphasis, #174ea6);
+}
+.googlemeet-practice-level-low .googlemeet-practice-score-value {
+    color: var(--bs-danger-text-emphasis, #b02a37);
+}
+.googlemeet-practice-score-text {
+    font-weight: 600;
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-practice-actions .btn {
+        flex: 1 1 100%;
+    }
+    .googlemeet-practice-option {
+        grid-template-columns: auto 1.6rem minmax(0, 1fr) auto;
+        padding: 0.55rem 0.65rem;
+    }
+}
