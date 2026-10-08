@@ -345,6 +345,7 @@ $string['chapters_student_hint'] = 'The video cannot be played here; use the tim
 $string['chapters_teacher_hint'] = 'The video cannot be played here; select a chapter to highlight its timestamp in the transcript.';
 $string['chapters_title'] = 'Lesson chapters';
 $string['chapter_seek_announce'] = 'Video moved to {$a}';
+$string['timestamp_seek_aria'] = 'Jump to {$a} in the video';
 $string['chapter_jump_aria'] = '{$a->title}, starts at {$a->timestamp}';
 $string['chapter_no_transcript_error'] = 'No transcript is available to generate chapters.';
 $string['chapter_timestamp_copied'] = 'Timestamp copied: {$a}';

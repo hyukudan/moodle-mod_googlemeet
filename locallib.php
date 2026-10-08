@@ -1168,6 +1168,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'name' => format_string(googlemeet_display_name((string)$recording->name)),
         'originalname' => $recording->name,
         'duration' => s($recording->duration),
+        'durationseconds' => max(0, googlemeet_timestamp_to_seconds((string)$recording->duration)),
         'webviewlink' => $recording->webviewlink,
         'canembed' => $canembed,
         'embedurl' => $embedurl,

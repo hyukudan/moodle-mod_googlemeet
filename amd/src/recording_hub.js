@@ -55,6 +55,7 @@ const stringRequests = [
     {key: 'chapter_timestamp_reference', component: COMPONENT},
     {key: 'chapter_transcript_highlighted', component: COMPONENT},
     {key: 'chapter_seek_announce', component: COMPONENT},
+    {key: 'timestamp_seek_aria', component: COMPONENT},
     {key: 'name', component: 'core'},
     {key: 'cancel', component: 'core'},
     {key: 'savechanges', component: 'core'},
@@ -640,6 +641,138 @@ const bindChapters = () => {
 };
 
 /**
+ * Containers whose AI-generated text may contain mm:ss / h:mm:ss timestamps.
+ *
+ * @type {string}
+ */
+const TIMESTAMP_CONTAINERS = [
+    '.googlemeet-ai-summary',
+    '.googlemeet-ai-keypoints',
+    '.googlemeet-ai-topics',
+    '.googlemeet-ai-transcript-text',
+].join(',');
+
+/**
+ * Matches m:ss, mm:ss, h:mm:ss and hh:mm:ss not glued to other digits or colons.
+ *
+ * @type {RegExp}
+ */
+const TIMESTAMP_PATTERN = /(^|[^\d:])((?:\d{1,2}:)?[0-5]?\d:[0-5]\d)(?![\d:])/g;
+
+/**
+ * Convert a timestamp to seconds.
+ *
+ * @param {string} timestamp m:ss or h:mm:ss.
+ * @returns {number} Seconds, or -1 when invalid.
+ */
+const timestampToSeconds = timestamp => {
+    const parts = String(timestamp || '').split(':').map(part => parseInt(part, 10));
+    if (parts.length < 2 || parts.length > 3 || parts.some(part => Number.isNaN(part))) {
+        return -1;
+    }
+    const seconds = parts.pop();
+    const minutes = parts.pop();
+    const hours = parts.length ? parts.pop() : 0;
+    if (seconds > 59 || minutes > 59) {
+        return -1;
+    }
+    return hours * 3600 + minutes * 60 + seconds;
+};
+
+/**
+ * Build a keyboard-accessible seek button for a timestamp.
+ *
+ * @param {string} timestamp Timestamp text.
+ * @param {number} seconds Offset in seconds.
+ * @returns {HTMLButtonElement}
+ */
+const createTimestampLink = (timestamp, seconds) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'googlemeet-timestamp-link';
+    button.setAttribute('data-seek-seconds', String(seconds));
+    button.setAttribute('data-chapter-timestamp', timestamp);
+    button.setAttribute('aria-label', (strings.timestamp_seek_aria || '{$a}').replace('{$a}', timestamp));
+    button.textContent = timestamp;
+    return button;
+};
+
+/**
+ * Turn plain-text timestamps inside an element into seek buttons.
+ *
+ * @param {Element} root Container.
+ * @param {number} maxseconds Recording duration in seconds (0 when unknown).
+ * @returns {void}
+ */
+const linkifyTimestampsIn = (root, maxseconds) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: node => {
+            if (!node.nodeValue || node.nodeValue.indexOf(':') === -1) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            const parent = node.parentElement;
+            if (parent && parent.closest('a, button, input, textarea, select, .googlemeet-timestamp-link')) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+    const nodes = [];
+    let current = walker.nextNode();
+    while (current) {
+        nodes.push(current);
+        current = walker.nextNode();
+    }
+
+    nodes.forEach(node => {
+        const text = node.nodeValue;
+        const fragment = document.createDocumentFragment();
+        let last = 0;
+        let changed = false;
+        TIMESTAMP_PATTERN.lastIndex = 0;
+        let match = TIMESTAMP_PATTERN.exec(text);
+        while (match) {
+            const timestamp = match[2];
+            const start = match.index + match[1].length;
+            const seconds = timestampToSeconds(timestamp);
+            if (seconds >= 0 && (!maxseconds || seconds <= maxseconds)) {
+                fragment.appendChild(document.createTextNode(text.slice(last, start)));
+                fragment.appendChild(createTimestampLink(timestamp, seconds));
+                last = start + timestamp.length;
+                changed = true;
+            }
+            match = TIMESTAMP_PATTERN.exec(text);
+        }
+        if (!changed) {
+            return;
+        }
+        fragment.appendChild(document.createTextNode(text.slice(last)));
+        node.parentNode.replaceChild(fragment, node);
+    });
+};
+
+/**
+ * Make every timestamp rendered in the hub AI output seek the player.
+ *
+ * Only runs when there is a player to seek; otherwise timestamps stay plain text.
+ *
+ * @returns {void}
+ */
+const bindTimestampLinks = () => {
+    const hub = document.getElementById('googlemeet-recording-hub');
+    if (!hub || (!getPlayerIframe() && !hub.querySelector('video'))) {
+        return;
+    }
+    const maxseconds = parseInt(hub.getAttribute('data-duration-seconds'), 10) || 0;
+    hub.querySelectorAll(TIMESTAMP_CONTAINERS).forEach(root => linkifyTimestampsIn(root, maxseconds));
+
+    $(hub).on('click', '.googlemeet-timestamp-link', function(e) {
+        e.preventDefault();
+        seekTo(parseInt(this.getAttribute('data-seek-seconds'), 10));
+    });
+};
+
+/**
  * Return selected question IDs.
  *
  * @returns {Array}
@@ -1097,6 +1230,7 @@ export const init = config => {
             }
             bindRecordingProgress();
             bindChapters();
+            bindTimestampLinks();
             bindPracticePlayer();
         });
     }).catch(Notification.exception);

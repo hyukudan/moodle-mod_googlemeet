@@ -2563,6 +2563,27 @@
     color: var(--gm-muted, #5f6368);
     font-size: 0.78rem;
 }
+.googlemeet-timestamp-link {
+    display: inline;
+    padding: 0 0.15rem;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: #174ea6;
+    font: inherit;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.googlemeet-timestamp-link:hover {
+    background: #e8f0fe;
+}
+.googlemeet-timestamp-link:focus-visible {
+    outline: 3px solid var(--gm-blue, #1a73e8);
+    outline-offset: 1px;
+}
 .googlemeet-transcript-highlight {
     padding: 0.05rem 0.2rem;
     border-radius: 4px;

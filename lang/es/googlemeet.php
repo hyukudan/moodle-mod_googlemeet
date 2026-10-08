@@ -348,6 +348,7 @@ $string['chapters_student_hint'] = 'El vídeo no se puede reproducir aquí; usa 
 $string['chapters_teacher_hint'] = 'El vídeo no se puede reproducir aquí; pulsa un capítulo para resaltar su marca temporal en la transcripción.';
 $string['chapters_title'] = 'Capítulos de la lección';
 $string['chapter_seek_announce'] = 'Vídeo situado en {$a}';
+$string['timestamp_seek_aria'] = 'Ir a {$a} en el vídeo';
 $string['chapter_jump_aria'] = '{$a->title}, empieza en {$a->timestamp}';
 $string['chapter_no_transcript_error'] = 'No hay transcripción para generar capítulos.';
 $string['chapter_timestamp_copied'] = 'Tiempo copiado: {$a}';
