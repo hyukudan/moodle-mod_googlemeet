@@ -547,6 +547,51 @@ const buildSeekUrl = (base, seconds) => {
 };
 
 /**
+ * Keep a chapter visible inside the scrollable chapters panel without scrolling the page.
+ *
+ * @param {HTMLElement} button Chapter button.
+ * @returns {void}
+ */
+const scrollChapterIntoPanel = button => {
+    const panel = button.closest('.googlemeet-chapters-panel');
+    if (!panel || panel.scrollHeight <= panel.clientHeight) {
+        return;
+    }
+    const panelRect = panel.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    if (rect.top < panelRect.top || rect.bottom > panelRect.bottom) {
+        panel.scrollTop += rect.top - panelRect.top - (panel.clientHeight / 3);
+    }
+};
+
+/**
+ * Bind the mobile collapse toggle of the chapters panel.
+ *
+ * On small screens (<= 576px) the list starts collapsed under the player; elsewhere it is always shown.
+ *
+ * @returns {void}
+ */
+const bindChaptersToggle = () => {
+    const panel = document.querySelector('#googlemeet-recording-hub .googlemeet-chapters-panel');
+    const toggle = panel ? panel.querySelector('.googlemeet-chapters-toggle') : null;
+    if (!toggle) {
+        return;
+    }
+    const setExpanded = expanded => {
+        panel.classList.toggle('googlemeet-chapters-collapsed', !expanded);
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggle.textContent = toggle.getAttribute(expanded ? 'data-label-hide' : 'data-label-show');
+    };
+    const small = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+    if (small && small.matches) {
+        setExpanded(false);
+    }
+    toggle.addEventListener('click', () => {
+        setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+};
+
+/**
  * Mark the chapter that contains the given second as the current one.
  *
  * @param {number} seconds Playback offset.
@@ -563,6 +608,7 @@ const markActiveChapter = seconds => {
     if (active) {
         active.setAttribute('aria-current', 'true');
         active.classList.add('googlemeet-chapter-active');
+        scrollChapterIntoPanel(active);
     }
 };
 
@@ -730,10 +776,10 @@ const bindChapters = () => {
     applyInitialStart();
 
     $('.googlemeet-resume-button').on('click', function() {
-        if (seekTo(parseInt(this.getAttribute('data-seek-seconds'), 10))) {
-            $('[data-region="resume-bar"]').addClass('d-none');
-        }
+        seekTo(parseInt(this.getAttribute('data-seek-seconds'), 10));
     });
+
+    bindChaptersToggle();
 };
 
 /**

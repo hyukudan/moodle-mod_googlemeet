@@ -1229,6 +1229,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         }, $topics),
         'chapters' => $chapters,
         'haschapters' => !empty($chapters),
+        'chaptercount' => count($chapters),
         'transcript' => $analysiscompleted ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
         'hasnotes' => !empty($recording->notestext),
         'notes' => !empty($recording->notestext)

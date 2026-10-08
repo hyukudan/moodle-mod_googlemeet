@@ -2475,6 +2475,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
 }
 .googlemeet-chapters-panel {
+    position: relative;
     border: 1px solid var(--gm-border, #e0e0e0);
     border-radius: 8px;
     background: var(--gm-white, #fff);
@@ -2496,6 +2497,14 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+}
+.googlemeet-chapters-toggle {
+    display: none;
+    flex: 0 0 auto;
+}
+.googlemeet-chapters-count {
+    color: var(--gm-muted, #5f6368);
+    font-weight: 400;
 }
 .googlemeet-chapters-header h4 {
     margin: 0;
@@ -2638,6 +2647,17 @@
     color: #202124;
     box-shadow: 0 0 0 2px #f6d365;
 }
+@media only screen and (min-width: 768px) {
+    .googlemeet-hub-media-with-chapters {
+        align-items: stretch;
+    }
+    .googlemeet-hub-media-with-chapters .googlemeet-chapters-panel {
+        /* Size the row from the 16:9 player only, so the list scrolls beside it and never pushes the layout. */
+        contain: size;
+        min-height: 16rem;
+        max-height: none;
+    }
+}
 @media only screen and (max-width: 767px) {
     .googlemeet-classroom-hero,
     .googlemeet-hub-media-with-chapters {
@@ -2662,6 +2682,25 @@
     }
 }
 @media only screen and (max-width: 575.98px) {
+    .googlemeet-chapters-toggle {
+        display: inline-block;
+    }
+    .googlemeet-chapters-header {
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .googlemeet-chapters-panel {
+        padding: 0.6rem;
+    }
+    .googlemeet-chapters-panel.googlemeet-chapters-collapsed .googlemeet-chapters-body {
+        display: none;
+    }
+    .googlemeet-chapters-help {
+        font-size: 0.75rem;
+    }
+    .googlemeet-chapter-button {
+        padding: 0.35rem 0.45rem;
+    }
     .googlemeet-sort-label-full {
         display: none;
     }
