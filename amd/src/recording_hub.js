@@ -1603,13 +1603,6 @@ const bindPracticePlayer = () => {
 
     $('.googlemeet-practice-review').on('click', () => startRound(practice.wrong, true));
     $('.googlemeet-practice-retry').on('click', () => startRound(practice.questions, false));
-    player.on('click', '[data-hub-goto]', function() {
-        const tab = document.querySelector('[data-hub-tab="' + this.getAttribute('data-hub-goto') + '"]');
-        if (tab) {
-            showTab(tab);
-            tab.focus();
-        }
-    });
 };
 
 /**
@@ -1660,6 +1653,15 @@ const bindTabHash = () => {
         hub.querySelector('.googlemeet-hub-tabs').scrollIntoView({block: 'start'});
     }
     window.addEventListener('hashchange', fromHash);
+    // Buttons that jump to another tab (study sidebar, end of practice).
+    $(hub).on('click', '[data-hub-goto]', function() {
+        const tab = byName(this.getAttribute('data-hub-goto'));
+        if (tab) {
+            showTab(tab);
+            reveal(tab);
+            tab.focus();
+        }
+    });
     $(tabs).on('shown.bs.tab', function() {
         reveal(this);
         if (window.history && window.history.replaceState) {

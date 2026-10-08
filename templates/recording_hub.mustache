@@ -172,6 +172,8 @@
         <div class="googlemeet-study-toolbar">
           <span class="googlemeet-ai-origin">{{# str }} hub_ai_generated_note, mod_googlemeet {{/ str }}</span>
         </div>
+        <div class="googlemeet-study-layout">
+          <div class="googlemeet-study-main">
         <section class="googlemeet-ai-section googlemeet-ai-summary" aria-labelledby="googlemeet-hub-summary-title">
           <h4 id="googlemeet-hub-summary-title" class="googlemeet-hub-section-title">{{# str }} ai_summary, mod_googlemeet {{/ str }}</h4>
           <div class="googlemeet-ai-summary-body" id="googlemeet-ai-summary-body">{{{summary}}}</div>
@@ -195,6 +197,8 @@
           </ol>
         </section>
         {{/keypoints.0}}
+          </div>
+        <aside class="googlemeet-study-aside" aria-label="{{# str }} hub_study_aside_aria, mod_googlemeet {{/ str }}">
         {{#topics.0}}
         <section class="googlemeet-ai-section googlemeet-ai-topics" aria-labelledby="googlemeet-hub-topics-title">
           <h4 id="googlemeet-hub-topics-title" class="googlemeet-hub-section-title">{{# str }} ai_topics, mod_googlemeet {{/ str }}</h4>
@@ -204,6 +208,21 @@
           </ul>
         </section>
         {{/topics.0}}
+          {{^canmanagequestions}}{{#hasquestions}}
+          <section class="googlemeet-ai-section googlemeet-study-cta">
+            <h4 class="googlemeet-hub-section-title">{{# str }} hub_cta_practice_title, mod_googlemeet {{/ str }}</h4>
+            <p>{{# str }} hub_cta_practice_text, mod_googlemeet, {{questioncount}} {{/ str }}</p>
+            <button type="button" class="btn btn-primary btn-sm" data-hub-goto="questions">{{# str }} hub_cta_practice_button, mod_googlemeet {{/ str }}</button>
+          </section>
+          {{/hasquestions}}{{/canmanagequestions}}
+          {{#hasmaterials}}
+          <section class="googlemeet-ai-section googlemeet-study-cta">
+            <h4 class="googlemeet-hub-section-title">{{# str }} hub_tab_materials, mod_googlemeet {{/ str }} <span class="googlemeet-hub-section-count">{{materialcount}}</span></h4>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-hub-goto="materials">{{# str }} hub_cta_materials_button, mod_googlemeet {{/ str }}</button>
+          </section>
+          {{/hasmaterials}}
+        </aside>
+        </div>
       {{/hasanalysis}}
       {{^hasanalysis}}
         {{#aistatusisprocessing}}<div class="alert alert-info">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</div>{{/aistatusisprocessing}}

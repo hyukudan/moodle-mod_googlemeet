@@ -3511,3 +3511,24 @@ mark.googlemeet-transcript-match-current {
         justify-content: center;
     }
 }
+/* Study layout: reading column + sidebar (topics, practice and materials shortcuts) on wide screens. */
+.googlemeet-study-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 1.25rem;
+}
+.googlemeet-study-cta p {
+    margin: -0.2rem 0 0.75rem;
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.9rem;
+}
+@media only screen and (min-width: 1100px) {
+    .googlemeet-study-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+        align-items: start;
+    }
+    .googlemeet-study-aside {
+        position: sticky;
+        top: 4.5rem;
+    }
+}
