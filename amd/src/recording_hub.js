@@ -1756,6 +1756,33 @@ const bindReadMore = () => {
 };
 
 /**
+ * "Imprimir resumen": print the lesson notes (print stylesheet hides player, tabs and actions).
+ *
+ * @returns {void}
+ */
+const bindPrintSummary = () => {
+    const button = document.querySelector('#googlemeet-recording-hub .googlemeet-print-summary');
+    if (!button || typeof window.print !== 'function') {
+        return;
+    }
+    button.classList.remove('d-none');
+    const body = document.getElementById('googlemeet-ai-summary-body');
+    let wasCollapsed = false;
+    window.addEventListener('beforeprint', () => {
+        wasCollapsed = !!body && body.classList.contains('googlemeet-collapsed');
+        if (wasCollapsed) {
+            body.classList.remove('googlemeet-collapsed');
+        }
+    });
+    window.addEventListener('afterprint', () => {
+        if (wasCollapsed) {
+            body.classList.add('googlemeet-collapsed');
+        }
+    });
+    button.addEventListener('click', () => window.print());
+};
+
+/**
  * Key points as a personal review checklist, remembered per recording in this browser.
  *
  * @returns {void}
@@ -1850,6 +1877,7 @@ export const init = config => {
             bindTranscriptSearch();
             bindReadMore();
             bindKeypointChecklist();
+            bindPrintSummary();
             bindPracticePlayer();
         });
     }).catch(Notification.exception);

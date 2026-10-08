@@ -583,3 +583,4 @@ $string['hub_cta_practice_title'] = 'Test yourself';
 $string['hub_cta_practice_text'] = '{$a} exam-style questions about this class.';
 $string['hub_cta_practice_button'] = 'Start practice';
 $string['hub_cta_materials_button'] = 'See the class materials';
+$string['hub_print_summary'] = 'Print summary';
