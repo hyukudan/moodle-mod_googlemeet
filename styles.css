@@ -221,7 +221,7 @@
 
 .googlemeet-badge-live {
     background: #d93025;
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 
 .googlemeet-badge-soon {
@@ -236,7 +236,7 @@
 
 .googlemeet-badge-cancelled {
     background: var(--gm-muted, #5f6368);
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 
 /* Cancelled event card styling */
@@ -435,7 +435,7 @@
     height: 48px;
     background: linear-gradient(135deg, var(--gm-blue, #1a73e8) 0%, #1557b0 100%);
     border-radius: 50%;
-    color: var(--gm-white, #fff);
+    color: #fff;
     text-decoration: none;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     line-height: 1;
@@ -445,7 +445,7 @@
 .googlemeet-play-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 4px 12px rgba(26, 115, 232, 0.4);
-    color: var(--gm-white, #fff);
+    color: #fff;
     text-decoration: none;
 }
 
@@ -942,7 +942,7 @@
     gap: 4px;
     padding: 2px 8px;
     background: var(--gm-blue, #1a73e8);
-    color: var(--gm-white, #fff);
+    color: #fff;
     border-radius: 12px;
     font-size: 0.7rem;
     font-weight: 600;
@@ -1006,14 +1006,14 @@
 
 .googlemeet-ai-toggle-btn:hover {
     background: var(--gm-blue, #1a73e8);
-    color: var(--gm-white, #fff);
+    color: #fff;
     transform: scale(1.05);
     text-decoration: none;
 }
 
 .googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active {
     background: var(--gm-blue, #1a73e8);
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 
 .googlemeet-ai-toggle-btn.googlemeet-ai-toggle-active:hover {
@@ -1069,7 +1069,7 @@
     display: inline-block;
     padding: 3px 10px;
     background: var(--gm-blue, #1a73e8);
-    color: var(--gm-white, #fff);
+    color: #fff;
     border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 500;
@@ -1151,7 +1151,7 @@
 .googlemeet-ai-generate-btn {
     background: var(--gm-blue, #1a73e8);
     border: none;
-    color: var(--gm-white, #fff);
+    color: #fff;
     font-weight: 500;
     padding: 6px 16px;
     border-radius: 20px;
@@ -1160,7 +1160,7 @@
 
 .googlemeet-ai-generate-btn:hover {
     background: #1557b0;
-    color: var(--gm-white, #fff);
+    color: #fff;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
 }
@@ -1260,7 +1260,7 @@
     height: 22px;
     padding: 0 6px;
     background: var(--gm-blue, #1a73e8);
-    color: var(--gm-white, #fff);
+    color: #fff;
     border-radius: 11px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -1519,7 +1519,7 @@
     height: 88px;
     padding: 0 0.75rem;
     background: linear-gradient(135deg, var(--gm-blue, #1a73e8) 0%, #174ea6 100%);
-    color: var(--gm-white, #fff);
+    color: #fff;
     text-decoration: none;
 }
 .googlemeet-card-play {
@@ -1531,7 +1531,7 @@
 }
 .googlemeet-card-play .icon {
     /* RemUI paints .icon slate grey — unreadable over the blue media strip. */
-    color: var(--gm-white, #fff);
+    color: #fff;
     width: auto;
     height: auto;
     font-size: 17px;
@@ -1556,11 +1556,11 @@
 }
 .googlemeet-card-duration {
     position: absolute; right: 8px; bottom: 6px;
-    background: rgba(0,0,0,0.55); color: var(--gm-white, #fff);
+    background: rgba(0,0,0,0.55); color: #fff;
     font-size: 0.72rem; padding: 0.05rem 0.4rem; border-radius: 4px;
 }
 .googlemeet-card-newbadge {
-    background: #1e8e3e; color: var(--gm-white, #fff);
+    background: #1e8e3e; color: #fff;
     font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px;
 }
 .googlemeet-card-aibadge {
@@ -1854,7 +1854,7 @@
    Filter bar + topic chips (Task 3.3)
    =========================================== */
 .googlemeet-ai-topic-tag.googlemeet-topic-active,
-.googlemeet-topic-active { background: #174ea6; color: var(--gm-white, #fff); }
+.googlemeet-topic-active { background: #174ea6; color: #fff; }
 .googlemeet-recordings-topicfilter a { text-decoration: none; }
 /* Card topics: up to 3 chips (capped in PHP via googlemeet_topic_preview),
    wrapping to two rows with a guaranteed-visible "+N" overflow chip. */
@@ -1883,7 +1883,7 @@
 .googlemeet-view-toggle .btn.active,
 .googlemeet-view-toggle .btn.active:hover,
 .googlemeet-view-toggle .btn.active:focus {
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 .googlemeet-view-toggle .btn.active img {
     filter: brightness(0) invert(1);
@@ -2094,7 +2094,7 @@
 #googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active:focus {
     background-color: #1E3A5F;
     border-color: #1E3A5F;
-    color: var(--gm-white, #fff) !important;
+    color: #fff !important;
 }
 #googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active img {
     filter: brightness(0) invert(1);
@@ -2116,13 +2116,13 @@
 .googlemeet-sort-toggle .btn.btn-primary {
     background-color: #1E3A5F;
     border-color: #1E3A5F;
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 .googlemeet-card-cta.btn-primary:hover,
 .googlemeet-sort-toggle .btn.btn-primary:hover {
     background-color: #16304F;
     border-color: #16304F;
-    color: var(--gm-white, #fff);
+    color: #fff;
 }
 
 /* Filter bar: match the select / input / button to the control height + type.
@@ -3531,4 +3531,103 @@ mark.googlemeet-transcript-match-current {
         position: sticky;
         top: 4.5rem;
     }
+}
+/* UX-06 dark mode: follow Bootstrap 5.3 colour modes. The legacy --gm-* tokens and the
+   hard-coded light surfaces used by the hub, chapters, lesson list and hero are remapped
+   to theme variables only when a dark colour mode is active, so light mode is unchanged. */
+[data-bs-theme="dark"] .path-mod-googlemeet,
+.path-mod-googlemeet[data-bs-theme="dark"] {
+    --gm-white: var(--bs-body-bg);
+    --gm-blue: var(--bs-primary);
+    --gm-muted: var(--bs-secondary-color);
+    --gm-text-muted: var(--bs-secondary-color);
+    --gm-text: var(--bs-body-color);
+    --gm-border: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-button,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-copylink,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-event,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-recording-player-empty,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-ai-transcript-text,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapters-mode,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-ai-topic-tag,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-listitem-meta .googlemeet-ai-topic-tag,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-ai-topic-badge,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-unseen {
+    border-color: var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color) !important;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-button:hover,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-button:focus,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-button[aria-current="true"],
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-copylink:hover,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link:hover {
+    background: var(--bs-primary-bg-subtle);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-time,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-help summary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-countdown,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-schedule-link,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapters-mode-seek,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-listitem-date,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-lesson-test-badge,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-card-aibadge {
+    border-color: var(--bs-primary-border-subtle);
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary-text-emphasis);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-help summary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-time,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-countdown,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-schedule-link {
+    background-color: transparent;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-title,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-continue-title a,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-event-time,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-nextclasses-title,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-recording-player-empty p,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-transcript-highlight {
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-completed {
+    border-color: var(--bs-success-border-subtle);
+    background: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-partial {
+    border-color: var(--bs-warning-border-subtle);
+    background: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-meter {
+    background-color: var(--bs-secondary-bg);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet mark.googlemeet-transcript-match,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-transcript-highlight {
+    background: var(--bs-warning-bg-subtle);
+}
+/* --gm-white is also used as a text colour on filled buttons/badges: keep that text white in dark mode. */
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-card-cta.btn-primary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-sort-toggle .btn.btn-primary,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-ai-count-badge,
+[data-bs-theme="dark"] .path-mod-googlemeet .badge {
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-card-cta.btn-primary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-sort-toggle .btn.btn-primary,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-view-toggle .btn.btn-primary.active {
+    border-color: var(--bs-primary);
+    background-color: var(--bs-primary);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-continue-summary,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-recordings-filterbar .form-select,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-recordings-filterbar .form-control,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-view-toggle .btn.btn-outline-secondary {
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
 }
