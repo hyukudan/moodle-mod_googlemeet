@@ -1260,12 +1260,18 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'aistatusispending' => $statusflags['aistatusispending'],
         'aistatusisfailed' => $statusflags['aistatusisfailed'],
         'aierror' => ($caneditrecording && $analysis && !empty($analysis->error)) ? s($analysis->error) : '',
-        'summary' => $analysiscompleted ? format_text($analysis->summary, FORMAT_PLAIN, ['context' => $context]) : '',
-        'keypoints' => array_map(static function($point) {
-            return ['text' => s($point)];
-        }, $keypoints),
-        'topics' => array_map(static function($topic) {
-            return ['text' => s($topic)];
+        'summary' => $analysiscompleted ? implode('', array_map(static function(string $paragraph) use ($context) {
+            return '<p>' . format_text($paragraph, FORMAT_PLAIN, ['context' => $context, 'para' => false]) . '</p>';
+        }, googlemeet_summary_paragraphs((string)$analysis->summary))) : '',
+        'keypoints' => array_map(static function($point, $index) {
+            return ['text' => (string)$point, 'number' => $index + 1];
+        }, array_values($keypoints), array_keys(array_values($keypoints))),
+        'keypointcount' => count($keypoints),
+        'topics' => array_map(static function($topic) use ($cm) {
+            return [
+                'text' => (string)$topic,
+                'url' => (new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id, 'topic' => (string)$topic]))->out(false),
+            ];
         }, $topics),
         'chapters' => $chapters,
         'haschapters' => !empty($chapters),
@@ -1296,6 +1302,23 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
+}
+
+/**
+ * Split an AI summary into paragraphs (blank-line separated), dropping empty ones.
+ *
+ * Single line breaks inside a paragraph are kept (format_text turns them into <br>),
+ * so list-like summaries still read correctly.
+ *
+ * @param string $summary Plain-text summary.
+ * @return string[] Paragraphs, trimmed.
+ */
+function googlemeet_summary_paragraphs(string $summary): array {
+    $summary = str_replace(["\r\n", "\r"], "\n", $summary);
+    $paragraphs = preg_split('/\n\s*\n/', $summary) ?: [];
+    return array_values(array_filter(array_map('trim', $paragraphs), static function(string $paragraph) {
+        return $paragraph !== '';
+    }));
 }
 
 /**

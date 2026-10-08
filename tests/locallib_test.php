@@ -48,6 +48,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 #[CoversFunction('googlemeet_set_events')]
 #[CoversFunction('googlemeet_display_name')]
 #[CoversFunction('googlemeet_assign_lesson_titles')]
+#[CoversFunction('googlemeet_summary_paragraphs')]
 #[CoversFunction('googlemeet_get_recording_seek_url')]
 #[CoversFunction('googlemeet_format_seconds_timestamp')]
 class locallib_test extends \advanced_testcase {
@@ -144,6 +145,15 @@ class locallib_test extends \advanced_testcase {
         // Duplicated names use topics, and colliding first topics add the second one.
         $this->assertSame('Constitución · Título Preliminar', $titles[4]['title']);
         $this->assertSame('Constitución · Derechos fundamentales', $titles[5]['title']);
+    }
+
+    /**
+     * AI summaries are split on blank lines; single line breaks stay inside the paragraph.
+     */
+    public function test_summary_paragraphs(): void {
+        $this->assertSame(["Uno\nsigue", 'Dos & tres', 'Cuatro'],
+            googlemeet_summary_paragraphs("Uno\nsigue\n\n\nDos & tres\r\n\r\nCuatro  "));
+        $this->assertSame([], googlemeet_summary_paragraphs(" \n \n"));
     }
 
     /**

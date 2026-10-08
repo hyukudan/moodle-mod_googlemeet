@@ -1526,6 +1526,137 @@ const bindPracticePlayer = () => {
 };
 
 /**
+ * Stable storage key for a key point, independent of its position (text prefix, whitespace-normalised).
+ *
+ * @param {string} text Key point text.
+ * @returns {string}
+ */
+const keypointKey = text => String(text || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+
+/**
+ * Read a JSON value from localStorage (per-viewer convenience only; failures are ignored).
+ *
+ * @param {string} key Storage key.
+ * @param {*} fallback Value when missing or unavailable.
+ * @returns {*}
+ */
+const readLocal = (key, fallback) => {
+    try {
+        const raw = window.localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+/**
+ * Write a JSON value to localStorage, ignoring storage failures.
+ *
+ * @param {string} key Storage key.
+ * @param {*} value Value.
+ * @returns {void}
+ */
+const writeLocal = (key, value) => {
+    try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        return;
+    }
+};
+
+/**
+ * Collapse a long summary behind a "Read more" toggle (only when it really overflows).
+ *
+ * @returns {void}
+ */
+const bindReadMore = () => {
+    const body = document.getElementById('googlemeet-ai-summary-body');
+    const toggle = document.querySelector('#googlemeet-recording-hub .googlemeet-readmore');
+    if (!body || !toggle) {
+        return;
+    }
+    const measure = () => {
+        body.classList.add('googlemeet-collapsed');
+        // Only collapse when at least ~30% more text is hidden; hiding two lines is just annoying.
+        const overflow = body.scrollHeight > body.clientHeight * 1.3;
+        if (!overflow) {
+            body.classList.remove('googlemeet-collapsed');
+            toggle.classList.add('d-none');
+            return false;
+        }
+        toggle.classList.remove('d-none');
+        return true;
+    };
+    const panel = document.getElementById('googlemeet-summary-panel');
+    const ready = () => {
+        if (body.getAttribute('data-measured') === '1' || (panel && !panel.classList.contains('active'))) {
+            return;
+        }
+        body.setAttribute('data-measured', '1');
+        measure();
+    };
+    ready();
+    $('#googlemeet-summary-tab').on('shown.bs.tab', ready);
+    toggle.addEventListener('click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        body.classList.toggle('googlemeet-collapsed', expanded);
+        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        toggle.textContent = toggle.getAttribute(expanded ? 'data-label-more' : 'data-label-less');
+        if (expanded) {
+            body.closest('section').scrollIntoView({block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth'});
+        }
+    });
+};
+
+/**
+ * Key points as a personal review checklist, remembered per recording in this browser.
+ *
+ * @returns {void}
+ */
+const bindKeypointChecklist = () => {
+    const section = document.querySelector('#googlemeet-recording-hub .googlemeet-ai-keypoints');
+    if (!section) {
+        return;
+    }
+    const items = Array.from(section.querySelectorAll('.googlemeet-keypoint'));
+    const counter = section.querySelector('.googlemeet-keypoints-progress');
+    const storageKey = 'mod_googlemeet_keypoints_' + settings.recordingid;
+    const done = new Set(readLocal(storageKey, []));
+    const keyOf = item => keypointKey(item.querySelector('.googlemeet-keypoint-text').textContent);
+
+    const refresh = () => {
+        let count = 0;
+        items.forEach(item => {
+            const checked = item.querySelector('.googlemeet-keypoint-check').checked;
+            item.classList.toggle('googlemeet-keypoint-done', checked);
+            count += checked ? 1 : 0;
+        });
+        counter.textContent = (counter.getAttribute('data-template') || '{$a->done}/{$a->total}')
+            .replace('{$a->done}', count).replace('{$a->total}', items.length);
+        counter.classList.toggle('googlemeet-keypoints-complete', count === items.length);
+    };
+
+    items.forEach(item => {
+        const box = item.querySelector('.googlemeet-keypoint-check');
+        box.checked = done.has(keyOf(item));
+        box.classList.remove('d-none');
+        box.addEventListener('change', () => {
+            if (box.checked) {
+                done.add(keyOf(item));
+            } else {
+                done.delete(keyOf(item));
+            }
+            writeLocal(storageKey, Array.from(done));
+            refresh();
+        });
+    });
+    section.classList.add('googlemeet-keypoints-interactive');
+    counter.classList.remove('d-none');
+    section.querySelector('.googlemeet-keypoints-hint').classList.remove('d-none');
+    refresh();
+};
+
+/**
  * Initialise recording hub behaviours.
  *
  * @param {Object} config Module configuration.
@@ -1569,6 +1700,8 @@ export const init = config => {
             bindChapters();
             bindTimestampLinks();
             bindTranscriptSearch();
+            bindReadMore();
+            bindKeypointChecklist();
             bindPracticePlayer();
         });
     }).catch(Notification.exception);

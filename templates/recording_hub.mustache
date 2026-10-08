@@ -169,21 +169,40 @@
   <div class="tab-content pt-3">
     <div class="tab-pane fade {{#summaryactive}}show active{{/summaryactive}}" id="googlemeet-summary-panel" role="tabpanel" aria-labelledby="googlemeet-summary-tab">
       {{#hasanalysis}}
-        <div class="googlemeet-ai-section googlemeet-ai-summary">
-          <h5>{{# str }} ai_summary, mod_googlemeet {{/ str }}</h5>
-          <div>{{{summary}}}</div>
+        <div class="googlemeet-study-toolbar">
+          <span class="googlemeet-ai-origin">{{# str }} hub_ai_generated_note, mod_googlemeet {{/ str }}</span>
         </div>
+        <section class="googlemeet-ai-section googlemeet-ai-summary" aria-labelledby="googlemeet-hub-summary-title">
+          <h4 id="googlemeet-hub-summary-title" class="googlemeet-hub-section-title">{{# str }} ai_summary, mod_googlemeet {{/ str }}</h4>
+          <div class="googlemeet-ai-summary-body" id="googlemeet-ai-summary-body">{{{summary}}}</div>
+          <button type="button" class="btn btn-link btn-sm px-0 googlemeet-readmore d-none" aria-expanded="false" aria-controls="googlemeet-ai-summary-body" data-label-more="{{# str }} hub_read_more, mod_googlemeet {{/ str }}" data-label-less="{{# str }} hub_read_less, mod_googlemeet {{/ str }}">{{# str }} hub_read_more, mod_googlemeet {{/ str }}</button>
+        </section>
         {{#keypoints.0}}
-        <div class="googlemeet-ai-section googlemeet-ai-keypoints mt-3">
-          <h5>{{# str }} ai_keypoints, mod_googlemeet {{/ str }}</h5>
-          <ul>{{#keypoints}}<li>{{text}}</li>{{/keypoints}}</ul>
-        </div>
+        <section class="googlemeet-ai-section googlemeet-ai-keypoints" aria-labelledby="googlemeet-hub-keypoints-title">
+          <div class="googlemeet-hub-section-head">
+            <h4 id="googlemeet-hub-keypoints-title" class="googlemeet-hub-section-title">{{# str }} ai_keypoints, mod_googlemeet {{/ str }} <span class="googlemeet-hub-section-count">{{keypointcount}}</span></h4>
+            <span class="googlemeet-keypoints-progress d-none" aria-live="polite" data-template="{{# str }} hub_keypoints_reviewed, mod_googlemeet {{/ str }}"></span>
+          </div>
+          <p class="googlemeet-keypoints-hint d-none">{{# str }} hub_keypoints_hint, mod_googlemeet {{/ str }}</p>
+          <ol class="googlemeet-keypoints-checklist">
+            {{#keypoints}}
+            <li class="googlemeet-keypoint">
+              <input type="checkbox" class="form-check-input googlemeet-keypoint-check d-none" id="googlemeet-keypoint-{{number}}" aria-label="{{# str }} hub_keypoint_check_aria, mod_googlemeet, {{number}} {{/ str }}">
+              <span class="googlemeet-keypoint-number" aria-hidden="true">{{number}}</span>
+              <span class="googlemeet-keypoint-text">{{text}}</span>
+            </li>
+            {{/keypoints}}
+          </ol>
+        </section>
         {{/keypoints.0}}
         {{#topics.0}}
-        <div class="googlemeet-ai-section googlemeet-ai-topics mt-3">
-          <h5>{{# str }} ai_topics, mod_googlemeet {{/ str }}</h5>
-          <div class="googlemeet-ai-topics-tags">{{#topics}}<span class="googlemeet-ai-topic-badge">{{text}}</span>{{/topics}}</div>
-        </div>
+        <section class="googlemeet-ai-section googlemeet-ai-topics" aria-labelledby="googlemeet-hub-topics-title">
+          <h4 id="googlemeet-hub-topics-title" class="googlemeet-hub-section-title">{{# str }} ai_topics, mod_googlemeet {{/ str }}</h4>
+          <p class="googlemeet-topics-hint">{{# str }} hub_topics_hint, mod_googlemeet {{/ str }}</p>
+          <ul class="googlemeet-hub-topics" role="list">
+            {{#topics}}<li><a class="googlemeet-hub-topic" href="{{url}}" title="{{# str }} hub_topic_link_aria, mod_googlemeet, {{text}} {{/ str }}">{{text}}</a></li>{{/topics}}
+          </ul>
+        </section>
         {{/topics.0}}
       {{/hasanalysis}}
       {{^hasanalysis}}
