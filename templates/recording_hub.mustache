@@ -1,7 +1,7 @@
 {{!
   @template mod_googlemeet/recording_hub
 }}
-<div id="googlemeet-recording-hub" class="googlemeet-recording-hub" data-cmid="{{cmid}}" data-recordingid="{{recordingid}}" data-duration-seconds="{{durationseconds}}">
+<div id="googlemeet-recording-hub" class="googlemeet-recording-hub" data-cmid="{{cmid}}" data-recordingid="{{recordingid}}" data-duration-seconds="{{durationseconds}}" data-hub-url="{{huburl}}" data-start-seconds="{{starttime}}">
   <div class="googlemeet-hub-nav mb-3">
     <a href="{{backurl}}" class="btn btn-link px-0">&lsaquo; {{# str }} hub_back_to_recordings, mod_googlemeet {{/ str }}</a>
     {{#hasrecordingnav}}
@@ -15,7 +15,7 @@
   <div class="googlemeet-hub-media-layout {{#haschapters}}googlemeet-hub-media-with-chapters{{/haschapters}}">
     {{#canembed}}
       <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
-        <iframe src="{{embedurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+        <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
       </div>
       <div class="visually-hidden" data-region="seek-feedback" aria-live="polite"></div>
     {{/canembed}}
@@ -42,11 +42,16 @@
       </p>
       <ol class="googlemeet-chapters-list">
         {{#chapters}}
-        <li>
+        <li class="googlemeet-chapter-item">
           <button type="button" class="googlemeet-chapter-button" data-start-seconds="{{startseconds}}" data-chapter-timestamp="{{start}}" aria-label="{{chapterarialabel}}">
             <span class="googlemeet-chapter-time">{{start}}</span>
             <span class="googlemeet-chapter-title">{{title}}</span>
           </button>
+          {{#canembed}}
+          <button type="button" class="googlemeet-chapter-copylink googlemeet-button-reset" data-start-seconds="{{startseconds}}" data-chapter-timestamp="{{start}}" aria-label="{{# str }} chapter_copy_link_aria, mod_googlemeet, {{start}} {{/ str }}" title="{{# str }} chapter_copy_link, mod_googlemeet {{/ str }}">
+            {{# pix }} t/copy, core {{/ pix }}
+          </button>
+          {{/canembed}}
         </li>
         {{/chapters}}
       </ol>

@@ -56,6 +56,8 @@ const stringRequests = [
     {key: 'chapter_transcript_highlighted', component: COMPONENT},
     {key: 'chapter_seek_announce', component: COMPONENT},
     {key: 'timestamp_seek_aria', component: COMPONENT},
+    {key: 'chapter_link_copied', component: COMPONENT},
+    {key: 'chapter_link_copy_manual', component: COMPONENT},
     {key: 'name', component: 'core'},
     {key: 'cancel', component: 'core'},
     {key: 'savechanges', component: 'core'},
@@ -609,6 +611,63 @@ const seekTo = (rawseconds, {scroll = true, announce = true} = {}) => {
 };
 
 /**
+ * Build the hub deep link that opens the player at a given second.
+ *
+ * @param {number} seconds Offset in seconds.
+ * @returns {string}
+ */
+const buildMomentLink = seconds => {
+    const hub = document.getElementById('googlemeet-recording-hub');
+    const base = hub ? hub.getAttribute('data-hub-url') : '';
+    if (!base) {
+        return '';
+    }
+    const url = new URL(base, window.location.href);
+    if (seconds > 0) {
+        url.searchParams.set('t', String(seconds));
+    } else {
+        url.searchParams.delete('t');
+    }
+    return url.toString();
+};
+
+/**
+ * Copy a deep link to a chapter moment.
+ *
+ * @param {number} seconds Offset in seconds.
+ * @param {string} timestamp Timestamp label.
+ * @returns {Promise<void>}
+ */
+const copyMomentLink = (seconds, timestamp) => {
+    const feedback = $('[data-region="chapter-feedback"]');
+    const link = buildMomentLink(seconds);
+    const manual = () => feedback.text((strings.chapter_link_copy_manual || '{$a}').replace('{$a}', link));
+    if (!link) {
+        return Promise.resolve();
+    }
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        manual();
+        return Promise.resolve();
+    }
+    return navigator.clipboard.writeText(link).then(() => {
+        feedback.text((strings.chapter_link_copied || '{$a}').replace('{$a}', timestamp));
+    }).catch(manual);
+};
+
+/**
+ * Reflect a deep-link start time (?t=) rendered by the server in the chapter list.
+ *
+ * @returns {void}
+ */
+const applyInitialStart = () => {
+    const hub = document.getElementById('googlemeet-recording-hub');
+    const start = hub ? parseInt(hub.getAttribute('data-start-seconds'), 10) : 0;
+    if (start > 0 && getPlayerIframe()) {
+        markActiveChapter(start);
+    }
+};
+
+/**
  * Bind timestamped chapter interactions.
  *
  * @returns {void}
@@ -638,6 +697,13 @@ const bindChapters = () => {
 
         copyTimestamp(timestamp);
     });
+
+    $('.googlemeet-chapter-copylink').on('click', function() {
+        const seconds = Math.max(0, parseInt(this.getAttribute('data-start-seconds'), 10) || 0);
+        copyMomentLink(seconds, this.getAttribute('data-chapter-timestamp') || '');
+    });
+
+    applyInitialStart();
 };
 
 /**

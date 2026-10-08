@@ -2512,6 +2512,39 @@
     padding: 0;
     list-style: none;
 }
+.googlemeet-chapter-item {
+    display: flex;
+    align-items: stretch;
+    gap: 0.3rem;
+}
+.googlemeet-chapter-item .googlemeet-chapter-button {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.googlemeet-chapter-copylink {
+    display: inline-flex;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    background: #fff;
+    color: #5f6368;
+}
+.googlemeet-chapter-copylink:hover,
+.googlemeet-chapter-copylink:focus {
+    border-color: #b8c0cc;
+    background: #eef3ff;
+    color: #174ea6;
+}
+.googlemeet-chapter-copylink:focus-visible {
+    outline: 3px solid var(--gm-blue, #1a73e8);
+    outline-offset: 2px;
+}
+.googlemeet-chapter-copylink .icon {
+    margin: 0;
+}
 .googlemeet-chapter-button {
     display: grid;
     grid-template-columns: 4.2rem minmax(0, 1fr);
@@ -2559,6 +2592,7 @@
 }
 .googlemeet-chapter-feedback {
     min-height: 1.2rem;
+    overflow-wrap: anywhere;
     margin-top: 0.55rem;
     color: var(--gm-muted, #5f6368);
     font-size: 0.78rem;
