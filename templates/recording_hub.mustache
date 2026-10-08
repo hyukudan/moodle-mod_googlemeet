@@ -127,44 +127,44 @@
     </div>
   </header>
 
-  <ul class="nav nav-tabs" role="tablist">
+  <div class="googlemeet-hub-tabs-wrap">
+  <ul class="nav nav-tabs googlemeet-hub-tabs" role="tablist" aria-label="{{# str }} hub_tabs_aria, mod_googlemeet {{/ str }}">
     <li class="nav-item" role="presentation">
-      <button class="nav-link {{#summaryactive}}active{{/summaryactive}}" id="googlemeet-summary-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-summary-panel" type="button" role="tab" aria-controls="googlemeet-summary-panel" aria-selected="{{#summaryactive}}true{{/summaryactive}}{{^summaryactive}}false{{/summaryactive}}">
+      <button class="nav-link {{#summaryactive}}active{{/summaryactive}}" id="googlemeet-summary-tab" data-hub-tab="summary" data-bs-toggle="tab" data-bs-target="#googlemeet-summary-panel" type="button" role="tab" aria-controls="googlemeet-summary-panel" aria-selected="{{#summaryactive}}true{{/summaryactive}}{{^summaryactive}}false{{/summaryactive}}">
         {{# str }} hub_tab_summary, mod_googlemeet {{/ str }}
       </button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link {{#questionsactive}}active{{/questionsactive}}" id="googlemeet-questions-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-questions-panel" type="button" role="tab" aria-controls="googlemeet-questions-panel" aria-selected="{{#questionsactive}}true{{/questionsactive}}{{^questionsactive}}false{{/questionsactive}}">
+      <button class="nav-link {{#questionsactive}}active{{/questionsactive}}" id="googlemeet-questions-tab" data-hub-tab="questions" data-bs-toggle="tab" data-bs-target="#googlemeet-questions-panel" type="button" role="tab" aria-controls="googlemeet-questions-panel" aria-selected="{{#questionsactive}}true{{/questionsactive}}{{^questionsactive}}false{{/questionsactive}}">
         {{# str }} hub_tab_questions, mod_googlemeet {{/ str }}
-        {{#canmanagequestions}}
-          {{#hasdrafts}}({{draftcount}} {{# str }} question_status_draft, mod_googlemeet {{/ str }}){{/hasdrafts}}
-          {{^hasdrafts}}{{#publishedcount}}({{publishedcount}}){{/publishedcount}}{{/hasdrafts}}
-        {{/canmanagequestions}}
+        {{#questioncount}}<span class="googlemeet-tab-count">{{questioncount}}</span>{{/questioncount}}
+        {{#canmanagequestions}}{{#hasdrafts}}<span class="googlemeet-tab-count googlemeet-tab-count-warning">{{# str }} hub_tab_drafts, mod_googlemeet, {{draftcount}} {{/ str }}</span>{{/hasdrafts}}{{/canmanagequestions}}
       </button>
     </li>
     {{#showmaterials}}
     <li class="nav-item" role="presentation">
-      <button class="nav-link {{#materialsactive}}active{{/materialsactive}}" id="googlemeet-materials-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-materials-panel" type="button" role="tab" aria-controls="googlemeet-materials-panel" aria-selected="{{#materialsactive}}true{{/materialsactive}}{{^materialsactive}}false{{/materialsactive}}">
+      <button class="nav-link {{#materialsactive}}active{{/materialsactive}}" id="googlemeet-materials-tab" data-hub-tab="materials" data-bs-toggle="tab" data-bs-target="#googlemeet-materials-panel" type="button" role="tab" aria-controls="googlemeet-materials-panel" aria-selected="{{#materialsactive}}true{{/materialsactive}}{{^materialsactive}}false{{/materialsactive}}">
         {{# str }} hub_tab_materials, mod_googlemeet {{/ str }}
-        {{#materialcount}}<span class="badge bg-secondary ms-1">{{materialcount}}</span>{{/materialcount}}
+        {{#materialcount}}<span class="googlemeet-tab-count">{{materialcount}}</span>{{/materialcount}}
       </button>
     </li>
     {{/showmaterials}}
     {{#caneditrecording}}
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="googlemeet-transcript-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-transcript-panel" type="button" role="tab" aria-controls="googlemeet-transcript-panel" aria-selected="false">
+      <button class="nav-link" id="googlemeet-transcript-tab" data-hub-tab="transcript" data-bs-toggle="tab" data-bs-target="#googlemeet-transcript-panel" type="button" role="tab" aria-controls="googlemeet-transcript-panel" aria-selected="false">
         {{# str }} hub_tab_transcript, mod_googlemeet {{/ str }}
       </button>
     </li>
     {{/caneditrecording}}
     {{#hasnotes}}
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="googlemeet-notes-tab" data-bs-toggle="tab" data-bs-target="#googlemeet-notes-panel" type="button" role="tab" aria-controls="googlemeet-notes-panel" aria-selected="false">
+      <button class="nav-link" id="googlemeet-notes-tab" data-hub-tab="notes" data-bs-toggle="tab" data-bs-target="#googlemeet-notes-panel" type="button" role="tab" aria-controls="googlemeet-notes-panel" aria-selected="false">
         {{# str }} hub_tab_notes, mod_googlemeet {{/ str }}
       </button>
     </li>
     {{/hasnotes}}
   </ul>
+  </div>
 
   <div class="tab-content pt-3">
     <div class="tab-pane fade {{#summaryactive}}show active{{/summaryactive}}" id="googlemeet-summary-panel" role="tabpanel" aria-labelledby="googlemeet-summary-tab">

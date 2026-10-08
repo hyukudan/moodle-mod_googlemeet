@@ -1526,6 +1526,64 @@ const bindPracticePlayer = () => {
 };
 
 /**
+ * Show a hub tab button through Bootstrap (or the jQuery bridge when only that exists).
+ *
+ * @param {HTMLElement} tab Tab button.
+ * @returns {void}
+ */
+const showTab = tab => {
+    if (window.bootstrap && window.bootstrap.Tab) {
+        window.bootstrap.Tab.getOrCreateInstance(tab).show();
+    } else if (typeof $(tab).tab === 'function') {
+        $(tab).tab('show');
+    }
+};
+
+/**
+ * Deep link to a tab with #summary, #questions, #materials, #transcript or #notes,
+ * keep the hash in sync when switching, and scroll the active tab into view on mobile.
+ *
+ * @returns {void}
+ */
+const bindTabHash = () => {
+    const hub = document.getElementById('googlemeet-recording-hub');
+    if (!hub) {
+        return;
+    }
+    const tabs = Array.from(hub.querySelectorAll('[data-hub-tab]'));
+    const byName = name => tabs.find(tab => tab.getAttribute('data-hub-tab') === name);
+    const reveal = tab => {
+        const strip = tab.closest('.googlemeet-hub-tabs');
+        if (strip && strip.scrollWidth > strip.clientWidth) {
+            strip.scrollLeft = Math.max(0, tab.offsetLeft - (strip.clientWidth - tab.offsetWidth) / 2);
+        }
+    };
+    const fromHash = () => {
+        const name = (window.location.hash || '').replace(/^#/, '');
+        const tab = name ? byName(name) : null;
+        if (tab && !tab.classList.contains('active')) {
+            showTab(tab);
+        }
+        return tab;
+    };
+
+    const initial = fromHash();
+    if (initial) {
+        reveal(initial);
+        hub.querySelector('.googlemeet-hub-tabs').scrollIntoView({block: 'start'});
+    }
+    window.addEventListener('hashchange', fromHash);
+    $(tabs).on('shown.bs.tab', function() {
+        reveal(this);
+        if (window.history && window.history.replaceState) {
+            const url = new URL(window.location.href);
+            url.hash = this.getAttribute('data-hub-tab');
+            window.history.replaceState(window.history.state, '', url.toString());
+        }
+    });
+};
+
+/**
  * Stable storage key for a key point, independent of its position (text prefix, whitespace-normalised).
  *
  * @param {string} text Key point text.
@@ -1692,6 +1750,7 @@ export const init = config => {
     loadStrings().then(() => {
         $(document).ready(() => {
             restoreHubState();
+            bindTabHash();
             bindQuestionManagement();
             if (settings.caneditrecording) {
                 bindRecordingManagement();

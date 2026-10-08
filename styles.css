@@ -3121,3 +3121,67 @@ mark.googlemeet-transcript-match-current {
         display: none;
     }
 }
+/* Hub tabs: one scrollable row on small screens instead of wrapping into a grey block. */
+.googlemeet-hub-tabs-wrap {
+    position: relative;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    background: transparent;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs::-webkit-scrollbar {
+    display: none;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs .nav-item {
+    flex: 0 0 auto;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs .nav-link:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color, rgba(13, 110, 253, 0.35));
+    outline-offset: -3px;
+}
+.googlemeet-tab-count {
+    display: inline-block;
+    min-width: 1.4rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--bs-secondary-bg, #e9ecef);
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.3rem;
+    text-align: center;
+}
+.googlemeet-tab-count-warning {
+    background: var(--bs-warning-bg-subtle, #fff3cd);
+    color: var(--bs-warning-text-emphasis, #664d03);
+}
+.googlemeet-recording-hub .googlemeet-ai-transcript-text {
+    max-height: 60vh;
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-hub-tabs-wrap::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 1px;
+        width: 1.5rem;
+        background: linear-gradient(to right, transparent, var(--bs-body-bg, #fff));
+        pointer-events: none;
+    }
+    .googlemeet-recording-hub .googlemeet-hub-tabs .nav-link {
+        padding-inline: 0.75rem;
+    }
+}

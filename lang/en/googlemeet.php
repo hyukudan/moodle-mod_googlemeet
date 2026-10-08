@@ -557,3 +557,5 @@ $string['hub_keypoints_hint'] = 'Tick each point once you master it. Saved only 
 $string['hub_keypoint_check_aria'] = 'Mark key point {$a} as reviewed';
 $string['hub_topics_hint'] = 'Tap a topic to see every class where it comes up.';
 $string['hub_topic_link_aria'] = 'See the classes about {$a}';
+$string['hub_tabs_aria'] = 'Lesson content';
+$string['hub_tab_drafts'] = '{$a} draft';

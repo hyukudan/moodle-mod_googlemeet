@@ -562,3 +562,5 @@ $string['hub_keypoints_hint'] = 'Marca cada punto cuando lo domines. Se guarda s
 $string['hub_keypoint_check_aria'] = 'Marcar el punto clave {$a} como repasado';
 $string['hub_topics_hint'] = 'Pulsa un tema para ver todas las clases en las que aparece.';
 $string['hub_topic_link_aria'] = 'Ver las clases sobre {$a}';
+$string['hub_tabs_aria'] = 'Contenido de la clase';
+$string['hub_tab_drafts'] = '{$a} en borrador';
