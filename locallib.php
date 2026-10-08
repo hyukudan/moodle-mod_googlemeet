@@ -591,8 +591,16 @@ function googlemeet_get_classroom_hero_context($googlemeet, $cm, context_module 
         ];
     }
 
+    $progresssummary = googlemeet_get_progress_summary($googlemeet, $context);
+    $isstudentview = !has_capability('mod/googlemeet:editrecording', $context);
+
     return array_merge([
         'activityname' => format_string($googlemeet->name),
+        // UX-01: without upcoming sessions the hero collapses instead of leaving a tall empty card.
+        'herocompact' => !$nextevent,
+        'showheroprogress' => $isstudentview && $progresssummary['total'] > 0,
+        'hasrecordedcount' => $progresssummary['total'] > 0,
+        'recordedcountlabel' => get_string('hero_recorded_count', 'googlemeet', $progresssummary['total']),
         'hasnextevent' => false,
         'hasnextclassevents' => !empty($nextclassevents),
         'nextclassevents' => $nextclassevents,
@@ -603,7 +611,8 @@ function googlemeet_get_classroom_hero_context($googlemeet, $cm, context_module 
         'hasroomcta' => false,
     ], $eventcontext,
         googlemeet_get_room_cta_context($googlemeet, $context, $nextevent, $hasvalidmeeturl),
-        googlemeet_get_continue_watching_context($googlemeet, $cm, $context));
+        googlemeet_get_continue_watching_context($googlemeet, $cm, $context),
+        googlemeet_progress_summary_context($progresssummary));
 }
 
 /**
@@ -782,6 +791,63 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
 }
 
 /**
+ * The current user's viewing progress over the visible recordings of an activity (cached per request).
+ *
+ * @param stdClass $googlemeet Activity record.
+ * @param context_module $context Module context.
+ * @return array ['total' => int, 'watched' => int, 'pending' => int, 'pct' => int, 'completedids' => int[]]
+ */
+function googlemeet_get_progress_summary(stdClass $googlemeet, context_module $context): array {
+    global $DB, $USER;
+    static $cache = [];
+    $key = (int)$googlemeet->id . ':' . (int)$USER->id;
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $visiblewhere = has_capability('mod/googlemeet:editrecording', $context) ? '' : 'AND r.visible = 1';
+    $params = ['googlemeetid' => (int)$googlemeet->id, 'userid' => (int)$USER->id];
+    $total = (int)$DB->count_records_sql(
+        "SELECT COUNT(1) FROM {googlemeet_recordings} r
+          WHERE r.googlemeetid = :googlemeetid AND r.deleted = 0 {$visiblewhere}", $params);
+    $completedids = array_map('intval', $DB->get_fieldset_sql(
+        "SELECT r.id
+           FROM {googlemeet_recordings} r
+           JOIN {googlemeet_recording_progress} p ON p.recordingid = r.id AND p.userid = :userid AND p.completed = 1
+          WHERE r.googlemeetid = :googlemeetid AND r.deleted = 0 {$visiblewhere}", $params));
+    $watched = count($completedids);
+
+    $cache[$key] = [
+        'total' => $total,
+        'watched' => $watched,
+        'pending' => max(0, $total - $watched),
+        'pct' => $total > 0 ? (int)round($watched * 100 / $total) : 0,
+        'completedids' => $completedids,
+    ];
+    return $cache[$key];
+}
+
+/**
+ * Template fields for the "N de M clases vistas" summary.
+ *
+ * @param array $summary Result of googlemeet_get_progress_summary().
+ * @return array
+ */
+function googlemeet_progress_summary_context(array $summary): array {
+    return [
+        'hasprogresssummary' => $summary['total'] > 0,
+        'watchedcount' => $summary['watched'],
+        'totalcount' => $summary['total'],
+        'pendingcount' => $summary['pending'],
+        'progresssummarypct' => $summary['pct'],
+        'progresssummarybarstyle' => 'width: ' . $summary['pct'] . '%;',
+        'progresssummarylabel' => get_string('progress_summary', 'googlemeet',
+            ['watched' => $summary['watched'], 'total' => $summary['total']]),
+        'progresssummarydone' => $summary['total'] > 0 && $summary['pending'] === 0,
+    ];
+}
+
+/**
  * This creates new events given as timeopen and timeclose by googlemeet.
  *
  * @param object $googlemeet
@@ -789,9 +855,13 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
  * @param object $context
  * @param int $page Current page number (0-based).
  * @param string|null $orderoverride Optional order override from URL parameter.
+ * @param string $query Free-text search.
+ * @param string $topic Topic filter.
+ * @param bool $pendingonly Only recordings the current user has not marked as viewed (ANA-06).
  * @return void
  */
-function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null, $query = '', $topic = '') {
+function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $orderoverride = null, $query = '', $topic = '',
+        bool $pendingonly = false) {
     global $CFG, $DB, $PAGE, $OUTPUT, $USER;
 
     $config = get_config('googlemeet');
@@ -859,6 +929,15 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     }
     if (trim((string)$topic) !== '') {
         $allrecordings = googlemeet_filter_recordings_by_topic($allrecordings, (string)$topic);
+    }
+    $progresssummary = googlemeet_get_progress_summary($googlemeet, $context);
+    $showprogresssummary = !$hascapability && $progresssummary['total'] > 0;
+    $pendingonly = $pendingonly && $showprogresssummary;
+    if ($pendingonly) {
+        $completed = array_flip($progresssummary['completedids']);
+        $allrecordings = array_values(array_filter($allrecordings, static function($recording) use ($completed) {
+            return !isset($completed[(int)$recording->id]);
+        }));
     }
 
     $totalrecordings = count($allrecordings);
@@ -987,6 +1066,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     if (trim((string)$topic) !== '') {
         $viewurlparams['topic'] = $topic;
     }
+    if ($pendingonly) {
+        $viewurlparams['rpending'] = 1;
+    }
+    $filterbaseparams = $viewurlparams;
+    unset($filterbaseparams['rpage'], $filterbaseparams['rpending']);
     $viewcardsurl = (new moodle_url('/mod/googlemeet/view.php',
         $viewurlparams + ['rview' => 'cards']))->out(false);
     $viewlisturl = (new moodle_url('/mod/googlemeet/view.php',
@@ -1027,14 +1111,19 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'recordingquery' => $query,
         'selectedtopic' => $topic,
         'alltopics' => $topicchips,
-        'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== ''),
+        'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== '' || $pendingonly),
+        'showprogresssummary' => $showprogresssummary,
+        'ispendingfilter' => $pendingonly,
+        'pendingparam' => $pendingonly ? 1 : 0,
+        'pendingfilterurl' => (new moodle_url('/mod/googlemeet/view.php', $filterbaseparams + ['rpending' => 1]))->out(false),
+        'allfilterurl' => (new moodle_url('/mod/googlemeet/view.php', $filterbaseparams))->out(false),
         'clearfiltersurl' => (new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]))->out(false),
         // View toggle (cards|list).
         'isviewcards' => ($view === 'cards'),
         'isviewlist' => ($view === 'list'),
         'viewcardsurl' => $viewcardsurl,
         'viewlisturl' => $viewlisturl,
-    ]);
+    ] + googlemeet_progress_summary_context($progresssummary));
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
 

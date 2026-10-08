@@ -88,6 +88,9 @@ if ($rview === 'cards' || $rview === 'list') {
     if (trim($rviewtopic) !== '') {
         $redirectparams['topic'] = $rviewtopic;
     }
+    if (optional_param('rpending', 0, PARAM_BOOL)) {
+        $redirectparams['rpending'] = 1;
+    }
     redirect(new moodle_url('/mod/googlemeet/view.php', $redirectparams));
 }
 
@@ -153,7 +156,9 @@ $recordingspage = optional_param('rpage', 0, PARAM_INT);
 $recordingsorder = optional_param('rorder', null, PARAM_ALPHA);
 $recordingquery = optional_param('rq', '', PARAM_TEXT);
 $recordingtopic = optional_param('topic', '', PARAM_TEXT);
+$recordingpending = optional_param('rpending', 0, PARAM_BOOL);
 
-googlemeet_print_recordings($googlemeet, $cm, $context, $recordingspage, $recordingsorder, $recordingquery, $recordingtopic);
+googlemeet_print_recordings($googlemeet, $cm, $context, $recordingspage, $recordingsorder, $recordingquery, $recordingtopic,
+    (bool)$recordingpending);
 
 echo $OUTPUT->footer();

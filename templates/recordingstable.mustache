@@ -67,12 +67,12 @@
       {{#hasrecordings}}
       <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
       <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group">
-        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
+        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
            class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
           <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
           <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
         </a>
-        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}"
+        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
            class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
           <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
           <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
@@ -140,10 +140,20 @@
   </details>
   {{/hasdeletedrecordings}}{{/hascapability}}
 
+  {{#showprogresssummary}}
+  <div class="googlemeet-progress-summary">
+    <div class="googlemeet-pending-toggle" role="group" aria-label="{{# str }} recordings_pending_filter_aria, mod_googlemeet {{/ str }}">
+      <a href="{{allfilterurl}}" class="googlemeet-pending-option {{^ispendingfilter}}active{{/ispendingfilter}}" {{^ispendingfilter}}aria-current="true"{{/ispendingfilter}}>{{# str }} recordings_filter_all, mod_googlemeet {{/ str }}</a>
+      <a href="{{pendingfilterurl}}" class="googlemeet-pending-option {{#ispendingfilter}}active{{/ispendingfilter}}" {{#ispendingfilter}}aria-current="true"{{/ispendingfilter}}>{{# str }} recordings_filter_pending, mod_googlemeet, {{pendingcount}} {{/ str }}</a>
+    </div>
+  </div>
+  {{/showprogresssummary}}
+
   {{#hasrecordings}}
   <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
     <input type="hidden" name="id" value="{{coursemoduleid}}">
     <input type="hidden" name="rorder" value="{{#isorderdesc}}DESC{{/isorderdesc}}{{#isorderasc}}ASC{{/isorderasc}}">
+    {{#ispendingfilter}}<input type="hidden" name="rpending" value="1">{{/ispendingfilter}}
     <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
     <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
            placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
@@ -479,11 +489,11 @@
   </div>
 
   {{#haspagination}}
-  <nav aria-label="Recordings pagination" class="googlemeet-pagination mt-3">
+  <nav aria-label="{{# str }} recordings_pagination_aria, mod_googlemeet {{/ str }}" class="googlemeet-pagination mt-3">
     <ul class="pagination pagination-sm justify-content-center mb-0">
       {{#hasprevious}}
       <li class="page-item">
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{previouspage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{previouspage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}">
           &laquo; {{# str }} recordings_page_previous, mod_googlemeet {{/ str }}
         </a>
       </li>
@@ -500,14 +510,14 @@
         <span class="page-link">{{number}}</span>
         {{/active}}
         {{^active}}
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{page}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">{{number}}</a>
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{page}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}">{{number}}</a>
         {{/active}}
       </li>
       {{/pages}}
 
       {{#hasnext}}
       <li class="page-item">
-        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{nextpage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}">
+        <a class="page-link" href="?id={{coursemoduleid}}&rpage={{nextpage}}&rorder={{currentorder}}&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}">
           {{# str }} recordings_page_next, mod_googlemeet {{/ str }} &raquo;
         </a>
       </li>
@@ -528,6 +538,7 @@
         {{# pix }} i/empty, core {{/ pix }}
       </div>
       {{#hasactivefilters}}
+        {{#ispendingfilter}}{{#progresssummarydone}}<p class="fw-bold">{{# str }} recordings_pending_none, mod_googlemeet {{/ str }}</p>{{/progresssummarydone}}{{/ispendingfilter}}
         <p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>
         <a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>
       {{/hasactivefilters}}

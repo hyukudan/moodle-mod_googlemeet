@@ -3370,3 +3370,144 @@ mark.googlemeet-transcript-match-current {
         padding: 0.55rem 0.65rem;
     }
 }
+/* ANA-06: viewing progress summary + "Pendientes" filter (student list). */
+.googlemeet-progress-summary {
+    display: flex;
+    margin-bottom: 0.75rem;
+}
+.googlemeet-progress-summary-main {
+    display: flex;
+    flex: 1 1 16rem;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.googlemeet-progress-summary-label,
+.googlemeet-hero-progress-label {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.googlemeet-progress-summary-meter {
+    height: 0.45rem;
+    max-width: 22rem;
+    background-color: var(--bs-secondary-bg, #e9ecef);
+}
+.googlemeet-progress-summary-meter .progress-bar {
+    background-color: var(--bs-success, #198754);
+}
+.googlemeet-pending-toggle {
+    display: inline-flex;
+    padding: 0.2rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 999px;
+    background: var(--bs-body-bg, #fff);
+}
+.googlemeet-pending-option {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.9rem;
+    border-radius: 999px;
+    color: var(--bs-body-color, #212529);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.googlemeet-pending-option:hover,
+.googlemeet-pending-option:focus {
+    color: var(--bs-primary-text-emphasis, #174ea6);
+}
+.googlemeet-pending-option.active {
+    background: var(--bs-primary, #0d6efd);
+    color: #fff;
+}
+.googlemeet-pending-option:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color, rgba(13, 110, 253, 0.35));
+    outline-offset: 1px;
+}
+/* UX-01: hero without upcoming sessions does not stretch to the "Última clase" card. */
+.googlemeet-classroom-hero-compact {
+    align-items: start;
+}
+.googlemeet-classroom-hero-compact .googlemeet-hero-main {
+    gap: 0.6rem;
+}
+.googlemeet-hero-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+}
+.googlemeet-hero-progress-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+}
+.googlemeet-hero-progress-title {
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+/* L4: "not viewed" is the default state; keep it quiet so viewed/started stand out. */
+.googlemeet-listitem-progress .googlemeet-progress-badge-unseen,
+.googlemeet-card-progress .googlemeet-progress-badge-unseen {
+    border-color: transparent;
+    background: transparent;
+    color: var(--bs-secondary-color, #5f6368);
+    font-weight: 600;
+}
+/* UX-02: compact lesson rows on phones (date + status, title, 2-line summary, actions). */
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-recordings-listview .googlemeet-recording-listitem {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "date progress" "main main" "actions actions";
+        gap: 0.35rem 0.75rem;
+        min-height: 0;
+        padding: 0.7rem 0.8rem;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-date {
+        grid-area: date;
+        justify-self: start;
+        min-width: 0;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.78rem;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-progress {
+        grid-area: progress;
+        flex: none;
+        min-width: 0;
+        max-width: none;
+        align-items: flex-end;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-main {
+        grid-area: main;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-actions {
+        grid-area: actions;
+        justify-content: space-between;
+        margin-top: 0.15rem;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-title a.recording-name-text {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    .googlemeet-recordings-listview .googlemeet-listitem-title .googlemeet-card-aibadge,
+    .googlemeet-recordings-listview .googlemeet-listitem-meta .googlemeet-ai-topic-tag {
+        display: none;
+    }
+    .googlemeet-pending-toggle {
+        width: 100%;
+    }
+    .googlemeet-pending-option {
+        flex: 1 1 50%;
+        justify-content: center;
+    }
+}

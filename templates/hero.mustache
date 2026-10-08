@@ -1,7 +1,7 @@
 {{!
   @template mod_googlemeet/hero
 }}
-<section class="googlemeet-classroom-hero" aria-labelledby="googlemeet-classroom-hero-title">
+<section class="googlemeet-classroom-hero{{#herocompact}} googlemeet-classroom-hero-compact{{/herocompact}}" aria-labelledby="googlemeet-classroom-hero-title">
   <div class="googlemeet-hero-main">
     <div class="googlemeet-hero-kicker">{{# str }} classroom_kicker, mod_googlemeet {{/ str }}</div>
     <h3 id="googlemeet-classroom-hero-title" class="googlemeet-hero-title">{{activityname}}</h3>
@@ -49,8 +49,19 @@
     {{/hasscheduleevents}}
 
     {{^hasnextevent}}
-      <div class="googlemeet-hero-empty">{{# str }} event_no_upcoming, mod_googlemeet {{/ str }}</div>
+      <div class="googlemeet-hero-empty">{{# str }} event_no_upcoming, mod_googlemeet {{/ str }}{{#hasrecordedcount}} <span aria-hidden="true">&middot;</span> {{recordedcountlabel}}{{/hasrecordedcount}}</div>
     {{/hasnextevent}}
+    {{#showheroprogress}}
+      <div class="googlemeet-hero-progress">
+        <div class="googlemeet-hero-progress-head">
+          <span class="googlemeet-hero-progress-title">{{# str }} hero_progress_title, mod_googlemeet {{/ str }}</span>
+          <span id="googlemeet-hero-progress-label" class="googlemeet-hero-progress-label">{{progresssummarylabel}}</span>
+        </div>
+        <div class="progress googlemeet-progress-summary-meter" role="progressbar" aria-labelledby="googlemeet-hero-progress-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{progresssummarypct}}">
+          <div class="progress-bar" style="{{progresssummarybarstyle}}"></div>
+        </div>
+      </div>
+    {{/showheroprogress}}
 
     {{#hasroomcta}}
       <div class="googlemeet-room-entry googlemeet-hero-room-entry">
