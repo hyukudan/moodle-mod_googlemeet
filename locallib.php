@@ -1153,6 +1153,10 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         }
         break;
     }
+    // Students think of "previous/next class" chronologically, whatever the list order is.
+    if ($recordingsorder === 'DESC') {
+        [$previousrecording, $nextrecording] = [$nextrecording, $previousrecording];
+    }
     $previousparams = $backparams;
     $nextparams = $backparams;
     if ($previousrecording) {
@@ -1196,6 +1200,15 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $lessontitle = $lessontitles[$recording->id] ?? [
         'title' => googlemeet_display_name((string)$recording->name), 'subtitle' => '', 'hassubtitle' => false,
     ];
+    $navtitle = static function(?stdClass $navrecording) use ($lessontitles): string {
+        if (!$navrecording) {
+            return '';
+        }
+        return format_string($lessontitles[$navrecording->id]['title'] ?? googlemeet_display_name((string)$navrecording->name));
+    };
+    $navdate = static function(?stdClass $navrecording): string {
+        return $navrecording ? userdate((int)$navrecording->createdtime, get_string('strftimedmy', 'googlemeet')) : '';
+    };
 
     $templatecontext = array_merge([
         'cmid' => $cm->id,
@@ -1203,6 +1216,12 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'name' => format_string($lessontitle['title']),
         'hassubtitle' => $lessontitle['hassubtitle'],
         'subtitle' => format_string($lessontitle['subtitle']),
+        'datelabel' => userdate((int)$recording->createdtime, get_string('strftimedaydate', 'langconfig')),
+        'datetimeiso' => date('c', (int)$recording->createdtime),
+        'previousrecordingtitle' => $navtitle($previousrecording),
+        'previousrecordingdate' => $navdate($previousrecording),
+        'nextrecordingtitle' => $navtitle($nextrecording),
+        'nextrecordingdate' => $navdate($nextrecording),
         'originalname' => $recording->name,
         'duration' => s($recording->duration),
         'durationseconds' => $durationseconds,

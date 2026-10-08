@@ -549,3 +549,8 @@ $string['stalerecurrence_body'] = 'La actividad "{$a->activity}" del curso "{$a-
 $string['stalerecurrence_body_html'] = 'La actividad "<strong>{$a->activity}</strong>" del curso "<strong>{$a->course}</strong>" tiene aún <strong>{$a->futurecount}</strong> sesión(es) futura(s) programada(s), pero su última grabación fue el <strong>{$a->lastrecording}</strong>.<br>Si sus clases en directo han terminado, cierra la recurrencia poniendo <em>Repetir hasta</em> en una fecha pasada: <a href="{$a->editurl}">editar la actividad</a>.';
 $string['stalerecurrence_editlink'] = 'Editar la actividad';
 $string['privacy:metadata:preference:lastjump'] = 'El último capítulo o marca de tiempo al que el usuario saltó en cada grabación (una preferencia por grabación), usado para ofrecer "Continuar en". No es la posición real de reproducción.';
+$string['hub_lesson_nav_aria'] = 'Navegación entre clases';
+$string['hub_previous_lesson'] = 'Clase anterior';
+$string['hub_next_lesson'] = 'Clase siguiente';
+$string['hub_duration_label'] = 'Duración';
+$string['hub_meta_chapters'] = '{$a} capítulos';

@@ -282,9 +282,11 @@ const refreshProgressUi = () => {
     bar.css('width', state.percent + '%');
 
     if (progress.completed) {
-        button.prop('disabled', true).text(strings.recording_progress_completed);
+        button.prop('disabled', true).text(strings.recording_progress_completed)
+            .removeClass('btn-primary').addClass('btn-outline-success');
     } else {
-        button.prop('disabled', false).text(strings.recording_mark_viewed);
+        button.prop('disabled', false).text(strings.recording_mark_viewed)
+            .removeClass('btn-outline-success').addClass('btn-primary');
     }
 };
 

@@ -544,3 +544,8 @@ $string['stalerecurrence_body'] = 'The activity "{$a->activity}" in course "{$a-
 $string['stalerecurrence_body_html'] = 'The activity "<strong>{$a->activity}</strong>" in course "<strong>{$a->course}</strong>" still has <strong>{$a->futurecount}</strong> future session(s) scheduled, but its last recording was on <strong>{$a->lastrecording}</strong>.<br>If its live classes have ended, close the recurrence by setting <em>Repeat until</em> to a past date: <a href="{$a->editurl}">edit the activity</a>.';
 $string['stalerecurrence_editlink'] = 'Edit the activity';
 $string['privacy:metadata:preference:lastjump'] = 'The last chapter or timestamp the user jumped to in each recording (one preference per recording), used to offer "Continue at". It is not the real playback position.';
+$string['hub_lesson_nav_aria'] = 'Lesson navigation';
+$string['hub_previous_lesson'] = 'Previous class';
+$string['hub_next_lesson'] = 'Next class';
+$string['hub_duration_label'] = 'Duration';
+$string['hub_meta_chapters'] = '{$a} chapters';
