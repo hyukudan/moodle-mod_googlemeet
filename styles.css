@@ -2461,6 +2461,29 @@
 .googlemeet-player-column {
     min-width: 0;
 }
+.googlemeet-player-help {
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.8rem;
+}
+.googlemeet-player-help summary {
+    min-height: 24px;
+    cursor: pointer;
+    color: #174ea6;
+    font-weight: 600;
+}
+.googlemeet-player-help summary:focus-visible {
+    outline: 3px solid var(--gm-blue, #1a73e8);
+    outline-offset: 2px;
+}
+.googlemeet-player-help p {
+    margin: 0.35rem 0;
+}
+.googlemeet-recording-player-empty p.googlemeet-recording-player-empty-help {
+    max-width: 32rem;
+    font-weight: 400;
+    font-size: 0.85rem;
+    color: var(--gm-muted, #5f6368);
+}
 .googlemeet-resume-bar {
     display: flex;
     flex-wrap: wrap;

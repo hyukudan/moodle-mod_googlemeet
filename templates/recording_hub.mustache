@@ -16,8 +16,13 @@
     {{#canembed}}
       <div class="googlemeet-player-column">
         <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
-          <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+          <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="{{originalname}}"></iframe>
         </div>
+        <details class="googlemeet-player-help mb-3">
+          <summary>{{# str }} player_help_summary, mod_googlemeet {{/ str }}</summary>
+          <p>{{# str }} player_help_body, mod_googlemeet {{/ str }}</p>
+          <a href="{{webviewlink}}" target="_blank" rel="noopener">{{# str }} openindrive, mod_googlemeet {{/ str }}</a>
+        </details>
         <div class="visually-hidden" data-region="seek-feedback" aria-live="polite"></div>
         {{#hasresume}}
         <div class="googlemeet-resume-bar mb-3" data-region="resume-bar">
@@ -31,6 +36,7 @@
       <div class="googlemeet-recording-player-empty mb-3">
         <div class="googlemeet-recording-player-empty-icon" aria-hidden="true">{{# pix }} i/externallink, core {{/ pix }}</div>
         <p>{{# str }} recording_embed_unavailable, mod_googlemeet {{/ str }}</p>
+        <p class="googlemeet-recording-player-empty-help">{{# str }} recording_embed_unavailable_help, mod_googlemeet {{/ str }}</p>
         <a href="{{webviewlink}}" class="btn btn-outline-primary btn-sm" target="_blank" rel="noopener">{{# str }} openindrive, mod_googlemeet {{/ str }}</a>
       </div>
     {{/canembed}}
