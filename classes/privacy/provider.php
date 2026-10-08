@@ -42,7 +42,14 @@ class provider implements
         \core_privacy\local\request\plugin\provider,
 
         // This plugin is capable of determining which users have data within it.
-        \core_privacy\local\request\core_userlist_provider {
+        \core_privacy\local\request\core_userlist_provider,
+
+        // This plugin stores user preferences (last chapter/timestamp jumped to per recording).
+        \core_privacy\local\request\user_preference_provider {
+
+    /** @var string Prefix of the per-recording "last jump" user preference. */
+    const LASTJUMP_PREFIX = 'mod_googlemeet_lastjump_';
+
     /**
      * Return the fields which contain personal data.
      *
@@ -171,6 +178,9 @@ class provider implements
             ],
             'privacy:metadata:google_calendar'
         );
+
+        $collection->add_user_preference(self::LASTJUMP_PREFIX . '<recordingid>',
+            'privacy:metadata:preference:lastjump');
 
         return $collection;
     }
@@ -510,5 +520,31 @@ class provider implements
         $select = "recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)
                    AND userid $usersql";
         $DB->delete_records_select('googlemeet_recording_progress', $select, $params);
+    }
+
+    /**
+     * Export the user preferences stored by this plugin.
+     *
+     * @param int $userid The user whose preferences are exported.
+     */
+    public static function export_user_preferences(int $userid) {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
+
+        $preferences = $DB->get_records_select('user_preferences',
+            'userid = :userid AND ' . $DB->sql_like('name', ':prefix'),
+            ['userid' => $userid, 'prefix' => $DB->sql_like_escape(self::LASTJUMP_PREFIX) . '%'],
+            'name', 'id, name, value');
+        foreach ($preferences as $preference) {
+            $recordingid = (int)substr($preference->name, strlen(self::LASTJUMP_PREFIX));
+            $recordingname = $DB->get_field('googlemeet_recordings', 'name', ['id' => $recordingid]);
+            writer::export_user_preference(
+                'mod_googlemeet',
+                $preference->name,
+                googlemeet_format_seconds_timestamp((int)$preference->value),
+                get_string('privacy:metadata:preference:lastjump', 'mod_googlemeet') .
+                    ($recordingname !== false ? ' (' . format_string($recordingname) . ')' : '')
+            );
+        }
     }
 }

@@ -14,10 +14,18 @@
 
   <div class="googlemeet-hub-media-layout {{#haschapters}}googlemeet-hub-media-with-chapters{{/haschapters}}">
     {{#canembed}}
-      <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
-        <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+      <div class="googlemeet-player-column">
+        <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
+          <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen title="{{originalname}}"></iframe>
+        </div>
+        <div class="visually-hidden" data-region="seek-feedback" aria-live="polite"></div>
+        {{#hasresume}}
+        <div class="googlemeet-resume-bar mb-3" data-region="resume-bar">
+          <button type="button" class="btn btn-primary btn-sm googlemeet-resume-button" data-seek-seconds="{{resumeseconds}}"><span aria-hidden="true">&#9654;</span> {{resumelabel}}</button>
+          <span class="googlemeet-resume-note">{{# str }} recording_resume_note, mod_googlemeet {{/ str }}</span>
+        </div>
+        {{/hasresume}}
       </div>
-      <div class="visually-hidden" data-region="seek-feedback" aria-live="polite"></div>
     {{/canembed}}
     {{^canembed}}
       <div class="googlemeet-recording-player-empty mb-3">

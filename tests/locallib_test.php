@@ -48,6 +48,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 #[CoversFunction('googlemeet_set_events')]
 #[CoversFunction('googlemeet_display_name')]
 #[CoversFunction('googlemeet_get_recording_seek_url')]
+#[CoversFunction('googlemeet_format_seconds_timestamp')]
 class locallib_test extends \advanced_testcase {
 
     // -------------------------------------------------------------------------
@@ -132,6 +133,18 @@ class locallib_test extends \advanced_testcase {
 
         $other = 'https://example.com/video.mp4';
         $this->assertSame($other, googlemeet_get_recording_seek_url($other, 90));
+    }
+
+    /**
+     * Seconds are formatted like chapter timestamps (M:SS or H:MM:SS).
+     */
+    public function test_format_seconds_timestamp(): void {
+        $this->assertSame('0:00', googlemeet_format_seconds_timestamp(0));
+        $this->assertSame('0:00', googlemeet_format_seconds_timestamp(-5));
+        $this->assertSame('1:30', googlemeet_format_seconds_timestamp(90));
+        $this->assertSame('26:03', googlemeet_format_seconds_timestamp(1563));
+        $this->assertSame('1:02:03', googlemeet_format_seconds_timestamp(3723));
+        $this->assertSame(1563, googlemeet_timestamp_to_seconds(googlemeet_format_seconds_timestamp(1563)));
     }
 
     // =========================================================================

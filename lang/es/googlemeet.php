@@ -353,6 +353,8 @@ $string['chapter_copy_link'] = 'Copiar enlace a este momento';
 $string['chapter_copy_link_aria'] = 'Copiar enlace a {$a}';
 $string['chapter_link_copied'] = 'Enlace a {$a} copiado';
 $string['chapter_link_copy_manual'] = 'Copia este enlace: {$a}';
+$string['recording_resume_button'] = 'Continuar en {$a}';
+$string['recording_resume_note'] = 'Último punto al que saltaste desde Moodle (no es la posición exacta de reproducción).';
 $string['chapter_jump_aria'] = '{$a->title}, empieza en {$a->timestamp}';
 $string['chapter_no_transcript_error'] = 'No hay transcripción para generar capítulos.';
 $string['chapter_timestamp_copied'] = 'Tiempo copiado: {$a}';
@@ -536,3 +538,4 @@ $string['stalerecurrence_subject'] = 'Recurrencia de Google Meet posiblemente ab
 $string['stalerecurrence_body'] = 'La actividad "{$a->activity}" del curso "{$a->course}" tiene aún {$a->futurecount} sesión(es) futura(s) programada(s), pero su última grabación fue el {$a->lastrecording}. Si sus clases en directo han terminado, cierra la recurrencia poniendo "Repetir hasta" en una fecha pasada aquí: {$a->editurl}';
 $string['stalerecurrence_body_html'] = 'La actividad "<strong>{$a->activity}</strong>" del curso "<strong>{$a->course}</strong>" tiene aún <strong>{$a->futurecount}</strong> sesión(es) futura(s) programada(s), pero su última grabación fue el <strong>{$a->lastrecording}</strong>.<br>Si sus clases en directo han terminado, cierra la recurrencia poniendo <em>Repetir hasta</em> en una fecha pasada: <a href="{$a->editurl}">editar la actividad</a>.';
 $string['stalerecurrence_editlink'] = 'Editar la actividad';
+$string['privacy:metadata:preference:lastjump'] = 'El último capítulo o marca de tiempo al que el usuario saltó en cada grabación (una preferencia por grabación), usado para ofrecer "Continuar en". No es la posición real de reproducción.';

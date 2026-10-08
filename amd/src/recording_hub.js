@@ -567,6 +567,26 @@ const markActiveChapter = seconds => {
 };
 
 /**
+ * Remember the last point the user jumped to (approximate resume, not playback position).
+ *
+ * @param {number} seconds Offset in seconds.
+ * @returns {void}
+ */
+const rememberLastJump = seconds => {
+    if (!settings.recordingid || settings.lastjump === seconds) {
+        return;
+    }
+    settings.lastjump = seconds;
+    Ajax.call([{
+        methodname: 'core_user_set_user_preferences',
+        args: {preferences: [{name: 'mod_googlemeet_lastjump_' + settings.recordingid, value: String(seconds)}]},
+    }])[0].catch(() => {
+        // Guests or restricted sessions cannot store preferences; resuming is best effort.
+        return;
+    });
+};
+
+/**
  * Seek the recording player to a second.
  *
  * A native <video> is seeked in place; the Drive /preview iframe is reloaded with `?t=<seconds>`.
@@ -575,9 +595,10 @@ const markActiveChapter = seconds => {
  * @param {object} [options] Options.
  * @param {boolean} [options.scroll=true] Scroll the player into view.
  * @param {boolean} [options.announce=true] Announce the jump to assistive technology.
+ * @param {boolean} [options.remember=true] Store it as the user's last jump point for this recording.
  * @returns {boolean} Whether a player was found and seeked.
  */
-const seekTo = (rawseconds, {scroll = true, announce = true} = {}) => {
+const seekTo = (rawseconds, {scroll = true, announce = true, remember = true} = {}) => {
     const seconds = Math.max(0, Math.floor(Number(rawseconds) || 0));
     const nativeVideo = $('#googlemeet-recording-hub video').get(0);
     const iframe = nativeVideo ? null : getPlayerIframe();
@@ -592,6 +613,9 @@ const seekTo = (rawseconds, {scroll = true, announce = true} = {}) => {
     }
 
     markActiveChapter(seconds);
+    if (remember) {
+        rememberLastJump(seconds);
+    }
 
     if (scroll) {
         const player = (nativeVideo || iframe).closest('.googlemeet-recording-player') || nativeVideo || iframe;
@@ -704,6 +728,12 @@ const bindChapters = () => {
     });
 
     applyInitialStart();
+
+    $('.googlemeet-resume-button').on('click', function() {
+        if (seekTo(parseInt(this.getAttribute('data-seek-seconds'), 10))) {
+            $('[data-region="resume-bar"]').addClass('d-none');
+        }
+    });
 };
 
 /**

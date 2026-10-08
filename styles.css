@@ -2458,6 +2458,19 @@
     margin: 0;
     color: #5f6368;
 }
+.googlemeet-player-column {
+    min-width: 0;
+}
+.googlemeet-resume-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+}
+.googlemeet-resume-note {
+    color: var(--gm-muted, #5f6368);
+    font-size: 0.78rem;
+}
 .googlemeet-hub-media-with-chapters {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
 }

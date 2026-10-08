@@ -1161,13 +1161,22 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $progressstate = googlemeet_recording_progress_state($recording, $progress ?: null);
     $canembed = googlemeet_recording_can_embed((string)$recording->webviewlink);
     $embedurl = $canembed ? googlemeet_get_recording_embed_url((string)$recording->webviewlink) : '';
-    $durationseconds = max(0, googlemeet_timestamp_to_seconds((string)$recording->duration));
+    $durationseconds = googlemeet_recording_duration_to_seconds((string)$recording->duration);
     // Deep link: view.php?id=..&recording=..&t=<seconds> opens the Drive player at that second.
     $starttime = max(0, optional_param('t', 0, PARAM_INT));
     if ($durationseconds > 0) {
         $starttime = min($starttime, $durationseconds);
     }
     $playerurl = $canembed ? googlemeet_get_recording_seek_url((string)$recording->webviewlink, $starttime) : '';
+    // Approximate "continue where you left off": the last chapter/timestamp this user jumped to.
+    // Drive's iframe does not expose its playback position, so this is not the real position.
+    $lastjump = 0;
+    if ($canembed && $starttime === 0 && isloggedin() && !isguestuser()) {
+        $lastjump = max(0, (int)get_user_preferences(googlemeet_lastjump_preference_name((int)$recording->id), 0));
+        if ($durationseconds > 0 && $lastjump > $durationseconds) {
+            $lastjump = 0;
+        }
+    }
 
     $templatecontext = array_merge([
         'cmid' => $cm->id,
@@ -1178,6 +1187,11 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'durationseconds' => $durationseconds,
         'starttime' => $canembed ? $starttime : 0,
         'playerurl' => $playerurl,
+        'hasresume' => $lastjump > 0,
+        'resumeseconds' => $lastjump,
+        'resumelabel' => $lastjump > 0
+            ? get_string('recording_resume_button', 'googlemeet', googlemeet_format_seconds_timestamp($lastjump))
+            : '',
         'huburl' => (new moodle_url('/mod/googlemeet/view.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
         'webviewlink' => $recording->webviewlink,

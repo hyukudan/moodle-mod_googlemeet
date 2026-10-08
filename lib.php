@@ -567,6 +567,56 @@ function googlemeet_timestamp_to_seconds(?string $timestamp): int {
 }
 
 /**
+ * Format seconds as M:SS or H:MM:SS (the same shape the chapters use).
+ *
+ * @param int $seconds Seconds.
+ * @return string
+ */
+function googlemeet_format_seconds_timestamp(int $seconds): string {
+    $seconds = max(0, $seconds);
+    $hours = intdiv($seconds, HOURSECS);
+    $minutes = intdiv($seconds % HOURSECS, MINSECS);
+    $secs = $seconds % MINSECS;
+    if ($hours > 0) {
+        return sprintf('%d:%02d:%02d', $hours, $minutes, $secs);
+    }
+    return sprintf('%d:%02d', $minutes, $secs);
+}
+
+/**
+ * User preference that stores the last chapter/timestamp a user jumped to in a recording.
+ *
+ * This is the last jump point chosen in Moodle, not the real playback position: the Drive
+ * preview iframe does not expose its current time.
+ *
+ * @param int $recordingid Recording ID.
+ * @return string
+ */
+function googlemeet_lastjump_preference_name(int $recordingid): string {
+    return 'mod_googlemeet_lastjump_' . $recordingid;
+}
+
+/**
+ * User preferences that the current user may update through core_user_set_user_preferences.
+ *
+ * @return array
+ */
+function googlemeet_user_preferences(): array {
+    return [
+        '/^mod_googlemeet_lastjump_\\d+$/' => [
+            'isregex' => true,
+            'type' => PARAM_INT,
+            'null' => NULL_NOT_ALLOWED,
+            'default' => 0,
+            'permissioncallback' => [core_user::class, 'is_current_user'],
+            'cleancallback' => static function($value) {
+                return max(0, (int)$value);
+            },
+        ],
+    ];
+}
+
+/**
  * Decode and normalise stored AI chapters for template rendering.
  *
  * @param string|array|null $rawchapters Stored JSON or already decoded chapter list.

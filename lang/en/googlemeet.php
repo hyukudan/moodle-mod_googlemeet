@@ -350,6 +350,8 @@ $string['chapter_copy_link'] = 'Copy link to this moment';
 $string['chapter_copy_link_aria'] = 'Copy link to {$a}';
 $string['chapter_link_copied'] = 'Link to {$a} copied';
 $string['chapter_link_copy_manual'] = 'Copy this link: {$a}';
+$string['recording_resume_button'] = 'Continue at {$a}';
+$string['recording_resume_note'] = 'Last point you jumped to from Moodle (not the exact playback position).';
 $string['chapter_jump_aria'] = '{$a->title}, starts at {$a->timestamp}';
 $string['chapter_no_transcript_error'] = 'No transcript is available to generate chapters.';
 $string['chapter_timestamp_copied'] = 'Timestamp copied: {$a}';
@@ -531,3 +533,4 @@ $string['stalerecurrence_subject'] = 'Google Meet recurrence looks abandoned: {$
 $string['stalerecurrence_body'] = 'The activity "{$a->activity}" in course "{$a->course}" still has {$a->futurecount} future session(s) scheduled, but its last recording was on {$a->lastrecording}. If its live classes have ended, close the recurrence by setting "Repeat until" to a past date here: {$a->editurl}';
 $string['stalerecurrence_body_html'] = 'The activity "<strong>{$a->activity}</strong>" in course "<strong>{$a->course}</strong>" still has <strong>{$a->futurecount}</strong> future session(s) scheduled, but its last recording was on <strong>{$a->lastrecording}</strong>.<br>If its live classes have ended, close the recurrence by setting <em>Repeat until</em> to a past date: <a href="{$a->editurl}">edit the activity</a>.';
 $string['stalerecurrence_editlink'] = 'Edit the activity';
+$string['privacy:metadata:preference:lastjump'] = 'The last chapter or timestamp the user jumped to in each recording (one preference per recording), used to offer "Continue at". It is not the real playback position.';
