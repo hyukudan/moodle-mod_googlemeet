@@ -3724,3 +3724,17 @@ mark.googlemeet-transcript-match-current {
         content: none;
     }
 }
+/* Phones: keep the study tab short (the Materiales tab is one tap away; tighter key point rows). */
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-study-cta-materials,
+    .googlemeet-topics-hint {
+        display: none;
+    }
+    .googlemeet-keypoint {
+        padding: 0.45rem 0;
+        line-height: 1.5;
+    }
+    .googlemeet-hub-pager-link {
+        padding: 0.55rem 0.8rem;
+    }
+}
