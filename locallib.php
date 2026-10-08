@@ -759,7 +759,8 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
         'hascontinue' => true,
         'continueurl' => (new moodle_url('/mod/googlemeet/view.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
-        'continuetitle' => format_string(googlemeet_display_name((string)$recording->name)),
+        'continuetitle' => format_string(googlemeet_get_lesson_titles($googlemeet, $caneditrecording)[$recording->id]['title']
+            ?? googlemeet_display_name((string)$recording->name)),
         'continueoriginaltitle' => $recording->name,
         'continuedate' => userdate($recording->createdtime, get_string('strftimedmy', 'googlemeet')),
         'continueduration' => $recording->duration,
@@ -835,6 +836,19 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 
     // Distinct topics for the filter chips come from the UNFILTERED set.
     $alltopics = googlemeet_collect_topics($allrecordings);
+
+    // Distinguishable lesson titles (computed over the whole activity so duplicates are detected).
+    $titleitems = [];
+    foreach ($allrecordings as $recording) {
+        $titleitems[$recording->id] = ['name' => (string)$recording->name, 'topics' => $recording->aitopics ?? []];
+    }
+    $lessontitles = googlemeet_assign_lesson_titles($titleitems,
+        [(string)$googlemeet->name, (string)($googlemeet->originalname ?? '')]);
+    foreach ($allrecordings as $recording) {
+        if (isset($lessontitles[$recording->id])) {
+            $recording->displayname = $lessontitles[$recording->id]['title'];
+        }
+    }
 
     // Apply filters in PHP (topics are stored as JSON; this stays DB-portable).
     if (trim((string)$query) !== '') {
@@ -1178,10 +1192,17 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         }
     }
 
+    $lessontitles = googlemeet_get_lesson_titles($googlemeet, $caneditrecording);
+    $lessontitle = $lessontitles[$recording->id] ?? [
+        'title' => googlemeet_display_name((string)$recording->name), 'subtitle' => '', 'hassubtitle' => false,
+    ];
+
     $templatecontext = array_merge([
         'cmid' => $cm->id,
         'recordingid' => $recording->id,
-        'name' => format_string(googlemeet_display_name((string)$recording->name)),
+        'name' => format_string($lessontitle['title']),
+        'hassubtitle' => $lessontitle['hassubtitle'],
+        'subtitle' => format_string($lessontitle['subtitle']),
         'originalname' => $recording->name,
         'duration' => s($recording->duration),
         'durationseconds' => $durationseconds,

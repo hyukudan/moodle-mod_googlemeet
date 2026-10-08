@@ -780,6 +780,113 @@ function googlemeet_display_name(string $name): string {
 }
 
 /**
+ * Choose a distinguishable lesson title for each recording (presentation only).
+ *
+ * Meet recordings are usually named after the meeting, so every lesson of an activity
+ * ends up with the same title. When a recording's display name is "generic" (equal to
+ * one of the activity names, or shared by several recordings of the activity) and the
+ * AI analysis produced topics, the first topic becomes the title and the meeting name
+ * moves to a subtitle. If two topic-based titles still collide, the second topic is
+ * appended. Stored names are never changed (they drive the Drive sync filters).
+ *
+ * @param array $items Map id => ['name' => string, 'topics' => string[]].
+ * @param string[] $genericnames Names that are generic for this activity (activity name, Meet name).
+ * @return array Map id => ['title' => string, 'subtitle' => string, 'hassubtitle' => bool].
+ */
+function googlemeet_assign_lesson_titles(array $items, array $genericnames): array {
+    $generic = [];
+    foreach ($genericnames as $genericname) {
+        $genericname = trim((string)$genericname);
+        if ($genericname !== '') {
+            $generic[googlemeet_fold(googlemeet_display_name($genericname))] = true;
+        }
+    }
+
+    $displaynames = [];
+    $namecounts = [];
+    foreach ($items as $id => $item) {
+        $display = googlemeet_display_name((string)($item['name'] ?? ''));
+        $displaynames[$id] = $display;
+        $key = googlemeet_fold($display);
+        $namecounts[$key] = ($namecounts[$key] ?? 0) + 1;
+    }
+
+    $result = [];
+    $topictitles = [];
+    foreach ($items as $id => $item) {
+        $display = $displaynames[$id];
+        $key = googlemeet_fold($display);
+        $topics = array_values(array_filter(array_map(static function($topic) {
+            return trim((string)$topic);
+        }, (array)($item['topics'] ?? [])), static function($topic) {
+            return $topic !== '';
+        }));
+        $isgeneric = isset($generic[$key]) || $namecounts[$key] > 1;
+        if (!$isgeneric || empty($topics)) {
+            $result[$id] = ['title' => $display, 'subtitle' => '', 'hassubtitle' => false, 'topics' => $topics];
+            continue;
+        }
+        $result[$id] = ['title' => $topics[0], 'subtitle' => $display, 'hassubtitle' => true, 'topics' => $topics];
+        $topictitles[googlemeet_fold($topics[0])][] = $id;
+    }
+
+    // Disambiguate lessons whose first topic is the same by adding their second topic.
+    foreach ($topictitles as $ids) {
+        if (count($ids) < 2) {
+            continue;
+        }
+        foreach ($ids as $id) {
+            $topics = $result[$id]['topics'];
+            if (isset($topics[1])) {
+                $result[$id]['title'] = $topics[0] . ' · ' . $topics[1];
+            }
+        }
+    }
+    foreach ($result as $id => $entry) {
+        unset($result[$id]['topics']);
+    }
+
+    return $result;
+}
+
+/**
+ * Lesson titles for every recording of an activity, cached per request.
+ *
+ * @param stdClass $googlemeet Activity record (name, originalname, id).
+ * @param bool $includehidden Whether hidden recordings take part (teacher view).
+ * @return array Map recording id => ['title', 'subtitle', 'hassubtitle'].
+ */
+function googlemeet_get_lesson_titles(stdClass $googlemeet, bool $includehidden): array {
+    global $DB;
+    static $cache = [];
+    $cachekey = (int)$googlemeet->id . ':' . (int)$includehidden;
+    if (isset($cache[$cachekey])) {
+        return $cache[$cachekey];
+    }
+
+    $params = ['googlemeetid' => (int)$googlemeet->id, 'deleted' => 0];
+    $visiblewhere = '';
+    if (!$includehidden) {
+        $visiblewhere = 'AND r.visible = 1';
+    }
+    $rows = $DB->get_records_sql(
+        "SELECT r.id, r.name, a.topics
+           FROM {googlemeet_recordings} r
+      LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
+          WHERE r.googlemeetid = :googlemeetid AND r.deleted = :deleted {$visiblewhere}",
+        $params
+    );
+    $items = [];
+    foreach ($rows as $row) {
+        $items[$row->id] = ['name' => (string)$row->name, 'topics' => json_decode((string)$row->topics) ?: []];
+    }
+
+    $cache[$cachekey] = googlemeet_assign_lesson_titles($items,
+        [(string)($googlemeet->name ?? ''), (string)($googlemeet->originalname ?? '')]);
+    return $cache[$cachekey];
+}
+
+/**
  * Counts the total number of recordings for a Google Meet instance.
  *
  * @param array $params Array of parameters to a query.

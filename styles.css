@@ -2782,3 +2782,7 @@ mark.googlemeet-transcript-match-current {
         transition: none;
     }
 }
+.googlemeet-hub-subtitle {
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.85rem;
+}

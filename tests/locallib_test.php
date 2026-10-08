@@ -47,6 +47,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 #[CoversFunction('googlemeet_construct_events_data_for_add')]
 #[CoversFunction('googlemeet_set_events')]
 #[CoversFunction('googlemeet_display_name')]
+#[CoversFunction('googlemeet_assign_lesson_titles')]
 #[CoversFunction('googlemeet_get_recording_seek_url')]
 #[CoversFunction('googlemeet_format_seconds_timestamp')]
 class locallib_test extends \advanced_testcase {
@@ -117,6 +118,32 @@ class locallib_test extends \advanced_testcase {
         foreach ($cases as [$input, $expected]) {
             $this->assertSame($expected, googlemeet_display_name($input));
         }
+    }
+
+    /**
+     * Generic meeting-named recordings get their first AI topic as title; unique names are kept.
+     */
+    public function test_assign_lesson_titles(): void {
+        $activity = 'Clases en directo curso COURSE';
+        $titles = googlemeet_assign_lesson_titles([
+            1 => ['name' => $activity . ' - 2026/06/25 17:00 CEST - Recording', 'topics' => ['Ley General Sanidad', 'SNS']],
+            2 => ['name' => $activity, 'topics' => []],
+            3 => ['name' => 'Tema 4: Estatuto de Autonomía', 'topics' => ['Parlament']],
+            4 => ['name' => 'Repaso', 'topics' => ['Constitución', 'Título Preliminar']],
+            5 => ['name' => 'Repaso', 'topics' => ['Constitución', 'Derechos fundamentales']],
+        ], [$activity, '']);
+
+        $this->assertSame('Ley General Sanidad', $titles[1]['title']);
+        $this->assertSame($activity, $titles[1]['subtitle']);
+        $this->assertTrue($titles[1]['hassubtitle']);
+        // No topics: keep the (cleaned) stored name.
+        $this->assertSame($activity, $titles[2]['title']);
+        $this->assertFalse($titles[2]['hassubtitle']);
+        // A teacher-chosen unique name always wins over AI topics.
+        $this->assertSame('Tema 4: Estatuto de Autonomía', $titles[3]['title']);
+        // Duplicated names use topics, and colliding first topics add the second one.
+        $this->assertSame('Constitución · Título Preliminar', $titles[4]['title']);
+        $this->assertSame('Constitución · Derechos fundamentales', $titles[5]['title']);
     }
 
     /**

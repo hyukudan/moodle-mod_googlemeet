@@ -87,6 +87,7 @@
           </button>
         {{/caneditrecording}}
       </h3>
+      {{#hassubtitle}}<div class="googlemeet-hub-subtitle">{{subtitle}}</div>{{/hassubtitle}}
       <div class="text-muted">{{duration}}</div>
       <div class="googlemeet-hub-progress mt-2" data-region="recording-progress" data-completed="{{#progresscompleted}}1{{/progresscompleted}}{{^progresscompleted}}0{{/progresscompleted}}" data-watchedseconds="{{progresswatchedseconds}}">
         <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}" aria-live="polite" aria-label="{{progressarialabel}}">
