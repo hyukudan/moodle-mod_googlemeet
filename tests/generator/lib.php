@@ -61,4 +61,54 @@ class mod_googlemeet_generator extends testing_module_generator {
 
         return parent::create_instance($record, (array) $options);
     }
+
+    /**
+     * Create a recording row for an activity (no Google round-trip).
+     *
+     * @param array|stdClass $record Needs googlemeetid; everything else is defaulted.
+     * @return stdClass The stored recording.
+     */
+    public function create_recording($record): stdClass {
+        global $DB;
+        $record = (array) $record;
+        $now = time();
+        $record += [
+            'recordingid' => uniqid('drive-', true),
+            'name' => 'Recording ' . $now,
+            'createdtime' => $now,
+            'duration' => '01:00:00',
+            'webviewlink' => 'https://drive.google.com/file/d/test/view',
+            'visible' => 1,
+            'deleted' => 0,
+            'timedeleted' => 0,
+            'timemodified' => $now,
+        ];
+        $id = $DB->insert_record('googlemeet_recordings', (object) $record);
+        return $DB->get_record('googlemeet_recordings', ['id' => $id], '*', MUST_EXIST);
+    }
+
+    /**
+     * Create a completed AI analysis row for a recording.
+     *
+     * @param array|stdClass $record Needs recordingid (googlemeet_recordings.id).
+     * @return stdClass The stored analysis.
+     */
+    public function create_ai_analysis($record): stdClass {
+        global $DB;
+        $record = (array) $record;
+        $now = time();
+        $record += [
+            'summary' => '<p>Summary</p>',
+            'keypoints' => json_encode(['Point one', 'Point two']),
+            'topics' => json_encode(['Topic']),
+            'chapters' => json_encode([]),
+            'status' => 'completed',
+            'retrycount' => 0,
+            'nextretry' => 0,
+            'timecreated' => $now,
+            'timemodified' => $now,
+        ];
+        $id = $DB->insert_record('googlemeet_ai_analysis', (object) $record);
+        return $DB->get_record('googlemeet_ai_analysis', ['id' => $id], '*', MUST_EXIST);
+    }
 }
