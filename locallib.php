@@ -795,7 +795,11 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
  *
  * @param stdClass $googlemeet Activity record.
  * @param context_module $context Module context.
- * @return array ['total' => int, 'watched' => int, 'pending' => int, 'pct' => int, 'completedids' => int[]]
+ * "watched" matches the list's "Vista" badge (completed) and "started" its "Empezada" badge (some viewing
+ * time, not completed), so the hero copy never contradicts the per-lesson badges.
+ *
+ * @return array ['total' => int, 'watched' => int, 'started' => int, 'pending' => int, 'pct' => int,
+ *     'startedpct' => int, 'completedids' => int[]]
  */
 function googlemeet_get_progress_summary(stdClass $googlemeet, context_module $context): array {
     global $DB, $USER;
@@ -816,24 +820,47 @@ function googlemeet_get_progress_summary(stdClass $googlemeet, context_module $c
            JOIN {googlemeet_recording_progress} p ON p.recordingid = r.id AND p.userid = :userid AND p.completed = 1
           WHERE r.googlemeetid = :googlemeetid AND r.deleted = 0 {$visiblewhere}", $params));
     $watched = count($completedids);
+    $started = (int)$DB->count_records_sql(
+        "SELECT COUNT(1)
+           FROM {googlemeet_recordings} r
+           JOIN {googlemeet_recording_progress} p ON p.recordingid = r.id AND p.userid = :userid
+                AND p.completed = 0 AND p.watchedseconds > 0
+          WHERE r.googlemeetid = :googlemeetid AND r.deleted = 0 {$visiblewhere}", $params);
+    $pct = $total > 0 ? (int)round($watched * 100 / $total) : 0;
 
     $cache[$key] = [
         'total' => $total,
         'watched' => $watched,
+        'started' => $started,
         'pending' => max(0, $total - $watched),
-        'pct' => $total > 0 ? (int)round($watched * 100 / $total) : 0,
+        'pct' => $pct,
+        // Kept so that both segments of the stacked bar never add up to more than 100%.
+        'startedpct' => $total > 0 ? min(100 - $pct, (int)round($started * 100 / $total)) : 0,
         'completedids' => $completedids,
     ];
     return $cache[$key];
 }
 
 /**
- * Template fields for the "N de M clases vistas" summary.
+ * Template fields for the "N vistas · M empezadas de T clases" summary.
  *
  * @param array $summary Result of googlemeet_get_progress_summary().
  * @return array
  */
 function googlemeet_progress_summary_context(array $summary): array {
+    $started = (int)($summary['started'] ?? 0);
+    $startedpct = (int)($summary['startedpct'] ?? 0);
+    $watchedpart = get_string($summary['watched'] === 1 ? 'progress_count_watched_one' : 'progress_count_watched',
+        'googlemeet', $summary['watched']);
+    if ($started > 0) {
+        $startedpart = get_string($started === 1 ? 'progress_count_started_one' : 'progress_count_started',
+            'googlemeet', $started);
+        $label = get_string('progress_summary_detail', 'googlemeet',
+            ['watched' => $watchedpart, 'started' => $startedpart, 'total' => $summary['total']]);
+    } else {
+        $label = get_string('progress_summary_watchedonly', 'googlemeet',
+            ['watched' => $watchedpart, 'total' => $summary['total']]);
+    }
     return [
         'hasprogresssummary' => $summary['total'] > 0,
         'watchedcount' => $summary['watched'],
@@ -841,8 +868,11 @@ function googlemeet_progress_summary_context(array $summary): array {
         'pendingcount' => $summary['pending'],
         'progresssummarypct' => $summary['pct'],
         'progresssummarybarstyle' => 'width: ' . $summary['pct'] . '%;',
-        'progresssummarylabel' => get_string('progress_summary', 'googlemeet',
-            ['watched' => $summary['watched'], 'total' => $summary['total']]),
+        'startedcount' => $started,
+        'progressstartedpct' => $startedpct,
+        'progressstartedbarstyle' => 'width: ' . $startedpct . '%;',
+        'hasprogressstarted' => $started > 0,
+        'progresssummarylabel' => $label,
         'progresssummarydone' => $summary['total'] > 0 && $summary['pending'] === 0,
     ];
 }

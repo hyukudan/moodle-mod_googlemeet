@@ -59,6 +59,7 @@
         </div>
         <div class="progress googlemeet-progress-summary-meter" role="progressbar" aria-labelledby="googlemeet-hero-progress-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{progresssummarypct}}">
           <div class="progress-bar" style="{{progresssummarybarstyle}}"></div>
+          {{#hasprogressstarted}}<div class="progress-bar googlemeet-progress-started-segment" style="{{progressstartedbarstyle}}" aria-hidden="true"></div>{{/hasprogressstarted}}
         </div>
       </div>
     {{/showheroprogress}}

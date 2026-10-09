@@ -395,7 +395,7 @@ $string['recording_mark_viewed'] = 'Marcar como vista';
 $string['recording_progress_aria'] = 'Estado de visionado: {$a}';
 $string['recording_progress_completed'] = 'Vista';
 $string['recording_progress_meter'] = 'Progreso de visionado';
-$string['recording_progress_partial'] = 'Parcial';
+$string['recording_progress_partial'] = 'Empezada';
 $string['recording_progress_unseen'] = 'No vista';
 $string['recording_progress_saving'] = 'Guardando...';
 $string['recording_show_to_students_button'] = 'Mostrar a alumnos';
@@ -594,3 +594,11 @@ $string['hub_cta_practice_text'] = '{$a} preguntas tipo examen sobre esta clase.
 $string['hub_cta_practice_button'] = 'Empezar a practicar';
 $string['hub_cta_materials_button'] = 'Ver materiales de la clase';
 $string['hub_print_summary'] = 'Imprimir resumen';
+
+// track: list
+$string['progress_count_started'] = '{$a} empezadas';
+$string['progress_count_started_one'] = '{$a} empezada';
+$string['progress_count_watched'] = '{$a} vistas';
+$string['progress_count_watched_one'] = '{$a} vista';
+$string['progress_summary_detail'] = '{$a->watched} · {$a->started} de {$a->total} clases';
+$string['progress_summary_watchedonly'] = '{$a->watched} de {$a->total} clases';
