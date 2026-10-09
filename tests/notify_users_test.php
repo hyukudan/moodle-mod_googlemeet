@@ -101,23 +101,44 @@ final class notify_users_test extends \advanced_testcase {
 
         [$course, , $eventid] = $this->create_fixture();
 
-        // Create categories until one has the same id as the course.
-        $category = null;
-        for ($i = 0; $i < 50; $i++) {
+        // Moodle's PHPUnit randomises id sequences per table, so a category id never
+        // naturally matches the course id. Force the match deterministically: reuse a
+        // category that already has that id, otherwise create a fresh (empty) category
+        // and renumber it. Only the category row, its path and its context's instanceid
+        // reference the category id (the context path holds context ids, not instance
+        // ids), so this keeps the context tree consistent.
+        $categoryid = (int)$course->id;
+        if (!$DB->record_exists('course_categories', ['id' => $categoryid])) {
             $category = $gen->create_category();
-            if ($category->id >= $course->id) {
-                break;
-            }
+            $catcontextid = (int)\context_coursecat::instance($category->id)->id;
+            $DB->update_record('course_categories', (object)[
+                'id' => $category->id,
+                'path' => '/' . $categoryid,
+            ]);
+            $DB->set_field('course_categories', 'id', $categoryid, ['id' => $category->id]);
+            $DB->set_field('context', 'instanceid', $categoryid, ['id' => $catcontextid]);
+            \context_helper::reset_caches();
+            accesslib_clear_all_caches_for_unit_testing();
+            \cache_helper::purge_by_event('changesincoursecat');
         }
-        if ((int)$category->id !== (int)$course->id) {
-            $this->markTestSkipped('Could not align a category id with the course id.');
-        }
+
+        $catcontext = \context_coursecat::instance($categoryid);
+        // Sanity: a non-course context whose instanceid equals the course id.
+        $this->assertSame(CONTEXT_COURSECAT, (int)$catcontext->contextlevel);
+        $this->assertSame((int)$course->id, (int)$catcontext->instanceid);
+        $this->assertNotEquals(\context_course::instance($course->id)->id, $catcontext->id);
 
         $intruder = $gen->create_user();
         $studentroleid = (int)$DB->get_field('role', 'id', ['shortname' => 'student']);
-        role_assign($studentroleid, $intruder->id, \context_coursecat::instance($category->id)->id);
+        role_assign($studentroleid, $intruder->id, $catcontext->id);
 
-        $this->assertArrayNotHasKey($intruder->id, googlemeet_get_users_to_notify($eventid));
+        // Control: a genuinely enrolled student is still notified.
+        $student = $gen->create_user();
+        $gen->enrol_user($student->id, $course->id, 'student');
+
+        $users = googlemeet_get_users_to_notify($eventid);
+        $this->assertArrayHasKey($student->id, $users);
+        $this->assertArrayNotHasKey($intruder->id, $users);
     }
 
     /**
