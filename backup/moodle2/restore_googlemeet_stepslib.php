@@ -144,13 +144,16 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
      * @return void
      */
     protected function process_googlemeet_recording($data) {
-        global $DB;
+        global $DB, $CFG;
 
         $data = (object)$data;
         $oldid = $data->id;
 
         $data->googlemeetid = $this->get_new_parentid('googlemeet');
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+        // DAT-05: derived from the text duration (also for backups made before the column existed).
+        require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
+        $data->durationseconds = googlemeet_recording_duration_to_seconds($data->duration ?? '') ?: null;
 
         // Strip participant-derived transcript data from legacy backups when restoring without
         // user information (current backups already omit these fields when userinfo is off).

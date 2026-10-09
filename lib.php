@@ -1410,6 +1410,7 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
                 'name' => $restorerecording->name,
                 'createdtime' => $restorerecording->createdTime,
                 'duration' => $restorerecording->duration,
+                'durationseconds' => googlemeet_recording_duration_to_seconds($restorerecording->duration) ?: null,
                 'webviewlink' => $restorerecording->webViewLink,
                 'deleted' => 0,
                 'timedeleted' => 0,
@@ -1435,6 +1436,7 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
             $recording->name = $insertrecording->name;
             $recording->createdtime = $insertrecording->createdTime;
             $recording->duration = $insertrecording->duration;
+            $recording->durationseconds = googlemeet_recording_duration_to_seconds($insertrecording->duration) ?: null;
             $recording->webviewlink = $insertrecording->webViewLink;
             $recording->deleted = 0;
             $recording->timedeleted = 0;

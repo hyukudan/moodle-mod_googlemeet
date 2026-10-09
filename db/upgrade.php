@@ -511,5 +511,62 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026101001, 'googlemeet');
     }
 
+    // Track w2-data.
+    if ($oldversion < 2026101100) {
+        // DAT-05: numeric duration of recordings, parsed from the "h:mm:ss" text.
+        $table = new xmldb_table('googlemeet_recordings');
+        $field = new xmldb_field('durationseconds', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'duration');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $index = new xmldb_index('googlemeetid_deleted_createdtime', XMLDB_INDEX_NOTUNIQUE,
+            ['googlemeetid', 'deleted', 'createdtime']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        global $CFG;
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
+        $rs = $DB->get_recordset_select('googlemeet_recordings', 'durationseconds IS NULL', null, '', 'id, duration');
+        $unparsed = 0;
+        foreach ($rs as $row) {
+            $seconds = googlemeet_recording_duration_to_seconds($row->duration);
+            if ($seconds > 0) {
+                $DB->set_field('googlemeet_recordings', 'durationseconds', $seconds, ['id' => $row->id]);
+            } else {
+                $unparsed++;
+            }
+        }
+        $rs->close();
+        if ($unparsed) {
+            mtrace("mod_googlemeet: {$unparsed} recording duration(s) could not be parsed; durationseconds left NULL.");
+        }
+
+        upgrade_mod_savepoint(true, 2026101100, 'googlemeet');
+    }
+
+    if ($oldversion < 2026101101) {
+        // DAT-06: stale recurrence alert state moves from config_plugins (stalealert_<id>) to a column.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('stalealerttime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'autosynchours');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $records = $DB->get_records_select('config_plugins',
+            'plugin = :plugin AND ' . $DB->sql_like('name', ':pattern'),
+            ['plugin' => 'googlemeet', 'pattern' => 'stalealert\_%'], '', 'id, name, value');
+        foreach ($records as $rec) {
+            $gmid = substr($rec->name, strlen('stalealert_'));
+            if (ctype_digit($gmid) && $DB->record_exists('googlemeet', ['id' => (int)$gmid])) {
+                $DB->set_field('googlemeet', 'stalealerttime', (int)$rec->value, ['id' => (int)$gmid]);
+            }
+            unset_config($rec->name, 'googlemeet');
+        }
+
+        upgrade_mod_savepoint(true, 2026101101, 'googlemeet');
+    }
+
     return true;
 }
