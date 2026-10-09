@@ -246,7 +246,20 @@ function googlemeet_update_instance($googlemeet, $mform = null) {
 
     $googlemeet->timemodified = time();
 
+    // DAT-04: snapshot what the Google Calendar event mirrors before overwriting it.
+    $calendarbefore = $DB->get_record('googlemeet', ['id' => $googlemeet->id]);
+
     $googlemeetupdated = $DB->update_record('googlemeet', $googlemeet);
+
+    // DAT-04: push name/date/time/recurrence changes to Google Calendar in the background.
+    // Never let Google (or the queue) block saving the form.
+    try {
+        if ($calendarbefore && \mod_googlemeet\local\calendar_sync::needs_patch($calendarbefore, $googlemeet)) {
+            \mod_googlemeet\local\calendar_sync::queue_update($calendarbefore, (int)$GLOBALS['USER']->id);
+        }
+    } catch (\Throwable $e) {
+        debugging('mod_googlemeet: could not queue the Google Calendar update: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
 
     // Save holiday periods.
     googlemeet_save_holidays($googlemeet);
@@ -280,9 +293,19 @@ function googlemeet_delete_instance($id) {
     global $DB, $CFG;
     require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
 
-    if (!$DB->record_exists('googlemeet', ['id' => $id])) {
+    $googlemeetrecord = $DB->get_record('googlemeet', ['id' => $id]);
+    if (!$googlemeetrecord) {
         return false;
     }
+
+    // DAT-04: delete the Google Calendar event in the background (data captured now, the record is
+    // gone when the task runs). Never block the deletion.
+    try {
+        \mod_googlemeet\local\calendar_sync::queue_delete($googlemeetrecord, (int)($GLOBALS['USER']->id ?? 0));
+    } catch (\Throwable $e) {
+        debugging('mod_googlemeet: could not queue the Google Calendar deletion: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
+    $DB->delete_records('googlemeet_sync_log', ['googlemeetid' => $id]);
 
     googlemeet_delete_events($id);
 

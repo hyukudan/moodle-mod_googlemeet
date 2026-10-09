@@ -56,6 +56,28 @@ class rest extends \core\oauth2\rest {
                 ],
                 'response' => 'json'
             ],
+            // DAT-04: keep the Calendar event in step with the activity (adhoc tasks).
+            'updateevent' => [
+                'endpoint' => 'https://www.googleapis.com/calendar/v3/calendars/{calendarid}/events/{eventid}',
+                'method' => 'patch',
+                'args' => [
+                    'calendarid' => PARAM_RAW,
+                    'eventid' => PARAM_RAW,
+                    'sendUpdates' => PARAM_ALPHA,
+                ],
+                'response' => 'json'
+            ],
+            'deleteevent' => [
+                'endpoint' => 'https://www.googleapis.com/calendar/v3/calendars/{calendarid}/events/{eventid}',
+                'method' => 'delete',
+                'args' => [
+                    'calendarid' => PARAM_RAW,
+                    'eventid' => PARAM_RAW,
+                    'sendUpdates' => PARAM_ALPHA,
+                ],
+                // JSON so that a 404/410 error body raises a rest_exception; a 204 decodes to null.
+                'response' => 'json'
+            ],
             'list' => [
                 'endpoint' => 'https://www.googleapis.com/drive/v3/files',
                 'method' => 'get',
