@@ -537,4 +537,62 @@ class client_test extends \advanced_testcase {
             $recording, $room1->id, [$room2->id], $eventslots));
         $this->assertDebuggingCalled();
     }
+
+    /**
+     * The access mode resolves from the new setting, deriving from the legacy
+     * makerecordingspublic switch when no explicit mode is configured.
+     */
+    public function test_recording_link_access_resolves_explicit_and_legacy_modes(): void {
+        set_config('recordinglinkaccess', '', 'googlemeet');
+        set_config('makerecordingspublic', 0, 'googlemeet');
+        $this->assertSame('private', client::recording_link_access());
+
+        set_config('makerecordingspublic', 1, 'googlemeet');
+        $this->assertSame('anyone', client::recording_link_access());
+
+        foreach (['private', 'anyone', 'domain'] as $mode) {
+            set_config('recordinglinkaccess', $mode, 'googlemeet');
+            $this->assertSame($mode, client::recording_link_access());
+        }
+    }
+
+    /**
+     * The domain permission carries the owner domain and is not discoverable;
+     * anyone mode keeps the historical payload.
+     */
+    public function test_build_recording_permission_builds_expected_payloads(): void {
+        $anyone = client::build_recording_permission('anyone', 'manuel@fpvirtualaragon.es');
+        $this->assertSame(['role' => 'reader', 'type' => 'anyone'], $anyone);
+
+        $domain = client::build_recording_permission('domain', 'Manuel@FPVirtualAragon.ES');
+        $this->assertSame('reader', $domain['role']);
+        $this->assertSame('domain', $domain['type']);
+        $this->assertSame('fpvirtualaragon.es', $domain['domain']);
+        $this->assertFalse($domain['allowFileDiscovery']);
+
+        $this->assertNull(client::build_recording_permission('private', 'manuel@fpvirtualaragon.es'));
+        $this->assertNull(client::build_recording_permission('domain', ''));
+    }
+
+    /**
+     * Consumer provider domains are refused: a domain grant for them would expose
+     * the recording to every user of that provider, so nothing is granted.
+     */
+    public function test_build_recording_permission_refuses_consumer_domains(): void {
+        foreach (['manuel@gmail.com', 'manuel@outlook.com', 'manuel@yahoo.es'] as $email) {
+            $this->assertNull(client::build_recording_permission('domain', $email));
+            $this->assertDebuggingCalled();
+        }
+    }
+
+    /**
+     * Domain extraction keeps the part after the last @, lower-cased.
+     */
+    public function test_email_domain_extraction(): void {
+        $this->assertSame('fpvirtualaragon.es', client::email_domain('manuel@fpvirtualaragon.es'));
+        $this->assertSame('sub.example.org', client::email_domain('a.b@SUB.example.org'));
+        $this->assertNull(client::email_domain('not-an-email'));
+        $this->assertNull(client::email_domain(''));
+        $this->assertNull(client::email_domain(null));
+    }
 }

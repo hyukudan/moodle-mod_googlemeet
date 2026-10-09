@@ -142,6 +142,99 @@ class client {
     }
 
     /**
+     * Resolve the effective recording link access mode.
+     *
+     * Reads the 'recordinglinkaccess' setting; when unset (upgraded sites) it
+     * derives the mode from the legacy 'makerecordingspublic' checkbox so existing
+     * installations keep their previous behaviour.
+     *
+     * @return string One of 'private', 'anyone' or 'domain'.
+     */
+    public static function recording_link_access(): string {
+        $mode = (string)get_config('googlemeet', 'recordinglinkaccess');
+        if ($mode === 'private' || $mode === 'anyone' || $mode === 'domain') {
+            return $mode;
+        }
+
+        return get_config('googlemeet', 'makerecordingspublic') ? 'anyone' : 'private';
+    }
+
+    /**
+     * Domains of free/consumer email providers. A 'domain' permission granted for
+     * one of these would expose the recording to every user of that provider, so
+     * the domain access mode refuses to grant it.
+     */
+    private const CONSUMER_EMAIL_DOMAINS = [
+        'gmail.com', 'googlemail.com', 'hotmail.com', 'outlook.com', 'yahoo.com',
+        'yahoo.es', 'live.com', 'msn.com', 'aol.com', 'icloud.com', 'me.com',
+        'mac.com', 'proton.me', 'protonmail.com', 'gmx.com', 'gmx.net', 'mail.com',
+    ];
+
+    /**
+     * Extract the domain part of an email address, lower-cased.
+     *
+     * @param string|null $email Email address.
+     * @return string|null The domain, or null when the email is invalid.
+     */
+    public static function email_domain(?string $email): ?string {
+        $email = trim((string)$email);
+        $at = strrpos($email, '@');
+        if ($at === false || $at === strlen($email) - 1) {
+            return null;
+        }
+
+        return \core_text::strtolower(substr($email, $at + 1));
+    }
+
+    /**
+     * Whether a domain belongs to a free/consumer email provider.
+     *
+     * @param string|null $domain Domain to check.
+     * @return bool
+     */
+    public static function is_consumer_domain(?string $domain): bool {
+        return in_array($domain, self::CONSUMER_EMAIL_DOMAINS, true);
+    }
+
+    /**
+     * Build the Drive permission payload for a recording, or null to grant nothing.
+     *
+     * The 'domain' mode derives the allowed domain from the Drive owner's email.
+     * When the owner uses a consumer provider (gmail.com, ...) granting a domain
+     * permission would expose the recording to every user of that provider, so the
+     * grant is refused (callers log this and leave the file private).
+     *
+     * @param string $mode One of 'anyone' or 'domain' ('private' yields null).
+     * @param string|null $owneremail Email of the account owning the Drive files.
+     * @return array|null Permission payload for the create_permission endpoint.
+     */
+    public static function build_recording_permission(string $mode, ?string $owneremail): ?array {
+        if ($mode === 'anyone') {
+            return ['role' => 'reader', 'type' => 'anyone'];
+        }
+
+        if ($mode !== 'domain') {
+            return null;
+        }
+
+        $domain = self::email_domain($owneremail);
+        if ($domain === null || self::is_consumer_domain($domain)) {
+            debugging('mod_googlemeet: domain link access needs a Google Workspace owner email; ' .
+                'recording left private.', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        // allowFileDiscovery=false: anyone IN the domain with the link, but the file
+        // does not show up in Drive search of the organisation.
+        return [
+            'role' => 'reader',
+            'type' => 'domain',
+            'domain' => $domain,
+            'allowFileDiscovery' => false,
+        ];
+    }
+
+    /**
      * Extract the Google Meet code from a room URL.
      *
      * @param string $url Room URL.
@@ -650,24 +743,28 @@ class client {
 
                     // If the recording has already been processed.
                     if (isset($recording->videoMediaMetadata)) {
-                        // SECURITY: granting "anyone with the link" is what makes the recording
-                        // playable for non-owner students through the embedded player. The
-                        // 'makerecordingspublic' setting defaults to 1 to preserve that behaviour;
-                        // an admin can disable it to keep recordings private, but that breaks
-                        // playback for everyone except the Drive owner (a deliberate privacy/
-                        // playability trade-off).
+                        // SECURITY: the link access mode decides who can open the recording
+                        // through the embedded player. 'anyone' is the historical default;
+                        // 'domain' restricts the link to the Drive owner's Workspace domain;
+                        // 'private' keeps the file owner-only (playback breaks for students).
+                        $linkaccess = self::recording_link_access();
                         if (!$deferenrichment
-                                && get_config('googlemeet', 'makerecordingspublic')
+                                && $linkaccess !== 'private'
                                 && !in_array('anyoneWithLink', $recording->permissionIds)) {
-                            $permissionparams = [
-                                'fileid' => $recording->id,
-                                'fields' => 'id'
-                            ];
-                            $permissionrawpost = [
-                                "role" => "reader",
-                                "type" => "anyone"
-                            ];
-                            helper::request($service, 'create_permission', $permissionparams, json_encode($permissionrawpost));
+                            $permissionrawpost = self::build_recording_permission(
+                                $linkaccess, $googlemeet->creatoremail ?? null);
+                            if ($permissionrawpost !== null) {
+                                $permissionparams = [
+                                    'fileid' => $recording->id,
+                                    'fields' => 'id'
+                                ];
+                                try {
+                                    helper::request($service, 'create_permission', $permissionparams, json_encode($permissionrawpost));
+                                } catch (\Throwable $e) {
+                                    debugging('mod_googlemeet: failed to create recording permission for ' .
+                                        $recording->id . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                                }
+                            }
                         }
 
                         // Format it into a human-readable time.
@@ -1230,20 +1327,21 @@ class client {
                 continue;
             }
 
-            if (get_config('googlemeet', 'makerecordingspublic')) {
-                try {
-                    $permissionparams = [
-                        'fileid' => $recording->recordingid,
-                        'fields' => 'id'
-                    ];
-                    $permissionrawpost = [
-                        'role' => 'reader',
-                        'type' => 'anyone'
-                    ];
-                    helper::request($service, 'create_permission', $permissionparams, json_encode($permissionrawpost));
-                } catch (\Throwable $e) {
-                    debugging('mod_googlemeet enrichment: failed to create recording permission for #' .
-                        $recordingid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $linkaccess = self::recording_link_access();
+            if ($linkaccess !== 'private') {
+                $permissionrawpost = self::build_recording_permission(
+                    $linkaccess, $googlemeet->creatoremail ?? null);
+                if ($permissionrawpost !== null) {
+                    try {
+                        $permissionparams = [
+                            'fileid' => $recording->recordingid,
+                            'fields' => 'id'
+                        ];
+                        helper::request($service, 'create_permission', $permissionparams, json_encode($permissionrawpost));
+                    } catch (\Throwable $e) {
+                        debugging('mod_googlemeet enrichment: failed to create recording permission for #' .
+                            $recordingid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    }
                 }
             }
 

@@ -189,6 +189,12 @@ $string['recording_watch'] = 'Ver grabación';
 $string['recording_hidden'] = 'Oculto para estudiantes';
 $string['recording_move'] = 'Mover a…';
 $string['recording_move_confirm'] = '¿Mover esta grabación a la sala seleccionada? Las futuras grabaciones de la misma carpeta de Google Drive también se asignarán a esa sala.';
+$string['recordinglinkaccess'] = 'Acceso con el enlace a las grabaciones';
+$string['recordinglinkaccess_desc'] = 'Quién puede abrir las grabaciones sincronizadas a través del enlace de Google Drive. «Miembros de la organización del propietario» concede acceso de lectura a cualquier cuenta autenticada del dominio de Google Workspace del propietario, de modo que los estudiantes matriculados de ese dominio puedan reproducir la grabación incrustada sin publicarla en internet; requiere que el propietario de la actividad use una cuenta de Google Workspace (con una cuenta de Gmail la grabación permanece privada). «Automático (ajuste anterior)» conserva el comportamiento del interruptor «Hacer las grabaciones accesibles públicamente» hasta que se elija un modo explícitamente.';
+$string['recordinglinkaccess_legacy'] = 'Automático (ajuste anterior)';
+$string['recordinglinkaccess_private'] = 'Privado — solo el propietario del Drive';
+$string['recordinglinkaccess_anyone'] = 'Cualquier persona con el enlace';
+$string['recordinglinkaccess_domain'] = 'Miembros de la organización del propietario';
 
 $string['sync_settings'] = 'Configuración de sincronización';
 $string['sync_help_title'] = 'Cómo funciona la sincronización';
