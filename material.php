@@ -52,17 +52,24 @@ class mod_googlemeet_material_form extends moodleform {
 }
 
 $id = required_param('id', PARAM_INT);
-$recordingid = required_param('recording', PARAM_INT);
+$recordingid = optional_param('recording', 0, PARAM_INT);
 
 $cm = get_coursemodule_from_id('googlemeet', $id, 0, false, MUST_EXIST);
 $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-$googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
-$recording = $DB->get_record('googlemeet_recordings',
-    ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0], '*', MUST_EXIST);
-$context = context_module::instance($cm->id);
 
+// Authenticate before touching any recording data.
 require_login($course, true, $cm);
+$context = context_module::instance($cm->id);
 require_capability('mod/googlemeet:editrecording', $context);
+
+$googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+$recording = $recordingid > 0 ? $DB->get_record('googlemeet_recordings',
+    ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0]) : false;
+if (!$recording) {
+    // Missing or stale recording id (e.g. a bookmarked/truncated link): go back to the activity.
+    redirect(new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]),
+        get_string('materials_invalidrecording', 'googlemeet'), null, \core\output\notification::NOTIFY_WARNING);
+}
 
 $url = new moodle_url('/mod/googlemeet/material.php', ['id' => $cm->id, 'recording' => $recording->id]);
 $redirecturl = new moodle_url('/mod/googlemeet/view.php',

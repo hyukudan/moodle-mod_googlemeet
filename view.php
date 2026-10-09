@@ -96,19 +96,24 @@ if ($rview === 'cards' || $rview === 'list') {
 
 // Make sure URL exists before generating output - some older sites may contain empty urls
 // Do not use PARAM_URL here, it is too strict and does not support general URIs!
+// An invalid stored URL must not make the whole activity (recordings included) unusable:
+// hide the join CTA and tell only the people who can fix it.
 $url = trim((string)$googlemeet->url);
-$hasvalidmeeturl = false;
 $pattern = "/^https:\/\/meet.google.com\/[-a-zA-Z0-9@:%._\+~#=]{3}-[-a-zA-Z0-9@:%._\+~#=]{4}-[-a-zA-Z0-9@:%._\+~#=]{3}$/";
-if ($url !== '' && !preg_match($pattern, $url)) {
-    throw new moodle_exception('invalidstoredurl', 'googlemeet', new moodle_url('/course/view.php', ['id' => $cm->course]));
-}
-$hasvalidmeeturl = ($url !== '');
+$hasinvalidmeeturl = ($url !== '' && !preg_match($pattern, $url));
+$hasvalidmeeturl = ($url !== '' && !$hasinvalidmeeturl);
 unset($url);
 
 // Completion and trigger events.
 googlemeet_view($googlemeet, $course, $cm, $context);
 
 googlemeet_print_header($googlemeet, $cm, $course);
+
+if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $context)) {
+    echo $OUTPUT->notification(get_string('invalidstoredurl_editor', 'googlemeet',
+        (new moodle_url('/course/modedit.php', ['update' => $cm->id, 'return' => 1]))->out()),
+        \core\output\notification::NOTIFY_WARNING);
+}
 // Note: In Moodle 4.0+, the activity header automatically displays
 // the title and description, so we don't call googlemeet_print_heading
 // or googlemeet_print_intro to avoid duplication.

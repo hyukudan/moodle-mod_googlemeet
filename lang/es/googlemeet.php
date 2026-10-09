@@ -73,6 +73,7 @@ $string['invalideventenddate'] = 'Esta fecha no puede ser anterior a la "Fecha d
 $string['invalideventendtime'] = 'La hora de fin debe ser posterior a la hora de inicio';
 $string['invalidissuerid'] = 'El servicio OAuth seleccionado en la configuración de "Google Meet" no es compatible con Google';
 $string['invalidstoredurl'] = 'No se puede mostrar este recurso; la URL de Google Meet no es válida.';
+$string['invalidstoredurl_editor'] = 'La URL de Google Meet guardada en esta actividad no es válida, así que se oculta el botón para entrar. Los alumnos siguen viendo las grabaciones. <a href="{$a}">Edita los ajustes de la actividad</a> para corregirla.';
 $string['isnotcreatoremail'] = 'Iniciar sesión con la cuenta del organizador o cambiar el correo del organizador en la configuración para sincronizar grabaciones.';
 $string['jstableinfo'] = 'Mostrando {start} a {end} de {rows} grabaciones';
 $string['jstableinfofiltered'] = 'Mostrando {start} a {end} de {rows} grabaciones (filtradas de {rowsTotal} grabaciones)';
@@ -338,6 +339,7 @@ $string['attachmentsheader'] = 'Adjuntos';
 $string['attachments'] = 'Archivos para que los alumnos descarguen';
 $string['attachments_help'] = 'Sube archivos aquí (PDF, diapositivas, documentos, etc.). Los alumnos matriculados los verán como una lista de descarga en la página de la actividad. Déjalo en blanco para no mostrar nada.';
 $string['material_saved'] = 'Materiales guardados';
+$string['materials_invalidrecording'] = 'Elige una grabación para gestionar sus materiales.';
 $string['materials_empty_teacher'] = 'No hay materiales; añade el primero.';
 $string['materials_manage'] = 'Gestionar materiales';
 $string['materials_none'] = 'No hay materiales disponibles para esta grabación.';
