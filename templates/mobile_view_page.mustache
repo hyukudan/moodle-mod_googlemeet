@@ -17,237 +17,134 @@
 {{!
   @template mod_googlemeet/mobile_view_page
 
-  This template renders the mobile page.
+  Moodle App: activity view (UX-05). Description, join button, upcoming sessions and a paginated
+  list of classes. Angular uses double braces, so the Mustache delimiters are switched to <% %>.
 
   Example context (json):
   {
-    "intro": "foo",
-    "url": "https://meet.google.com/vwe-vwee-vwe",
     "cmid": 3,
+    "courseid": 2,
+    "intro": "<p>Clases de los martes</p>",
+    "hasroom": true,
     "upcomingevent": {
       "hasupcomingevents": 1,
-      "upcomingevents": [
-        {
-          "today": false,
-          "startdate": "Tue. 17 Nov."
-        }
-      ],
+      "upcomingevents": [{"today": false, "startdate": "Tue. 17 Nov."}],
       "starttime": "09:00",
       "endtime": "10:00",
       "duration": 3600
     },
     "recording": {
-      "hasrecordings": 1,
+      "hasrecordings": true,
       "recordings": [
-        {
-          "id": 1,
-          "googlemeetid": 2,
-          "name": "vwe-vwee-vwe (2020-11-11 at 16:11 GMT-8)",
-          "createdtime": 1605140304,
-          "duration": "1:00",
-          "webviewlink": "https://drive.google.com/file/d/19jNAy_US0zzxxc8OPRWPp74i1msdff/view?usp=drivesdk",
-          "visible": 1,
-          "createdtimeformatted": "Sunday, 23 April 2023, 1:47 PM"
-        }
-      ]
+        {"id": 1, "title": "Tema 4: el acto administrativo", "subtitle": "", "date": "Tuesday, 17 November 2026",
+         "duration": "1:02:00", "watched": true}
+      ],
+      "haspages": true,
+      "hasprev": false,
+      "hasnext": true,
+      "prevpage": 0,
+      "nextpage": 1,
+      "pagelabel": "Page 1 of 3"
     }
   }
 }}
 {{=<% %>=}}
 <div>
-  <ion-list>
-    <ion-item lines="full">
-      <ion-label>
-        <ion-button id="googlemeet-mobile-join" class="ion-margin" expand="block" onclick="window.open('<% url %>', '_system');">
-          {{ 'plugin.mod_googlemeet.entertheroom' | translate }}
-        </ion-button>
-      </ion-label>
-    </ion-item>
-  </ion-list>
+  <%#intro%>
+    <ion-card>
+      <ion-card-content>
+        <core-format-text text="<% intro %>" component="mod_googlemeet" componentId="<% cmid %>" contextLevel="module" contextInstanceId="<% cmid %>" [courseId]="<% courseid %>" [filter]="false"></core-format-text>
+      </ion-card-content>
+    </ion-card>
+  <%/intro%>
+
+  <%#hasroom%>
+    <ion-button id="googlemeet-mobile-join" class="ion-margin" expand="block"
+      core-site-plugins-call-ws
+      name="mod_googlemeet_log_room_entered"
+      [params]="{coursemoduleid: <% cmid %>, via: 'mobile'}"
+      [preSets]="{getFromCache: 0, saveToCache: 0}"
+      [showError]="false"
+      (onSuccess)="googlemeetOpen($event.url || CONTENT_OTHERDATA.roomurl)"
+      (onError)="googlemeetOpen(CONTENT_OTHERDATA.roomurl)">
+      <ion-icon slot="start" name="videocam" aria-hidden="true"></ion-icon>
+      {{ 'plugin.mod_googlemeet.entertheroom' | translate }}
+    </ion-button>
+  <%/hasroom%>
 
   <%#upcomingevent.hasupcomingevents%>
     <ion-list>
-      <ion-list-header lines="full" class="ion-margin-top" (click)="this.showUpcomingEvents = !this.showUpcomingEvents" >
-        <ion-label style="font-size: 22px; font-weight: 700; letter-spacing: 0px;">
-          {{ 'plugin.mod_googlemeet.upcomingevents' | translate }}
-          <ion-icon *ngIf="showUpcomingEvents" name="caret-up-outline" style="top: 0.2em;"></ion-icon>
-          <ion-icon *ngIf="!showUpcomingEvents" name="caret-down-outline" style="top: 0.2em;"></ion-icon>
-        </ion-label>
-      </ion-list-header>
+      <ion-item button lines="full" (click)="showUpcomingEvents = !showUpcomingEvents" [attr.aria-expanded]="showUpcomingEvents">
+        <ion-label><h2>{{ 'plugin.mod_googlemeet.upcomingevents' | translate }}</h2></ion-label>
+        <ion-icon slot="end" [name]="showUpcomingEvents ? 'chevron-up' : 'chevron-down'" aria-hidden="true"></ion-icon>
+      </ion-item>
       <div *ngIf="showUpcomingEvents">
         <%#upcomingevent.upcomingevents%>
           <ion-item lines="full">
-            <%#today%>
-              <ion-icon name="today-outline"></ion-icon>
-              <ion-label class="ion-margin-start">
-                {{ 'plugin.mod_googlemeet.today' | translate }},
-                <%startdate%>
-              </ion-label>
-            <%/today%>
-            <%^today%>
-              <ion-icon name="calendar-outline"></ion-icon>
-              <ion-label class="ion-margin-start">
-                <%startdate%>
-              </ion-label>
-            <%/today%>
+            <ion-icon slot="start" name="calendar-outline" aria-hidden="true"></ion-icon>
+            <ion-label>
+              <%#today%>{{ 'plugin.mod_googlemeet.today' | translate }}, <%/today%><%startdate%>
+            </ion-label>
           </ion-item>
         <%/upcomingevent.upcomingevents%>
-
-        <%#upcomingevent.duration%>
-          <ion-item lines="full">
-            <ion-icon name="time-outline"></ion-icon>
-            <ion-label class="ion-margin-start">
-              {{ 'plugin.mod_googlemeet.from' | translate }}
-              <%upcomingevent.starttime%>
-              {{ 'plugin.mod_googlemeet.to' | translate }}
-              <%upcomingevent.endtime%>
-            </ion-label>
-          </ion-item>
-        <%/upcomingevent.duration%>
-        <%^upcomingevent.duration%>
-          <ion-item lines="full">
-            <ion-icon name="time-outline"></ion-icon>
-            <ion-label class="ion-margin-start">
-              <%upcomingevent.starttime%>
-            </ion-label>
-          </ion-item>
-        <%/upcomingevent.duration%>
+        <ion-item lines="full">
+          <ion-icon slot="start" name="time-outline" aria-hidden="true"></ion-icon>
+          <ion-label>
+            <%#upcomingevent.duration%>
+              {{ 'plugin.mod_googlemeet.from' | translate }} <%upcomingevent.starttime%>
+              {{ 'plugin.mod_googlemeet.to' | translate }} <%upcomingevent.endtime%>
+            <%/upcomingevent.duration%>
+            <%^upcomingevent.duration%><%upcomingevent.starttime%><%/upcomingevent.duration%>
+          </ion-label>
+        </ion-item>
       </div>
     </ion-list>
   <%/upcomingevent.hasupcomingevents%>
 
   <%#recording.hasrecordings%>
     <ion-list>
-      <ion-list-header class="ion-margin-top">
-        <ion-label style="font-size: 22px; font-weight: 700; letter-spacing: 0px;">
-          {{ 'plugin.mod_googlemeet.recordings' | translate }}
-        </ion-label>
+      <ion-list-header>
+        <ion-label><h2>{{ 'plugin.mod_googlemeet.recordings' | translate }}</h2></ion-label>
       </ion-list-header>
       <%#recording.recordings%>
-        <ion-item lines="full">
+        <ion-item button detail="true" lines="full"
+          core-site-plugins-new-content
+          component="mod_googlemeet"
+          method="mobile_recording_view"
+          [args]="{cmid: <% cmid %>, courseid: <% courseid %>, recordingid: <% id %>}"
+          title="<% title %>">
           <ion-label>
-            <p><%name%></p>
-            <p><%createdtimeformatted%></p>
-            <ion-button onclick="window.open('<% webviewlink %>', '_system');">
-              <ion-icon slot="start" name="play"></ion-icon>
-              <%duration%>
-            </ion-button>
-            <%#haspracticequestions%>
-              <ion-list class="ion-margin-top">
-                <ion-list-header lines="full">
-                  <ion-label>
-                    {{ 'plugin.mod_googlemeet.practice_title' | translate }}
-                  </ion-label>
-                </ion-list-header>
-                <%#practicequestions%>
-                  <div *ngIf="googlemeetPractice[<% id %>].index === <% index %>">
-                    <ion-item lines="none">
-                      <ion-label>
-                        <p class="item-heading">
-                          {{ 'plugin.mod_googlemeet.practice_title' | translate }}
-                          <%position%>/<%practicequestioncount%>
-                        </p>
-                        <p><%stem%></p>
-                      </ion-label>
-                    </ion-item>
-                    <ion-radio-group [(ngModel)]="googlemeetPractice[<% id %>].selected[<% questionid %>]">
-                      <%#options%>
-                        <ion-item lines="full">
-                          <ion-radio slot="start" [value]="<% answerid %>"></ion-radio>
-                          <ion-label><%text%></ion-label>
-                        </ion-item>
-                      <%/options%>
-                    </ion-radio-group>
-                    <ion-item lines="none">
-                      <ion-label>
-                        <ion-button
-                          expand="block"
-                          core-site-plugins-call-ws
-                          name="mod_googlemeet_check_practice_answer"
-                          [params]="{
-                            recordingid: <% id %>,
-                            coursemoduleid: <% cmid %>,
-                            questionid: <% questionid %>,
-                            answerid: googlemeetPractice[<% id %>].selected[<% questionid %>]
-                          }"
-                          [preSets]="{getFromCache: 0, saveToCache: 0}"
-                          [disabled]="!googlemeetPractice[<% id %>].selected[<% questionid %>] || googlemeetPractice[<% id %>].checked[<% questionid %>]"
-                          (onSuccess)="googlemeetPractice[<% id %>].checked[<% questionid %>] = true; googlemeetPractice[<% id %>].answer[<% questionid %>] = $event">
-                          {{ 'plugin.mod_googlemeet.practice_check' | translate }}
-                        </ion-button>
-                      </ion-label>
-                    </ion-item>
-                    <ion-item *ngIf="googlemeetPractice[<% id %>].checked[<% questionid %>]" lines="none">
-                      <ion-label>
-                        <p>
-                          <ion-text [color]="googlemeetPractice[<% id %>].answer[<% questionid %>].correct ? 'success' : 'danger'">
-                            <strong>
-                              {{ googlemeetPractice[<% id %>].answer[<% questionid %>].correct ? ('plugin.mod_googlemeet.practice_correct' | translate) : ('plugin.mod_googlemeet.practice_incorrect' | translate) }}
-                            </strong>
-                          </ion-text>
-                        </p>
-                        <%#options%>
-                          <p *ngIf="googlemeetPractice[<% id %>].answer[<% questionid %>].correctanswerid === <% answerid %>">
-                            <strong>{{ 'plugin.mod_googlemeet.practice_correct_answer' | translate }}</strong>
-                            <%text%>
-                          </p>
-                        <%/options%>
-                        <div [innerHTML]="googlemeetPractice[<% id %>].answer[<% questionid %>].explanation"></div>
-                      </ion-label>
-                    </ion-item>
-                    <ion-item *ngIf="googlemeetPractice[<% id %>].checked[<% questionid %>]" lines="none">
-                      <ion-label>
-                        <ion-button
-                          *ngIf="<%position%> < <%practicequestioncount%>"
-                          expand="block"
-                          fill="outline"
-                          (click)="googlemeetPractice[<% id %>].index = <% index %> + 1">
-                          {{ 'plugin.mod_googlemeet.practice_next' | translate }}
-                        </ion-button>
-                        <ion-button
-                          *ngIf="<%position%> === <%practicequestioncount%>"
-                          expand="block"
-                          fill="outline"
-                          (click)="googlemeetPractice[<% id %>].index = 0; googlemeetPractice[<% id %>].selected = {}; googlemeetPractice[<% id %>].checked = {}; googlemeetPractice[<% id %>].answer = {}">
-                          {{ 'plugin.mod_googlemeet.practice_retry' | translate }}
-                        </ion-button>
-                      </ion-label>
-                    </ion-item>
-                  </div>
-                <%/practicequestions%>
-              </ion-list>
-            <%/haspracticequestions%>
-            <%#aisummary%>
-              <ion-card class="ion-no-margin ion-margin-top">
-                <ion-card-header>
-                  <ion-card-title>{{ 'plugin.mod_googlemeet.ai_summary' | translate }}</ion-card-title>
-                </ion-card-header>
-                <ion-card-content>
-                  <p><%aisummarypreview%></p>
-                  <%#aitopics.0%>
-                    <%#aitopics%>
-                    <ion-chip>
-                      <ion-icon name="pricetag-outline"></ion-icon>
-                      <ion-label><%.%></ion-label>
-                    </ion-chip>
-                    <%/aitopics%>
-                  <%/aitopics.0%>
-                  <%#aikeypoints.0%>
-                    <ion-list lines="none">
-                      <%#aikeypoints%>
-                        <ion-item>
-                          <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
-                          <ion-label><%.%></ion-label>
-                        </ion-item>
-                      <%/aikeypoints%>
-                    </ion-list>
-                  <%/aikeypoints.0%>
-                </ion-card-content>
-              </ion-card>
-            <%/aisummary%>
+            <h2><% title %></h2>
+            <%#subtitle%><p><% subtitle %></p><%/subtitle%>
+            <p><% date %><%#duration%> · <% duration %><%/duration%></p>
           </ion-label>
+          <%#watched%>
+            <ion-icon slot="end" name="checkmark-circle" color="success" [attr.aria-label]="'plugin.mod_googlemeet.recording_progress_completed' | translate"></ion-icon>
+          <%/watched%>
         </ion-item>
       <%/recording.recordings%>
     </ion-list>
+
+    <%#recording.haspages%>
+      <ion-grid>
+        <ion-row class="ion-align-items-center">
+          <ion-col size="4">
+            <%#recording.hasprev%>
+              <ion-button fill="outline" expand="block" (click)="updateContent({cmid: <% cmid %>, courseid: <% courseid %>, page: <% recording.prevpage %>})">
+                {{ 'plugin.mod_googlemeet.mobile_prev' | translate }}
+              </ion-button>
+            <%/recording.hasprev%>
+          </ion-col>
+          <ion-col size="4" class="ion-text-center"><% recording.pagelabel %></ion-col>
+          <ion-col size="4">
+            <%#recording.hasnext%>
+              <ion-button fill="outline" expand="block" (click)="updateContent({cmid: <% cmid %>, courseid: <% courseid %>, page: <% recording.nextpage %>})">
+                {{ 'plugin.mod_googlemeet.mobile_next' | translate }}
+              </ion-button>
+            <%/recording.hasnext%>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    <%/recording.haspages%>
   <%/recording.hasrecordings%>
 </div>

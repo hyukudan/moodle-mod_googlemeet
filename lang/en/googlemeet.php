@@ -791,3 +791,12 @@ $string['privacy:metadata:googlemeet_attendance:durationseconds'] = 'Total time 
 $string['privacy:metadata:googlemeet_meetapi'] = 'Attendance is read from the Google Meet REST API with the organiser account; no data is sent to Google.';
 $string['privacy:metadata:googlemeet_meetapi:displayname'] = 'Participant names and Google ids returned by Google Meet.';
 $string['privacy:metadata:preference:meetscope'] = 'When the user linked Google with access to Meet attendance.';
+// UX-05: Moodle App.
+$string['mobile_prev'] = 'Previous';
+$string['mobile_next'] = 'Next';
+$string['mobile_page_of'] = 'Page {$a->page} of {$a->pages}';
+$string['mobile_open_drive'] = 'Watch in Google Drive';
+$string['mobile_mark_watched'] = 'Mark as watched';
+$string['mobile_keypoints'] = 'Key points';
+$string['mobile_chapters'] = 'Chapters';
+$string['mobile_materials'] = 'Materials';
