@@ -61,6 +61,7 @@ const stringRequests = [
     {key: 'ai_regenerate_replace_confirm', component: COMPONENT},
     {key: 'ai_replace_manual_warning', component: COMPONENT},
     {key: 'error', component: 'core'},
+    {key: 'ai_status_stuck_panel', component: COMPONENT},
 ];
 
 let initialised = false;
@@ -582,6 +583,15 @@ const checkAnalysisStatus = (recordingid, callback) => {
             content.find('.googlemeet-ai-processing').hide();
             generateButton.prop('disabled', false).text(strings.ai_generate);
             showAiError(recordingid, response.error || strings.ai_error_unknown);
+        } else if (response.found && response.status === 'processing' && response.stuck) {
+            // F-8: the worker died; stop polling and let the teacher retry (regenerate re-queues a stuck row).
+            content.find('.googlemeet-ai-processing').hide();
+            generateButton.prop('disabled', false).text(strings.ai_regenerate);
+            showAiError(recordingid, strings.ai_status_stuck_panel);
+            if (callback) {
+                callback('stuck');
+            }
+            return;
         }
 
         if (callback) {

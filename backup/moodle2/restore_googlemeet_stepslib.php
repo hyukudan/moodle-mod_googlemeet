@@ -187,6 +187,14 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         }
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+        // IA-04: backups made before the review existed hold content students could already see.
+        if (!isset($data->reviewed)) {
+            $data->reviewed = 1;
+            $data->timereviewed = 0;
+            $data->reviewedby = 0;
+        }
+        $data->timereviewed = empty($data->timereviewed) ? 0 : $this->apply_date_offset($data->timereviewed);
+        $data->reviewedby = empty($data->reviewedby) ? 0 : (int)($this->get_mappingid('user', $data->reviewedby) ?: 0);
 
         // The transcript is participant-derived personal data: never restore it without user
         // information (also strips it from backups made with user data). Without user information

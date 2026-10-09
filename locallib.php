@@ -715,7 +715,8 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
                    r.webviewlink,
                    grp.watchedseconds AS userwatchedseconds,
                    grp.completed AS usercompleted,
-                   a.summary
+                   a.summary,
+                   a.reviewed AS aireviewed
               FROM {googlemeet_recordings} r
               JOIN {googlemeet_recording_progress} grp ON grp.recordingid = r.id
          LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
@@ -738,7 +739,8 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
                        r.webviewlink,
                        grp.watchedseconds AS userwatchedseconds,
                        grp.completed AS usercompleted,
-                       a.summary
+                       a.summary,
+                       a.reviewed AS aireviewed
                   FROM {googlemeet_recordings} r
              LEFT JOIN {googlemeet_recording_progress} grp
                     ON grp.recordingid = r.id AND grp.userid = :userid
@@ -755,6 +757,11 @@ function googlemeet_get_continue_watching_context($googlemeet, $cm, context_modu
 
     if (!$recording) {
         return ['hascontinue' => false];
+    }
+    // IA-04: no unreviewed summary snippet for students.
+    if (!empty($recording->summary) && !$caneditrecording && \mod_googlemeet\local\ai_review::is_pending_review(
+            (object)['status' => 'completed', 'reviewed' => $recording->aireviewed])) {
+        $recording->summary = '';
     }
 
     $progress = null;
@@ -1160,6 +1167,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         $viewurlparams + ['rview' => 'list']))->out(false);
 
     $hasactivefilters = trim((string)$query) !== '' || trim((string)$topic) !== '' || $pendingonly;
+    $html .= \mod_googlemeet\local\ai_review::render_bulk_banner($googlemeet, $cm, $context); // IA-04.
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
         'hasrecordings' => !empty($recordings),
@@ -1349,7 +1357,10 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     }
 
     $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
-    $analysiscompleted = $analysis && $analysis->status === 'completed';
+    // IA-04: an unreviewed analysis is hidden from students (teachers see it with a review banner).
+    $aireview = \mod_googlemeet\local\ai_review::hub_context($analysis, $context, (int)$cm->id,
+        $aienabled && has_capability('mod/googlemeet:generateai', $context));
+    $analysiscompleted = $analysis && $analysis->status === 'completed' && $aireview['aicontentvisible'];
     $statusflags = googlemeet_ai_status_flags($analysis->status ?? null);
     // Teacher-only tab: never render the transcript into a student's page.
     $hubtranscript = $caneditrecording ? googlemeet_hub_transcript($analysis, $recording) : '';
@@ -1553,7 +1564,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'materialcount' => count($materials),
         'managematerialsurl' => (new moodle_url('/mod/googlemeet/material.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
-    ], $progressstate);
+    ], $progressstate, $aireview);
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);

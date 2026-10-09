@@ -601,5 +601,30 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026101111, 'googlemeet');
     }
 
+    // track: w2-aireview.
+    if ($oldversion < 2026101120) {
+        // IA-04: teacher review of AI content before students see it.
+        $table = new xmldb_table('googlemeet_ai_analysis');
+        $fields = [
+            new xmldb_field('reviewed', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'timemodified'),
+            new xmldb_field('timereviewed', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'reviewed'),
+            new xmldb_field('reviewedby', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timereviewed'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        // Everything that exists today is already visible to students: keep it that way. Only
+        // analyses generated (or regenerated) from now on wait for a teacher review. reviewedby 0 = system.
+        $DB->execute("UPDATE {googlemeet_ai_analysis} SET reviewed = 1, timereviewed = :now WHERE reviewed = 0",
+            ['now' => time()]);
+        if (get_config('googlemeet', 'requireaireview') === false) {
+            set_config('requireaireview', 1, 'googlemeet');
+        }
+
+        upgrade_mod_savepoint(true, 2026101120, 'googlemeet');
+    }
+
     return true;
 }

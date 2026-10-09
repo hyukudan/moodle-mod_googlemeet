@@ -262,7 +262,8 @@ foreach ($recordings as $recording) {
         $result = $client->analyze_transcript($transcript, $recording->name, $recording->duration);
 
         // Save the analysis results.
-        $DB->update_record('googlemeet_ai_analysis', (object)[
+        // IA-04: new AI text waits for a teacher review before students see it.
+        $DB->update_record('googlemeet_ai_analysis', (object)([
             'id' => $analysisid,
             'summary' => $result->summary,
             'keypoints' => json_encode($result->keypoints),
@@ -274,7 +275,7 @@ foreach ($recordings as $recording) {
             'retrycount' => 0,
             'nextretry' => 0,
             'timemodified' => time(),
-        ]);
+        ] + \mod_googlemeet\local\ai_review::unreviewed_fields()));
 
         $summarylen = strlen($result->summary);
         $keypointscount = count($result->keypoints);

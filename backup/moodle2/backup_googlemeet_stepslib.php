@@ -140,7 +140,12 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'retrycount',
             'nextretry',
             'timecreated',
-            'timemodified'
+            'timemodified',
+            // IA-04 review state. It travels without user data too, so pending
+            // content stays pending in the copy; reviewedby is only annotated with user data.
+            'reviewed',
+            'timereviewed',
+            'reviewedby'
         ];
         if ($userinfo) {
             $aifields[] = 'transcript';
@@ -215,6 +220,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $recordingprogress->annotate_ids('user', 'userid');
             $recordingsub->annotate_ids('user', 'userid');
             $practiceattempt->annotate_ids('user', 'userid');
+            $aianalysis->annotate_ids('user', 'reviewedby');
         }
 
         // Define file annotations.

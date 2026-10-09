@@ -144,6 +144,10 @@ class process_video_analysis extends adhoc_task {
             $analysis->retrycount = 0;
             $analysis->nextretry = 0;
             $analysis->timemodified = time();
+            // IA-04: new AI text waits for a teacher review before students see it.
+            foreach (\mod_googlemeet\local\ai_review::unreviewed_fields() as $key => $value) {
+                $analysis->$key = $value;
+            }
             $DB->update_record('googlemeet_ai_analysis', $analysis);
 
             mtrace("Analysis saved successfully.");
@@ -155,6 +159,13 @@ class process_video_analysis extends adhoc_task {
             mtrace("Transient error: " . $e->getMessage() . " (scheduling retry if attempts remain).");
             $aiservice = new ai_service();
             $aiservice->record_transient_failure($analysisid, (int) ($analysis->retrycount ?? 0), $e->getMessage());
+
+        } catch (\mod_googlemeet\gemini_safety_exception $e) {
+            // IA-03: content blocked by Gemini's safety filters. Retrying the same content gives the same
+            // result, so no automatic retry, but the stored error explains it to the teacher.
+            mtrace("Blocked by Gemini safety filters: " . ($e->debuginfo ?? ''));
+            $aiservice = new ai_service();
+            $aiservice->record_permanent_failure($analysisid, $e->getMessage());
 
         } catch (\Exception $e) {
             mtrace("Error: " . $e->getMessage());

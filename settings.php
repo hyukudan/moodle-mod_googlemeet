@@ -171,6 +171,38 @@ if ($ADMIN->fulltree) {
         0
     ));
 
+    // track: w2-aireview.
+    // IA-04: AI summaries/key points/topics/chapters stay hidden from students until a teacher publishes them.
+    $settings->add(new admin_setting_configcheckbox(
+        'googlemeet/requireaireview',
+        get_string('requireaireview', 'googlemeet'),
+        get_string('requireaireview_desc', 'googlemeet'),
+        1
+    ));
+
+    // IA-03: Gemini content-safety threshold.
+    $settings->add(new admin_setting_configselect(
+        'googlemeet/aisafetythreshold',
+        get_string('aisafetythreshold', 'googlemeet'),
+        get_string('aisafetythreshold_desc', 'googlemeet'),
+        \mod_googlemeet\gemini_client::DEFAULT_SAFETY_THRESHOLD,
+        [
+            'BLOCK_ONLY_HIGH' => get_string('aisafetythreshold_high', 'googlemeet'),
+            'BLOCK_MEDIUM_AND_ABOVE' => get_string('aisafetythreshold_medium', 'googlemeet'),
+            'BLOCK_LOW_AND_ABOVE' => get_string('aisafetythreshold_low', 'googlemeet'),
+            'BLOCK_NONE' => get_string('aisafetythreshold_none', 'googlemeet'),
+        ]
+    ));
+
+    // F-8: minutes in "processing" before an analysis is shown as stuck and the cleanup marks it failed.
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/aistuckminutes',
+        get_string('aistuckminutes', 'googlemeet'),
+        get_string('aistuckminutes_desc', 'googlemeet'),
+        \mod_googlemeet\ai_service::DEFAULT_STUCK_MINUTES,
+        PARAM_INT
+    ));
+
     // When enabled, synced recordings are granted "anyone with the link" read access on Google
     // Drive so enrolled students (who are not the Drive owner) can play the embedded recording.
     // Default 1 preserves prior behaviour; disabling improves privacy but breaks playback for

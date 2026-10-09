@@ -193,4 +193,12 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
+    // track: w2-aireview (IA-04).
+    'mod_googlemeet_review_ai_analysis' => array(
+        'classname' => 'mod_googlemeet\\external\\review_ai_analysis',
+        'description' => 'Publish the reviewed AI summary of a recording (or of every recording of the activity) to students',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
 );

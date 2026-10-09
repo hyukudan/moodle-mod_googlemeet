@@ -605,6 +605,12 @@ class mod_googlemeet_external extends external_api {
         $aiservice = new \mod_googlemeet\ai_service();
         $analysis = $aiservice->get_analysis($recordingid);
 
+        // IA-04: unreviewed content is not served to students (it looks as if there was no analysis yet).
+        if ($analysis && $analysis->status === 'completed'
+                && !\mod_googlemeet\local\ai_review::is_visible_to_user($analysis, $context)) {
+            $analysis = null;
+        }
+
         if (!$analysis) {
             return [
                 'found' => false,
@@ -620,6 +626,9 @@ class mod_googlemeet_external extends external_api {
                 'aimodel' => '',
                 'timecreated' => 0,
                 'timemodified' => 0,
+                'reviewed' => false,
+                'pendingreview' => false,
+                'stuck' => false,
             ];
         }
 
@@ -643,6 +652,11 @@ class mod_googlemeet_external extends external_api {
             'aimodel' => $analysis->aimodel ?? '',
             'timecreated' => $analysis->timecreated,
             'timemodified' => $analysis->timemodified,
+            'reviewed' => !empty($analysis->reviewed),
+            'pendingreview' => \mod_googlemeet\local\ai_review::is_pending_review($analysis),
+            // F-8: only teachers act on a stuck analysis.
+            'stuck' => has_capability('mod/googlemeet:generateai', $context)
+                && \mod_googlemeet\ai_service::is_stuck($analysis),
         ];
     }
 
@@ -673,6 +687,10 @@ class mod_googlemeet_external extends external_api {
                 'aimodel' => new external_value(PARAM_TEXT, 'AI model used'),
                 'timecreated' => new external_value(PARAM_INT, 'Time created'),
                 'timemodified' => new external_value(PARAM_INT, 'Time modified'),
+                'reviewed' => new external_value(PARAM_BOOL, 'Whether a teacher approved the current content', VALUE_OPTIONAL),
+                'pendingreview' => new external_value(PARAM_BOOL, 'Completed but hidden from students until reviewed',
+                    VALUE_OPTIONAL),
+                'stuck' => new external_value(PARAM_BOOL, 'Processing for longer than the stuck threshold', VALUE_OPTIONAL),
             ]
         );
     }
@@ -707,7 +725,7 @@ class mod_googlemeet_external extends external_api {
      * @return array The saved analysis data
      */
     public static function save_ai_analysis($recordingid, $coursemoduleid, $summary = '', $keypoints = '', $topics = '', $transcript = '') {
-        global $DB;
+        global $DB, $USER;
 
         // Parameter validation.
         $params = self::validate_parameters(
@@ -778,6 +796,10 @@ class mod_googlemeet_external extends external_api {
             $analysis->error = null;
             $analysis->aimodel = 'manual';
             $analysis->timemodified = $now;
+            // IA-04: content written by the teacher counts as reviewed.
+            foreach (\mod_googlemeet\local\ai_review::reviewed_fields((int)$USER->id) as $key => $value) {
+                $analysis->$key = $value;
+            }
 
             $DB->update_record('googlemeet_ai_analysis', $analysis);
         } else {
@@ -794,6 +816,9 @@ class mod_googlemeet_external extends external_api {
             $analysis->aimodel = 'manual';
             $analysis->timecreated = $now;
             $analysis->timemodified = $now;
+            foreach (\mod_googlemeet\local\ai_review::reviewed_fields((int)$USER->id) as $key => $value) {
+                $analysis->$key = $value;
+            }
 
             $analysis->id = $DB->insert_record('googlemeet_ai_analysis', $analysis);
         }
@@ -912,6 +937,10 @@ class mod_googlemeet_external extends external_api {
             $analysis->error = null;
             $analysis->aimodel = $client->get_last_used_model() ?? $client->get_model();
             $analysis->timemodified = $now;
+            // IA-04: new AI text waits for a teacher review before students see it.
+            foreach (\mod_googlemeet\local\ai_review::unreviewed_fields() as $key => $value) {
+                $analysis->$key = $value;
+            }
 
             if ($existing) {
                 $analysis->id = $existing->id;
@@ -930,14 +959,16 @@ class mod_googlemeet_external extends external_api {
 
         } catch (\Exception $e) {
             // Log the real error server-side; return a generic message so internal API
-            // details are never leaked to the client.
+            // details are never leaked to the client. IA-03: a safety block has its own, clear,
+            // non-technical message.
             debugging('mod_googlemeet analyze_transcript failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
             return [
                 'success' => false,
                 'summary' => '',
                 'keypoints' => [],
                 'topics' => [],
-                'error' => get_string('ai_error_generic', 'googlemeet'),
+                'error' => ($e instanceof \mod_googlemeet\gemini_safety_exception)
+                    ? $e->getMessage() : get_string('ai_error_generic', 'googlemeet'),
             ];
         }
     }

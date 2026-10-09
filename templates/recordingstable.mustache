@@ -206,7 +206,7 @@
             <span class="googlemeet-card-date" aria-hidden="true">{{createddateshort}}</span>
             <span class="googlemeet-card-badges">
               {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
-              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
+              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}{{#aipendingreview}}<span class="googlemeet-ai-review-chip">{{# str }} aireview_chip, mod_googlemeet {{/ str }}</span>{{/aipendingreview}}
             </span>
             <span class="googlemeet-card-duration">{{duration}}</span>
           </a>
@@ -219,7 +219,7 @@
               {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
               {{#haspublishedquestions}}<span class="googlemeet-lesson-test-badge">{{# str }} lesson_has_test, mod_googlemeet {{/ str }}</span>{{/haspublishedquestions}}
               {{^hasai}}
-                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
+                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}{{#aistatusisstuck}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_stuck, mod_googlemeet {{/ str }}</span>{{/aistatusisstuck}}
                 {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
                 {{#aistatusisfailed}}
                   {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
@@ -335,7 +335,7 @@
               <a href="{{huburl}}" class="recording-name-text" title="{{originalname}}" data-originalname="{{originalname}}">{{displayname}}</a>
               {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
               {{#hascapability}}{{^visible}}<span class="googlemeet-listitem-hidden-tag">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</span>{{/visible}}{{/hascapability}}
-              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
+              {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}{{#aipendingreview}}<span class="googlemeet-ai-review-chip">{{# str }} aireview_chip, mod_googlemeet {{/ str }}</span>{{/aipendingreview}}
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
             </div>
             <div class="googlemeet-listitem-meta googlemeet-card-meta">
@@ -343,7 +343,7 @@
               {{#hasai}}<span class="googlemeet-ai-keypoints-count">{{aikeypointslabel}}</span>{{/hasai}}
               {{#haspublishedquestions}}<span class="googlemeet-lesson-test-badge">{{# str }} lesson_has_test, mod_googlemeet {{/ str }}</span>{{/haspublishedquestions}}
               {{^hasai}}
-                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}
+                {{#aistatusisprocessing}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-processing">{{# str }} ai_status_chip_processing, mod_googlemeet {{/ str }}</span>{{/aistatusisprocessing}}{{#aistatusisstuck}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_stuck, mod_googlemeet {{/ str }}</span>{{/aistatusisstuck}}
                 {{#aistatusispending}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-pending">{{# str }} ai_status_chip_pending, mod_googlemeet {{/ str }}</span>{{/aistatusispending}}
                 {{#aistatusisfailed}}
                   {{#hascapability}}<span class="googlemeet-ai-statuschip googlemeet-ai-statuschip-failed">{{# str }} ai_status_chip_failed_teacher, mod_googlemeet {{/ str }}</span>{{/hascapability}}
