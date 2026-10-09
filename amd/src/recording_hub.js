@@ -1673,21 +1673,6 @@ const readLocal = (key, fallback) => {
 };
 
 /**
- * Write a JSON value to localStorage, ignoring storage failures.
- *
- * @param {string} key Storage key.
- * @param {*} value Value.
- * @returns {void}
- */
-const writeLocal = (key, value) => {
-    try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-        return;
-    }
-};
-
-/**
  * Collapse a long summary behind a "Read more" toggle (only when it really overflows).
  *
  * @returns {void}
