@@ -33,6 +33,7 @@
         <FIELD NAME="recordingsorder" TYPE="char" LENGTH="4" NOTNULL="true" DEFAULT="DESC" SEQUENCE="false" COMMENT="Order of recordings: DESC (newest first) or ASC (oldest first)."/>
         <FIELD NAME="recordingfilter" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom name pattern to filter recordings from Google Drive."/>
         <FIELD NAME="autosynchours" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Hours after session end to auto-sync recordings from Google Drive. 0 = disabled."/>
+        <FIELD NAME="notifyhoursbefore" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Second (early) reminder this many hours before each session. 0 = off."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -93,14 +94,15 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="eventid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="timesent" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of the video creation date."/>
+        <FIELD NAME="kind" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Reminder kind: 0 = minutes-before reminder, 1 = hours-before reminder."/>
+        <FIELD NAME="timesent" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp when the reminder was sent."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="eventidfk" TYPE="foreign" FIELDS="eventid" REFTABLE="googlemeet_events" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="eventid_userid" UNIQUE="true" FIELDS="eventid, userid" COMMENT="Unique notification per user per event"/>
+        <INDEX NAME="eventid_userid_kind" UNIQUE="true" FIELDS="eventid, userid, kind" COMMENT="Unique reminder per user, event and reminder kind"/>
         <INDEX NAME="userid" UNIQUE="false" FIELDS="userid"/>
       </INDEXES>
     </TABLE>

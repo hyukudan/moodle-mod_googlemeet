@@ -29,14 +29,16 @@ $messageproviders = array(
         'defaults' => [
             'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
             'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
-            'airnotifier' => MESSAGE_DISALLOWED,
+            // NOT-03: push to the Moodle app (requires airnotifier configured on the site).
+            'airnotifier' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
         ],
     ],
     'recordingavailable' => [
         'defaults' => [
             'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
             'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
-            'airnotifier' => MESSAGE_DISALLOWED,
+            // NOT-03: push to the Moodle app (requires airnotifier configured on the site).
+            'airnotifier' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
         ],
     ],
     'stalerecurrence' => [
@@ -44,6 +46,14 @@ $messageproviders = array(
             'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
             'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
             'airnotifier' => MESSAGE_DISALLOWED,
+        ],
+    ],
+    // NOT-05: teachers are told when auto-sync gave up without finding a recording.
+    'autosyncfailed' => [
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'airnotifier' => MESSAGE_PERMITTED,
         ],
     ],
 );

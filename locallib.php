@@ -1787,12 +1787,13 @@ function googlemeet_has_recording($googlemeetid) {
  * archetype in the module context or any parent context (course, category, system), have an
  * active enrolment in the course, can view the activity (mod/googlemeet:view), are not suspended,
  * satisfy the activity's access restrictions and do not manage activities in the course.
- * Users already recorded in googlemeet_notify_done for the event are excluded.
+ * Users already recorded in googlemeet_notify_done for the event and reminder kind are excluded.
  *
  * @param int $eventid the event ID
+ * @param int $kind reminder kind (\mod_googlemeet\local\reminders::KIND_*), deduplicated separately
  * @return stdClass[] users keyed by id (full user records)
  */
-function googlemeet_get_users_to_notify($eventid) {
+function googlemeet_get_users_to_notify($eventid, int $kind = 0) {
     global $DB;
 
     $event = $DB->get_record('googlemeet_events', ['id' => $eventid], 'id, googlemeetid');
@@ -1835,7 +1836,8 @@ function googlemeet_get_users_to_notify($eventid) {
         $roleparams + $ctxparams
     ));
 
-    $notified = array_flip($DB->get_fieldset_select('googlemeet_notify_done', 'userid', 'eventid = ?', [$eventid]));
+    $notified = array_flip($DB->get_fieldset_select('googlemeet_notify_done', 'userid', 'eventid = ? AND kind = ?',
+        [$eventid, $kind]));
 
     $users = [];
     foreach ($candidates as $user) {
@@ -1858,36 +1860,12 @@ function googlemeet_get_users_to_notify($eventid) {
 }
 
 /**
- * Returns a list of future events
+ * Returns the sessions with a reminder due now (one entry per session and reminder kind).
+ *
+ * @return stdClass[]
  */
 function googlemeet_get_future_events() {
-    global $DB;
-
-    $now = time();
-
-    $sql = "SELECT DISTINCT
-                   me.id,
-                   me.eventdate,
-                   me.duration,
-                   m.id AS googlemeetid,
-                   m.name AS googlemeetname,
-                   m.url,
-                   cm.id AS cmid,
-                   c.id AS courseid,
-                   c.fullname AS coursename
-              FROM {googlemeet_events} me
-        INNER JOIN {googlemeet} m
-                ON m.id = me.googlemeetid
-        INNER JOIN {course_modules} cm
-                ON (cm.instance = m.id AND cm.visible = 1 AND cm.deletioninprogress = 0)
-        INNER JOIN {course} c
-                ON (c.id = cm.course AND c.visible = 1)
-        INNER JOIN {modules} md
-                ON (md.id = cm.module AND md.name = 'googlemeet')
-             WHERE :now BETWEEN me.eventdate - m.minutesbefore * 60 AND me.eventdate
-               AND m.notify = 1";
-
-    return $DB->get_records_sql($sql, ['now' => $now]);
+    return \mod_googlemeet\local\reminders::get_due_events(time());
 }
 
 /**
@@ -1976,39 +1954,14 @@ function googlemeet_send_stale_alert(stdClass $info): void {
 }
 
 /**
- * Send a notification to students in the class about the event.
+ * Send a reminder to a student about the event (see \mod_googlemeet\local\reminders).
  *
  * @param object $user
- * @param object $event
+ * @param object $event due reminder row (optionally with ->kind)
  * @return void
  */
 function googlemeet_send_notification($user, $event) {
-    global $CFG;
-
-    $startdate = userdate($event->eventdate, get_string('strftimedmy', 'googlemeet'), $user->timezone);
-    $starttime = userdate($event->eventdate, get_string('strftimehm', 'googlemeet'), $user->timezone);
-    $endtime = userdate($event->eventdate + $event->duration, get_string('strftimehm', 'googlemeet'), $user->timezone);
-    $usertimezone = usertimezone($user->timezone);
-    $notificationstr = get_string('notification', 'googlemeet');
-    $subject = "{$notificationstr}: {$event->googlemeetname} - {$startdate} {$starttime} - {$endtime} ($usertimezone)";
-    $url = $CFG->wwwroot . '/mod/googlemeet/view.php?id=' . $event->cmid;
-
-    $message = new \core\message\message();
-    $message->component = 'mod_googlemeet';
-    $message->name = 'notification';
-    $message->userfrom = core_user::get_noreply_user();
-    $message->userto = $user;
-    $message->subject = $subject;
-    $message->fullmessage = googlemeet_get_messagehtml($user, $event);
-    $message->fullmessageformat = FORMAT_MARKDOWN;
-    $message->fullmessagehtml = googlemeet_get_messagehtml($user, $event);
-    $message->smallmessage = $subject;
-    $message->notification = 1;
-    $message->contexturl = $url;
-    $message->contexturlname = $event->googlemeetname;
-    $message->courseid = $event->courseid;
-
-    message_send($message);
+    \mod_googlemeet\local\reminders::send($user, $event);
 }
 
 /**
@@ -2016,13 +1969,15 @@ function googlemeet_send_notification($user, $event) {
  *
  * @param int $userid
  * @param int $eventid
+ * @param int $kind reminder kind (\mod_googlemeet\local\reminders::KIND_*)
  */
-function googlemeet_notify_done($userid, $eventid) {
+function googlemeet_notify_done($userid, $eventid, int $kind = 0) {
     global $DB;
 
     $notifydone = new stdClass();
     $notifydone->userid = $userid;
     $notifydone->eventid = $eventid;
+    $notifydone->kind = $kind;
     $notifydone->timesent = time();
 
     return $DB->insert_record('googlemeet_notify_done', $notifydone);
@@ -2081,7 +2036,8 @@ function googlemeet_get_messagehtml($user, $event) {
     // Use str_replace (literal), not preg_replace: replacement values can legitimately contain
     // regex backreference sequences such as $0 or \1 (e.g. in a user's name), which preg_replace
     // would interpret and corrupt.
-    $emailcontent = str_replace(array_keys($templatevars), array_values($templatevars), $config->emailcontent);
+    $template = !empty($config->emailcontent) ? $config->emailcontent : get_string('emailcontent_default', 'googlemeet');
+    $emailcontent = str_replace(array_keys($templatevars), array_values($templatevars), $template);
 
     return $emailcontent;
 }

@@ -708,3 +708,42 @@ $string['report_question_deleted'] = '(deleted question)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
+
+// track: w2-notify
+$string['addtocalendar'] = 'Add to my calendar:';
+$string['addtocalendar_google'] = 'Google Calendar (next class)';
+$string['addtocalendar_ics'] = 'Download .ics (all upcoming classes)';
+$string['autosync_authalert_action_api'] = 'Enable the Google Drive/Calendar API in the Google Cloud Console';
+$string['autosync_authalert_action_token'] = 'Re-link the Google account from a Google Meet activity';
+$string['autosync_authalert_body'] = 'Google Meet auto-sync is blocked.
+
+Reason: {$a->reason}
+Affected account: {$a->account}
+Action required: {$a->action}';
+$string['autosync_authalert_subject'] = '[googlemeet] Auto-sync blocked: {$a->reason}';
+$string['autosyncfailed_body'] = 'Automatic sync could not find a recording in Google Drive for the session of {$a->date} in "{$a->name}" ({$a->course}) after {$a->attempts} attempts, and has stopped trying.
+
+Check that the session was recorded and that the recording is in the organiser\'s Google Drive, then sync the recordings manually from the activity:
+{$a->url}';
+$string['autosyncfailed_subject'] = 'No recording found for "{$a->name}" ({$a->date})';
+$string['calendar_ics_activity'] = 'Activity page: {$a}';
+$string['calendar_ics_join'] = 'Join the class: {$a}';
+$string['calendar_ics_name'] = '{$a->name} ({$a->course})';
+$string['messageprovider:autosyncfailed'] = 'Google Meet: no recording found after automatic sync';
+$string['notifyhoursbefore'] = 'Early reminder';
+$string['notifyhoursbefore_desc'] = 'Default for new activities: send a second reminder this many hours before each session, in addition to the "Minutes before" one. "Off" disables it.';
+$string['notifyhoursbefore_help'] = 'Sends a second reminder this many hours before each session (for example the day before), in addition to the reminder sent "Minutes before". Each reminder is sent once per student and session. Requires "Send notification to the student".';
+$string['notifyhoursbefore_off'] = 'Off';
+$string['privacy:metadata:googlemeet_notify_done:kind'] = 'Which reminder was sent (minutes before or hours before the session)';
+$string['recordingnotice_button_many'] = 'Watch the recordings';
+$string['recordingnotice_button_one'] = 'Watch the recording';
+$string['recordingnotice_chapters'] = 'Chapters';
+$string['recordingnotice_closing'] = 'Time to review! Going over the classes is one of the best ways to consolidate the syllabus.';
+$string['recordingnotice_greeting'] = 'Hi {$a},';
+$string['recordingnotice_greeting_noname'] = 'Hi,';
+$string['recordingnotice_intro_many'] = '{$a->count} new recordings are now available in "{$a->name}".';
+$string['recordingnotice_intro_one'] = 'A new recording is now available in "{$a}".';
+$string['recordingnotice_title_many'] = '{$a} new recordings available';
+$string['recordingnotice_title_one'] = 'New recording available';
+$string['reminder_subject_hours'] = 'Upcoming live class: {$a->name} - {$a->date} {$a->start}-{$a->end} ({$a->timezone})';
+$string['reminder_subject_minutes'] = 'Starting soon: {$a->name} - {$a->date} {$a->start}-{$a->end} ({$a->timezone})';

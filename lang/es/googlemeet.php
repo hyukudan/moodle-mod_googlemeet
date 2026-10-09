@@ -713,3 +713,42 @@ $string['report_question_deleted'] = '(pregunta eliminada)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Práctica: {$a->pct}% de aciertos ({$a->attempts} respuestas de {$a->users} alumnos)';
+
+// track: w2-notify
+$string['addtocalendar'] = 'Añadir a mi calendario:';
+$string['addtocalendar_google'] = 'Google Calendar (próxima clase)';
+$string['addtocalendar_ics'] = 'Descargar .ics (todas las próximas clases)';
+$string['autosync_authalert_action_api'] = 'Habilita la API de Google Drive/Calendar en Google Cloud Console';
+$string['autosync_authalert_action_token'] = 'Vuelve a vincular la cuenta de Google desde una actividad de Google Meet';
+$string['autosync_authalert_body'] = 'La sincronización automática de Google Meet está bloqueada.
+
+Motivo: {$a->reason}
+Cuenta afectada: {$a->account}
+Acción requerida: {$a->action}';
+$string['autosync_authalert_subject'] = '[googlemeet] Sincronización automática bloqueada: {$a->reason}';
+$string['autosyncfailed_body'] = 'La sincronización automática no ha encontrado en Google Drive la grabación de la sesión del {$a->date} en «{$a->name}» ({$a->course}) tras {$a->attempts} intentos y ha dejado de intentarlo.
+
+Comprueba que la sesión se grabó y que la grabación está en el Google Drive del organizador; después sincroniza las grabaciones manualmente desde la actividad:
+{$a->url}';
+$string['autosyncfailed_subject'] = 'No se ha encontrado la grabación de «{$a->name}» ({$a->date})';
+$string['calendar_ics_activity'] = 'Página de la actividad: {$a}';
+$string['calendar_ics_join'] = 'Entrar a la clase: {$a}';
+$string['calendar_ics_name'] = '{$a->name} ({$a->course})';
+$string['messageprovider:autosyncfailed'] = 'Google Meet: grabación no encontrada tras la sincronización automática';
+$string['notifyhoursbefore'] = 'Recordatorio anticipado';
+$string['notifyhoursbefore_desc'] = 'Valor por defecto para las nuevas actividades: enviar un segundo recordatorio estas horas antes de cada sesión, además del de «Minutos antes». «Desactivado» lo anula.';
+$string['notifyhoursbefore_help'] = 'Envía un segundo recordatorio estas horas antes de cada sesión (por ejemplo, el día anterior), además del que se envía «Minutos antes». Cada recordatorio se envía una sola vez por alumno y sesión. Requiere «Enviar notificación a estudiantes».';
+$string['notifyhoursbefore_off'] = 'Desactivado';
+$string['privacy:metadata:googlemeet_notify_done:kind'] = 'Qué recordatorio se envió (minutos u horas antes de la sesión)';
+$string['recordingnotice_button_many'] = 'Ver las grabaciones';
+$string['recordingnotice_button_one'] = 'Ver la grabación';
+$string['recordingnotice_chapters'] = 'Capítulos';
+$string['recordingnotice_closing'] = '¡A repasar! Revisar las clases es una de las mejores formas de fijar el temario.';
+$string['recordingnotice_greeting'] = 'Hola {$a},';
+$string['recordingnotice_greeting_noname'] = 'Hola,';
+$string['recordingnotice_intro_many'] = 'Ya tienes disponibles {$a->count} nuevas grabaciones en «{$a->name}».';
+$string['recordingnotice_intro_one'] = 'Ya tienes disponible una nueva grabación en «{$a}».';
+$string['recordingnotice_title_many'] = '{$a} nuevas grabaciones disponibles';
+$string['recordingnotice_title_one'] = 'Nueva grabación disponible';
+$string['reminder_subject_hours'] = 'Próxima clase en directo: {$a->name} - {$a->date} {$a->start}-{$a->end} ({$a->timezone})';
+$string['reminder_subject_minutes'] = 'Empieza en breve: {$a->name} - {$a->date} {$a->start}-{$a->end} ({$a->timezone})';

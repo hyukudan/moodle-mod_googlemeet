@@ -66,6 +66,7 @@ class provider implements
             [
                 'eventid' => 'privacy:metadata:googlemeet_notify_done:eventid',
                 'userid' => 'privacy:metadata:googlemeet_notify_done:userid',
+                'kind' => 'privacy:metadata:googlemeet_notify_done:kind',
                 'timesent' => 'privacy:metadata:googlemeet_notify_done:timesent',
             ],
             'privacy:metadata:googlemeet_notify_done'
