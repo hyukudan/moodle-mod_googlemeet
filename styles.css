@@ -4095,7 +4095,9 @@ mark.googlemeet-transcript-match-current {
 .googlemeet-filters-panel > summary::-webkit-details-marker {
     display: none;
 }
-.googlemeet-filters-summary {
+.googlemeet-filters-summary,
+.googlemeet-recordings-filterbar .googlemeet-filters-panel > summary.googlemeet-filters-summary {
+    /* The extra-class selector beats theme .btn display rules (RemUI/Boost load after this file). */
     display: none;
 }
 .googlemeet-filters-body {
@@ -4121,7 +4123,8 @@ mark.googlemeet-transcript-match-current {
         flex: 1 1 100%;
         max-width: none;
     }
-    .googlemeet-filters-summary {
+    .googlemeet-filters-summary,
+    .googlemeet-recordings-filterbar .googlemeet-filters-panel > summary.googlemeet-filters-summary {
         display: inline-flex;
         align-items: center;
         min-height: 2.5rem;
@@ -4318,6 +4321,9 @@ mark.googlemeet-transcript-match-current {
     margin-bottom: 0.5rem;
 }
 .googlemeet-report-scroll {
+    /* Positioned so absolutely positioned descendants (the .visually-hidden cell labels) are
+       clipped by this scroller instead of widening the whole page (3640px on phones). */
+    position: relative;
     overflow-x: auto;
     max-width: 100%;
     margin-bottom: 1rem;
