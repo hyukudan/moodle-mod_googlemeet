@@ -425,6 +425,15 @@ class client {
     }
 
     /**
+     * Google REST service authenticated as the current user (DAT-04 Calendar sync).
+     *
+     * @return rest
+     */
+    public function get_rest_service(): rest {
+        return new rest($this->get_user_oauth_client());
+    }
+
+    /**
      * Create a meeting event in Google Calendar
      *
      * @param object $googlemeet An object from the form.
@@ -435,56 +444,15 @@ class client {
         global $USER;
 
         $calendarid = 'primary';
-        $starthour = str_pad($googlemeet->starthour , 2 , '0' , STR_PAD_LEFT);
-        $startminute = str_pad($googlemeet->startminute , 2 , '0' , STR_PAD_LEFT);
-        $endhour = str_pad($googlemeet->endhour , 2 , '0' , STR_PAD_LEFT);
-        $endminute = str_pad($googlemeet->endminute , 2 , '0' , STR_PAD_LEFT);
 
-        $starttime = $starthour . ':' . $startminute . ':00';
-        $endtime = $endhour . ':' . $endminute . ':00';
-
-        $startdatetime = date('Y-m-d', $googlemeet->eventdate) . 'T' . $starttime;
-        $enddatetime = date('Y-m-d', $googlemeet->eventdate) . 'T' . $endtime;
-
-        $timezone = get_user_timezone($USER->timezone);
-
-        $daysofweek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-        $recurrence = '';
-
-        if (isset($googlemeet->addmultiply)) {
-            $interval = 'INTERVAL=' . $googlemeet->period;
-            $until = 'UNTIL=' . date('Ymd', $googlemeet->eventenddate) . 'T235959Z';
-            $byday = 'BYDAY=';
-
-            $daysofweek = new stdClass;
-            $daysofweek->Sun = 'SU';
-            $daysofweek->Mon = 'MO';
-            $daysofweek->Tue = 'TU';
-            $daysofweek->Wed = 'WE';
-            $daysofweek->Thu = 'TH';
-            $daysofweek->Fri = 'FR';
-            $daysofweek->Sat = 'SA';
-
-            foreach ((array) $googlemeet->days as $day => $val) {
-                $byday .= $daysofweek->$day . ',';
-            }
-
-            $recurrence = ['RRULE:FREQ=WEEKLY;' . $interval . ';' . $until . ';' . $byday];
+        // DAT-04: build the body with the same helper used by the edit sync, so times are formatted
+        // in the timezone actually sent as timeZone (not the server's) and the summary is the plain
+        // activity name (no random suffix: Drive names recordings after it).
+        $timezone = \core_date::get_user_timezone($USER);
+        $eventrawpost = \mod_googlemeet\local\calendar_sync::build_event_body($googlemeet, $timezone);
+        if (empty($eventrawpost['recurrence'])) {
+            unset($eventrawpost['recurrence']);
         }
-
-        $eventrawpost = [
-            'summary' => $googlemeet->name .' ('. rand(1000, 9999) .')',
-            'start' => [
-                'dateTime' => $startdatetime,
-                'timeZone' => $timezone
-            ],
-            'end' => [
-                'dateTime' => $enddatetime,
-                'timeZone' => $timezone
-            ],
-            'recurrence' => $recurrence
-        ];
 
         $service = new rest($this->get_user_oauth_client());
 

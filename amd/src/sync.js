@@ -22,6 +22,9 @@
  */
 
 import $ from 'jquery';
+import Ajax from 'core/ajax';
+import {getString} from 'core/str';
+import Notification from 'core/notification';
 
 let initialised = false;
 let countdownTimer = null;
@@ -144,6 +147,10 @@ export const init = () => {
         if (!isSyncForm) {
             return;
         }
+        if (form.closest('[data-googlemeet-async-sync]').length) {
+            // Handled in the background by initSyncPanel() (PERF-02).
+            return;
+        }
 
         if (form.data('googlemeetSyncSubmitting')) {
             event.preventDefault();
@@ -162,4 +169,109 @@ export const init = () => {
     });
 
     initCountdowns();
+};
+
+/** @var {number} Poll interval while a background sync is queued/running (ms). */
+const POLL_MS = 4000;
+
+let syncPanelInitialised = false;
+let pollTimer = null;
+
+/**
+ * Render a sync status in the panel.
+ *
+ * @param {Object} status Result of mod_googlemeet_get_sync_status.
+ * @returns {void}
+ */
+const renderSyncStatus = status => {
+    const region = $('[data-region="googlemeet-sync-progress"]');
+    if (!region.length) {
+        return;
+    }
+    if (status.status === 'none' || !status.message) {
+        region.attr('hidden', 'hidden');
+        return;
+    }
+    region.removeAttr('hidden')
+        .toggleClass('alert-info', status.active)
+        .toggleClass('alert-success', status.status === 'success')
+        .toggleClass('alert-danger', status.status === 'error');
+    region.find('[data-region="googlemeet-sync-progress-text"]').text(status.message);
+    region.find('[data-action="googlemeet-sync-reload"]').prop('hidden', !(status.status === 'success' && status.haschanges));
+    if (status.lastsync) {
+        $('#id_lastsync').text(status.lastsync);
+    }
+    $('[data-googlemeet-async-sync]').find('button, input[type="submit"]').prop('disabled', !!status.active);
+};
+
+/**
+ * Poll the sync status until it is no longer queued/running.
+ *
+ * @param {number} cmid Course module id.
+ * @returns {void}
+ */
+const pollSyncStatus = cmid => {
+    window.clearTimeout(pollTimer);
+    Ajax.call([{methodname: 'mod_googlemeet_get_sync_status', args: {coursemoduleid: cmid}}])[0]
+        .then(status => {
+            renderSyncStatus(status);
+            if (status.active) {
+                pollTimer = window.setTimeout(() => pollSyncStatus(cmid), POLL_MS);
+            }
+            return status;
+        })
+        .catch(() => {
+            // Transient network error: keep trying, more slowly.
+            pollTimer = window.setTimeout(() => pollSyncStatus(cmid), POLL_MS * 3);
+        });
+};
+
+/**
+ * Background "Sync with Google Drive" button: queue, then poll and show the result without reloading.
+ *
+ * @param {number} cmid Course module id.
+ * @param {boolean} active A sync is already queued/running on page load.
+ * @returns {void}
+ */
+export const initSyncPanel = (cmid, active) => {
+    if (syncPanelInitialised) {
+        return;
+    }
+    syncPanelInitialised = true;
+
+    $(document).on('submit', '[data-googlemeet-async-sync] form', event => {
+        event.preventDefault();
+        const form = $(event.currentTarget);
+        const buttons = form.find('button, input[type="submit"]');
+        if (buttons.prop('disabled')) {
+            return;
+        }
+        buttons.prop('disabled', true);
+        getString('sync_status_requesting', 'mod_googlemeet').then(text => {
+            renderSyncStatus({status: 'queued', active: true, message: text, haschanges: false, lastsync: ''});
+            return text;
+        }).catch(Notification.exception);
+
+        Ajax.call([{methodname: 'mod_googlemeet_request_sync', args: {coursemoduleid: cmid}}])[0]
+            .then(status => {
+                renderSyncStatus(status);
+                if (status.active) {
+                    pollTimer = window.setTimeout(() => pollSyncStatus(cmid), POLL_MS);
+                }
+                return status;
+            })
+            .catch(error => {
+                buttons.prop('disabled', false);
+                Notification.exception(error);
+            });
+    });
+
+    $(document).on('click', '[data-action="googlemeet-sync-reload"]', event => {
+        event.preventDefault();
+        window.location.reload();
+    });
+
+    if (active) {
+        pollSyncStatus(cmid);
+    }
 };

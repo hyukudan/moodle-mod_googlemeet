@@ -201,4 +201,19 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:editrecording',
     ),
+    // track: w2-calsync.
+    'mod_googlemeet_request_sync' => array(
+        'classname' => 'mod_googlemeet\\external\\request_sync',
+        'description' => 'Queue a background Google Drive sync of an activity (PERF-02)',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
+    'mod_googlemeet_get_sync_status' => array(
+        'classname' => 'mod_googlemeet\\external\\get_sync_status',
+        'description' => 'Status of the background Google Drive sync of an activity (PERF-02)',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
 );

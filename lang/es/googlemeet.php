@@ -803,3 +803,58 @@ $string['ai_status_stuck_panel'] = 'El análisis parece atascado (lleva demasiad
 $string['ai_status_chip_stuck'] = 'Análisis atascado';
 $string['ai_stuck_retry'] = 'Reintentar análisis';
 $string['ai_error_stuck'] = 'El análisis se quedó atascado «en curso» más de {$a} minutos y se ha detenido. Se reintentará automáticamente; también puedes regenerarlo.';
+
+// track: w2-calsync
+$string['adminstatus'] = 'Estado de sincronización de Google Meet';
+$string['adminstatus_autosync'] = 'Autosincronización con fallos o abandonada (últimos {$a} días)';
+$string['adminstatus_autosynchours'] = 'Autosincronización (horas tras la sesión)';
+$string['adminstatus_calendar'] = 'Actualizaciones de Google Calendar fallidas (últimos {$a} días)';
+$string['adminstatus_col_activity'] = 'Actividad';
+$string['adminstatus_col_creator'] = 'Organizador de la sala';
+$string['adminstatus_col_lastsync'] = 'Última sincronización';
+$string['adminstatus_deleted'] = 'Actividad eliminada';
+$string['adminstatus_exhausted'] = 'Sesiones abandonadas';
+$string['adminstatus_failedruns'] = 'Ejecuciones fallidas';
+$string['adminstatus_intro'] = 'Trabajo en segundo plano con Google de todas las actividades Google Meet: sincronización automática de grabaciones, análisis IA y actualizaciones de Google Calendar. Los fallos se conservan {$a} días.';
+$string['adminstatus_kind_caldelete'] = 'Borrar evento';
+$string['adminstatus_kind_calupdate'] = 'Actualizar evento';
+$string['adminstatus_lastauto'] = 'Última autosincronización';
+$string['adminstatus_lastfailure'] = 'Último fallo';
+$string['adminstatus_lastmanual'] = 'Última sincronización manual';
+$string['adminstatus_lastsyncs'] = 'Última sincronización por actividad (las más antiguas primero)';
+$string['adminstatus_link'] = 'Abrir la página de estado de sincronización (fallos de autosincronización, análisis IA atascados, última sincronización por actividad)';
+$string['adminstatus_none'] = 'Nada que destacar.';
+$string['adminstatus_operation'] = 'Operación';
+$string['adminstatus_recording'] = 'Grabación';
+$string['adminstatus_retries'] = 'Reintentos';
+$string['adminstatus_retrying'] = 'Sesiones pendientes de reintento';
+$string['adminstatus_since'] = 'Desde';
+$string['adminstatus_status_error'] = 'Error';
+$string['adminstatus_status_exhausted'] = 'Abandonada';
+$string['adminstatus_status_queued'] = 'En cola';
+$string['adminstatus_status_retry'] = 'Aún nada, se reintentará';
+$string['adminstatus_status_running'] = 'En curso';
+$string['adminstatus_status_success'] = 'Correcta';
+$string['adminstatus_stuckai'] = 'Análisis IA que parecen atascados';
+$string['adminstatus_truncated'] = 'Solo se muestran las primeras {$a} actividades.';
+$string['calsync_failed_body_delete'] = 'La actividad «{$a->name}» se eliminó en Moodle, pero no se pudo borrar su evento de Google Calendar: {$a->reason}
+
+Borra el evento a mano en Google Calendar si ya no lo necesitas.';
+$string['calsync_failed_body_update'] = 'Los cambios de «{$a->name}» se guardaron en Moodle, pero no se pudo actualizar su evento de Google Calendar: {$a->reason}
+
+Revisa el evento en Google Calendar (nombre, fecha, horario y repetición) o vuelve a guardar la actividad cuando se resuelva el problema.';
+$string['calsync_failed_subject_delete'] = 'No se borró el evento de Google Calendar de «{$a->name}»';
+$string['calsync_failed_subject_update'] = 'No se actualizó el evento de Google Calendar de «{$a->name}»';
+$string['calsync_reason_nocreator'] = 'ningún usuario activo de Moodle tiene el email de la cuenta de Google que creó la sala ({$a}).';
+$string['calsync_reason_notlinked'] = 'la cuenta que creó la sala ({$a}) no está vinculada a Google en Moodle o su acceso ha caducado.';
+$string['calsync_reason_shared'] = 'otra actividad (una copia) usa el mismo evento de Google; se ha dejado sin cambios.';
+$string['sync_reload'] = 'Recargar para ver los cambios';
+$string['sync_status_notlinked'] = 'Tu cuenta de Google no está vinculada (o su acceso ha caducado). Vuelve a vincularla y reinténtalo.';
+$string['sync_status_nouser'] = 'El usuario que pidió la sincronización ya no existe.';
+$string['sync_status_queued'] = 'Sincronización en cola. Empezará en segundo plano en unos instantes; puedes seguir trabajando.';
+$string['sync_status_requesting'] = 'Solicitando la sincronización…';
+$string['sync_status_running'] = 'Sincronizando con Google Drive…';
+$string['sync_status_stale'] = 'La sincronización anterior no terminó (la tarea en segundo plano no se ejecutó). Puedes volver a pedirla.';
+$string['task_calendar_delete_event'] = 'Borrar el evento de Google Calendar de una actividad Google Meet eliminada';
+$string['task_calendar_update_event'] = 'Actualizar el evento de Google Calendar de una actividad Google Meet editada';
+$string['task_sync_recordings'] = 'Sincronizar grabaciones de Google Meet a petición de un profesor';

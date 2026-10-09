@@ -25,7 +25,10 @@
     "login": "html",
     "islogged": true,
     "syncbutton": "html",
-    "isloggedcreatoremail": true
+    "isloggedcreatoremail": true,
+    "cmid": 1,
+    "syncactive": false,
+    "syncstatusmessage": ""
   }
 }}
 <div id="recordings" class="googlemeet-sync-container">
@@ -38,7 +41,7 @@
         </div>
 
         {{#isloggedcreatoremail}}
-          <div class="googlemeet-sync-action">
+          <div class="googlemeet-sync-action" data-googlemeet-async-sync="{{cmid}}">
             {{{syncbutton}}}
           </div>
         {{/isloggedcreatoremail}}
@@ -49,6 +52,13 @@
             <span>{{# str }} isnotcreatoremail, mod_googlemeet {{/ str }}</span>
           </div>
         {{/isloggedcreatoremail}}
+      </div>
+
+      {{! track w2-calsync (PERF-02): background sync progress/result, filled by mod_googlemeet/sync. }}
+      <div class="googlemeet-sync-progress alert alert-info" data-region="googlemeet-sync-progress"
+           role="status" aria-live="polite" {{^syncactive}}hidden{{/syncactive}}>
+        <span class="googlemeet-sync-progress-text" data-region="googlemeet-sync-progress-text">{{syncstatusmessage}}</span>
+        <a href="#" class="googlemeet-sync-progress-reload" data-action="googlemeet-sync-reload" hidden>{{# str }} sync_reload, mod_googlemeet {{/ str }}</a>
       </div>
 
       <details class="googlemeet-sync-details">
@@ -89,3 +99,10 @@
     {{/islogged}}
   </div>
 </div>
+{{#js}}
+{{#islogged}}
+require(['mod_googlemeet/sync'], function(m) {
+    m.initSyncPanel({{cmid}}, {{#syncactive}}true{{/syncactive}}{{^syncactive}}false{{/syncactive}});
+});
+{{/islogged}}
+{{/js}}

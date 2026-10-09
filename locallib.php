@@ -86,30 +86,12 @@ function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
     // Sync performs DB writes and remote Google calls: only run it for a POST
     // request (in addition to the sesskey check). Ignore plain GETs.
     if ($sync && confirm_sesskey() && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        // PERF-02: no-JS fallback of the async button. Only queue the background sync (the page
+        // polls its status when JS is on); never run Google calls inside the request.
         $redirecturl = new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
-        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet');
-        $lock = $lockfactory->get_lock('sync_' . $googlemeet->id, 0);
-        if (!$lock) {
-            \core\notification::warning(get_string('sync_already_running', 'googlemeet'));
-            redirect($redirecturl);
-        }
-
-        $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0, 'found' => 0];
-        try {
-            googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id);
-            $stats = $client->syncrecordings($googlemeet, true, true) ?: $stats;
-        } finally {
-            $lock->release();
-        }
-
-        $message = $client->build_sync_message($stats, (int)($stats['found'] ?? 0));
-        if ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0) {
-            $message .= ' ' . get_string('sync_enrichment_queued', 'googlemeet');
-        }
-        $messagetype = ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0)
-            ? \core\output\notification::NOTIFY_SUCCESS
-            : \core\output\notification::NOTIFY_INFO;
-        redirect($redirecturl, $message, null, $messagetype);
+        $queued = \mod_googlemeet\local\sync_manager::request($googlemeet, (int)$GLOBALS['USER']->id);
+        redirect($redirecturl, get_string($queued ? 'sync_status_queued' : 'sync_already_running', 'googlemeet'),
+            null, \core\output\notification::NOTIFY_INFO);
     }
 }
 
@@ -1036,7 +1018,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $teacherstats = ($hascapability && !empty($recordings))
         ? googlemeet_get_recordings_student_stats($context, $recordingids) : [];
 
-    $questionservice = new question_service();
+    // PERF-03: page-level aggregates instead of one question/file query per recording.
+    $pagerecordingids = array_map(static fn($r) => (int)$r->id, $recordings);
+    $questioncounts = \mod_googlemeet\local\list_aggregates::published_question_counts($googlemeet, $cm, $context,
+        $pagerecordingids);
+    $materialsbyrecording = \mod_googlemeet\local\list_aggregates::materials_by_recording($context, $pagerecordingids);
     foreach ($recordings as $recording) {
         foreach (googlemeet_recording_progress_state($recording, $progressbyrecording[$recording->id] ?? null) as $key => $value) {
             $recording->$key = $value;
@@ -1052,9 +1038,8 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             $recording->teacherstatscompletedlabel = $completedcount > 0
                 ? get_string('list_teacherstats_completed', 'googlemeet', $completedcount) : '';
         }
-        $publishedquestions = $questionservice->get_questions($googlemeet, $cm, $context, (int)$recording->id, true);
-        $recording->haspublishedquestions = !empty($publishedquestions);
-        $recording->publishedquestioncount = count($publishedquestions);
+        $recording->publishedquestioncount = $questioncounts[(int)$recording->id] ?? 0;
+        $recording->haspublishedquestions = $recording->publishedquestioncount > 0;
         $urlparams = ['id' => $cm->id, 'recording' => $recording->id];
         if ($page > 0) {
             $urlparams['rpage'] = $page;
@@ -1066,7 +1051,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         $recording->materialshuburl = (new moodle_url('/mod/googlemeet/view.php', $materialsurlparams))->out(false);
         // Surface attached materials directly in the recordings list so teachers can
         // upload/manage from here and students can download without entering the hub.
-        $materials = googlemeet_get_recording_materials($context, $recording->id);
+        $materials = $materialsbyrecording[(int)$recording->id] ?? [];
         $recording->materials = $materials;
         $recording->hasmaterials = !empty($materials);
         $recording->materialcount = count($materials);
@@ -1253,7 +1238,12 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             $syncbutton = $OUTPUT->render($syncbutton);
         }
 
+        $syncstatus = \mod_googlemeet\local\sync_manager::get_status($googlemeet);
         $html .= $OUTPUT->render_from_template('mod_googlemeet/syncbutton', [
+            // Track w2-calsync (PERF-02): async sync panel state.
+            'cmid' => $cm->id,
+            'syncactive' => $syncstatus['active'],
+            'syncstatusmessage' => $syncstatus['active'] ? $syncstatus['message'] : '',
             'lastsync' => $lastsync,
             'creatoremail' => $googlemeet->creatoremail,
             'redordingname' => $redordingname,
@@ -1375,8 +1365,6 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
 
     $rpage = optional_param('rpage', 0, PARAM_INT);
     $rorder = optional_param('rorder', null, PARAM_ALPHA);
-    $recordingsorder = strtoupper($rorder ?: ($googlemeet->recordingsorder ?? 'DESC'));
-    $recordingsorder = $recordingsorder === 'ASC' ? 'ASC' : 'DESC';
     $backparams = ['id' => $cm->id];
     if ($rpage > 0) {
         $backparams['rpage'] = $rpage;
@@ -1384,29 +1372,10 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     if ($rorder) {
         $backparams['rorder'] = $rorder;
     }
-    $recordingnavparams = ['googlemeetid' => $googlemeet->id];
-    if (!$caneditrecording) {
-        $recordingnavparams['visible'] = true;
-    }
-    $recordingnavitems = array_values(googlemeet_list_recordings($recordingnavparams, false, $recordingsorder, 0, 0));
-    $previousrecording = null;
-    $nextrecording = null;
-    foreach ($recordingnavitems as $index => $navrecording) {
-        if ((int)$navrecording->id !== (int)$recording->id) {
-            continue;
-        }
-        if ($index > 0) {
-            $previousrecording = $recordingnavitems[$index - 1];
-        }
-        if ($index < count($recordingnavitems) - 1) {
-            $nextrecording = $recordingnavitems[$index + 1];
-        }
-        break;
-    }
-    // Students think of "previous/next class" chronologically, whatever the list order is.
-    if ($recordingsorder === 'DESC') {
-        [$previousrecording, $nextrecording] = [$nextrecording, $previousrecording];
-    }
+    // PERF-03: two LIMIT 1 queries instead of loading every recording of the activity.
+    // Previous/next are chronological whatever the list order (students think in class dates).
+    [$previousrecording, $nextrecording] = \mod_googlemeet\local\list_aggregates::hub_neighbours($recording,
+        !$caneditrecording);
     $previousparams = $backparams;
     $nextparams = $backparams;
     if ($previousrecording) {
@@ -1617,37 +1586,7 @@ function googlemeet_summary_paragraphs(string $summary): array {
  * @return array
  */
 function googlemeet_get_recording_materials(context_module $context, int $recordingid): array {
-    global $OUTPUT;
-
-    $fs = get_file_storage();
-    $files = $fs->get_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recordingid, 'filename', false);
-    $materials = [];
-
-    foreach ($files as $file) {
-        if ($file->is_directory()) {
-            continue;
-        }
-
-        $filepath = $file->get_filepath();
-        $materials[] = [
-            'name' => $file->get_filename(),
-            'icon' => $OUTPUT->image_url(file_file_icon($file), 'moodle')->out(false),
-            'size' => display_size($file->get_filesize()),
-            'modified' => userdate($file->get_timemodified(), get_string('strftimedatetimeshort')),
-            'filepath' => ($filepath !== '/' && $filepath !== '') ? trim($filepath, '/') : '',
-            'url' => moodle_url::make_pluginfile_url(
-                $context->id,
-                'mod_googlemeet',
-                'recordingmaterial',
-                $recordingid,
-                $filepath,
-                $file->get_filename(),
-                true
-            )->out(false),
-        ];
-    }
-
-    return $materials;
+    return \mod_googlemeet\local\list_aggregates::materials_by_recording($context, [$recordingid])[$recordingid];
 }
 
 /**
