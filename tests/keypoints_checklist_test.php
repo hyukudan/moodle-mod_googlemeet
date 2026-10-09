@@ -17,6 +17,7 @@
 namespace mod_googlemeet;
 
 use mod_googlemeet\privacy\provider;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -30,8 +31,8 @@ require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
  * @category    test
  * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers      \mod_googlemeet\privacy\provider
  */
+#[CoversClass(provider::class)]
 final class keypoints_checklist_test extends \advanced_testcase {
 
     /**
