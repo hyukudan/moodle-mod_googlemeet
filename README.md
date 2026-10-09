@@ -171,6 +171,18 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.29.1 (2026-10-09) — Fixes from the 2.29.0 production check (RemUI)
+
+- **Activity list**: the "Filtros" button no longer shows on desktop under RemUI/Boost (theme `.btn` display rules beat the plugin rule); the search, topic, order and view controls line up again. It still shows on phones.
+- **Search**: a results line says how many classes contain the term and where it is looked for (title, summary, topics, plus notes and transcript for teachers). Matches in the AI summary or topics now show a "Match in summary/topics" hint with the matching text, like notes/transcript matches already did, and students see these hints too. The generated display title is searched as well as the stored name.
+- **Viewing report**: the matrix no longer widens the page (3640px on a 390px phone). The scroller is now positioned, so the hidden per-cell labels stay inside it; the student column stays sticky.
+- **Recording hub (phones)**: the chapter list also collapses when the window enters the phone layout after loading (rotation/resize), not only on load.
+- **Question review**: the "Select all" checkbox label switches to "Deselect all" while every question is ticked.
+
+#### Deployment notes (2.29.1)
+
+- Version 2026101003: run `admin/cli/upgrade.php`, purge caches (CSS, AMD and strings changed), reset opcache. No DB changes.
+
 ### Version 2.29.0 (2026-10-09) — Recording hub, activity list, AI review flow and practice analytics
 
 - **Key points checklist (keypoints)** - the "reviewed" ticks of a recording's key points persist per user in the user preference `mod_googlemeet_kp_<recordingid>` (`<hash>:<bits>`, reset automatically when the key points change). Declared and exported by the privacy provider.
