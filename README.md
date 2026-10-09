@@ -171,6 +171,18 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.28.0 (2026-10-09) — Practice questions survive duplication and course copies
+- **Questions in backup/duplicate (DAT-02)** - the module declares `FEATURE_USES_QUESTIONS` (private question bank in the module context, like `mod_quiz`; it does not publish questions) and the activity backup now annotates its question categories, so duplicating the activity or backing up/restoring/copying the course carries the AI practice questions with their draft/published status. After restore the category idnumber is rewritten to `googlemeet_cm_<new cmid>` and each `googlemeet-rec-<id>` tag is remapped to the restored recording id; questions of recordings that were in the trash (not backed up) are kept under a `googlemeet-orphan-rec-<oldid>` tag. `get_category()` also self-heals an activity whose only category still carries another cmid.
+- **Coherent restore (DAT-03, minimal)** - a restored/duplicated activity no longer keeps the original's Google Calendar `eventid` (so it can never edit the original event) nor its `lastsync`; future sessions get fresh auto-sync bookkeeping (past sessions keep theirs, so old sessions are not re-synced). The organizer email is kept (it owns the Meet room and the Drive recordings the copy keeps using).
+- **Sync keeps inherited recordings** - a Drive recording that belongs to both the source and the copy is no longer skipped (and then trashed) by the copy's sync.
+- New tests: `tests/backup_restore_test.php`.
+
+#### Deployment notes (2.28.0)
+- Run `upgrade.php` (version bump only, no schema or data migration) and purge caches.
+- Existing questions stay where they are (the module context of each activity); nothing is moved. Copies made **before** 2.28.0 have no questions: they must be re-duplicated or the questions regenerated.
+- New activities now get core's default "Default for …" question category in their module context (side effect of `FEATURE_USES_QUESTIONS`); the practice questions keep using their own `googlemeet_cm_<cmid>` category.
+- The user who restores/duplicates needs `moodle/question:add` and `moodle/question:managecategory` in the target course; otherwise core moves the questions to a fallback course question bank (`mod_qbank`) and they are not linked to the activity.
+
 ### Version 2.27.1 (2026-10-09) — Fase 0 hotfixes
 - **Reminder recipients (NOT-01)** - pre-session reminders go to students only (a role with the `student` archetype in the course/module context or above) who have an active enrolment, can view the activity and pass its access restrictions; suspended users, users of other courses and teachers (editing or non-editing) are excluded.
 - **Optional leak check (QA-02)** - publishing/editing practice questions no longer fatals if `local/questions/fugaslib.php` is missing; the check is skipped with a debugging notice. With the library present, behaviour is unchanged (if one question fails, none is published).
