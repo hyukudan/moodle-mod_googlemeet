@@ -118,6 +118,12 @@ if ($recordingid > 0) {
 // Completion and trigger events.
 googlemeet_view($googlemeet, $course, $cm, $context);
 
+// Lesson hub: the activity description (often just the raw Meet URL and the weekly timetable) is noise on
+// every lesson page and pushes the player below the fold. Keep it once, on the activity's main list page.
+if ($recording) {
+    $PAGE->activityheader->set_description('');
+}
+
 googlemeet_print_header($googlemeet, $cm, $course);
 
 if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $context)) {

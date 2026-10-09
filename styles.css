@@ -3738,3 +3738,10 @@ mark.googlemeet-transcript-match-current {
         padding: 0.55rem 0.8rem;
     }
 }
+
+/* === track: list === */
+/* Hero heading: the activity name is already the page title, the hero only states its role. */
+.googlemeet-classroom-hero .googlemeet-hero-heading {
+    margin: 0;
+    line-height: 1.3;
+}
