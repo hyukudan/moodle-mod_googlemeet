@@ -3921,3 +3921,61 @@ mark.googlemeet-transcript-match-current {
     display: inline-flex;
     align-items: center;
 }
+/* Dark mode: activity page (hero + recorded classes list). Review K-1, K-3 and DK01. */
+[data-bs-theme="dark"] .path-mod-googlemeet .activity-description a,
+[data-bs-theme="dark"] .path-mod-googlemeet #intro a {
+    color: var(--bs-link-color);
+    text-decoration: underline;
+}
+.path-mod-googlemeet .activity-description > :last-child,
+.path-mod-googlemeet .activity-description .no-overflow > :last-child {
+    margin-bottom: 0;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-partial {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffd666;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-summary-meter .googlemeet-progress-started-segment {
+    background-color: #ffd666;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-heading,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hero-progress-title {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-material-row {
+    border-color: var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-material-row:hover,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-material-row:focus {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-emphasis-color);
+}
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-material-separator,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-material-size,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-teacher-stats,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-teacher-stats .googlemeet-teacher-stats-none {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-teacher-stats .googlemeet-teacher-stats-opened:not(.googlemeet-teacher-stats-none) {
+    color: var(--bs-emphasis-color);
+}
+/* Outline-secondary buttons (Acciones, Papelera, Filtros, inactive sort/view) were ~3:1 on the dark card. */
+[data-bs-theme="dark"] #googlemeet_recordings .btn.btn-outline-secondary {
+    border-color: var(--bs-border-color);
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] #googlemeet_recordings .btn.btn-outline-secondary:hover,
+[data-bs-theme="dark"] #googlemeet_recordings .btn.btn-outline-secondary:focus-visible,
+[data-bs-theme="dark"] #googlemeet_recordings .googlemeet-row-actions-toggle.show {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-emphasis-color);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-row-actions-menu .dropdown-item.text-danger {
+    color: #ff8a8a !important;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-filters-panel[open] .googlemeet-filters-body {
+    border-color: var(--bs-border-color);
+}
