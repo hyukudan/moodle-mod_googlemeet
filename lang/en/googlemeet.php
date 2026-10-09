@@ -708,3 +708,58 @@ $string['report_question_deleted'] = '(deleted question)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
+
+// track: w2-calsync
+$string['adminstatus'] = 'Google Meet sync status';
+$string['adminstatus_autosync'] = 'Autosync with failures or given up (last {$a} days)';
+$string['adminstatus_autosynchours'] = 'Autosync (hours after the session)';
+$string['adminstatus_calendar'] = 'Google Calendar updates that failed (last {$a} days)';
+$string['adminstatus_col_activity'] = 'Activity';
+$string['adminstatus_col_creator'] = 'Room organizer';
+$string['adminstatus_col_lastsync'] = 'Last sync';
+$string['adminstatus_deleted'] = 'Deleted activity';
+$string['adminstatus_exhausted'] = 'Sessions given up';
+$string['adminstatus_failedruns'] = 'Failed runs';
+$string['adminstatus_intro'] = 'Background Google work of all Google Meet activities: automatic recording sync, AI analyses and Google Calendar updates. Failures are kept for {$a} days.';
+$string['adminstatus_kind_caldelete'] = 'Delete event';
+$string['adminstatus_kind_calupdate'] = 'Update event';
+$string['adminstatus_lastauto'] = 'Last autosync';
+$string['adminstatus_lastfailure'] = 'Last failure';
+$string['adminstatus_lastmanual'] = 'Last manual sync';
+$string['adminstatus_lastsyncs'] = 'Last sync per activity (oldest first)';
+$string['adminstatus_link'] = 'Open the sync status page (autosync failures, stuck AI analyses, last sync per activity)';
+$string['adminstatus_none'] = 'Nothing to report.';
+$string['adminstatus_operation'] = 'Operation';
+$string['adminstatus_recording'] = 'Recording';
+$string['adminstatus_retries'] = 'Retries';
+$string['adminstatus_retrying'] = 'Sessions waiting for a retry';
+$string['adminstatus_since'] = 'Since';
+$string['adminstatus_status_error'] = 'Error';
+$string['adminstatus_status_exhausted'] = 'Given up';
+$string['adminstatus_status_queued'] = 'Queued';
+$string['adminstatus_status_retry'] = 'Nothing yet, will retry';
+$string['adminstatus_status_running'] = 'Running';
+$string['adminstatus_status_success'] = 'OK';
+$string['adminstatus_stuckai'] = 'AI analyses that look stuck';
+$string['adminstatus_truncated'] = 'Only the first {$a} activities are listed.';
+$string['calsync_failed_body_delete'] = 'The activity "{$a->name}" was deleted in Moodle, but its Google Calendar event could not be deleted: {$a->reason}
+
+Delete the event by hand in Google Calendar if it is no longer needed.';
+$string['calsync_failed_body_update'] = 'The changes to "{$a->name}" were saved in Moodle, but its Google Calendar event could not be updated: {$a->reason}
+
+Check the event in Google Calendar (name, date, times and repetition) or save the activity again once the problem is solved.';
+$string['calsync_failed_subject_delete'] = 'Google Calendar event of "{$a->name}" not deleted';
+$string['calsync_failed_subject_update'] = 'Google Calendar event of "{$a->name}" not updated';
+$string['calsync_reason_nocreator'] = 'no active Moodle user has the email of the Google account that created the room ({$a}).';
+$string['calsync_reason_notlinked'] = 'the account that created the room ({$a}) is not linked to Google in Moodle, or its access has expired.';
+$string['calsync_reason_shared'] = 'another activity (a copy) uses the same Google event; it was left unchanged.';
+$string['sync_reload'] = 'Reload to see the changes';
+$string['sync_status_notlinked'] = 'Your Google account is not linked (or its access has expired). Link it again and retry.';
+$string['sync_status_nouser'] = 'The user who requested the sync no longer exists.';
+$string['sync_status_queued'] = 'Sync queued. It will start in the background in a moment; you can keep working.';
+$string['sync_status_requesting'] = 'Requesting the sync…';
+$string['sync_status_running'] = 'Syncing with Google Drive…';
+$string['sync_status_stale'] = 'The previous sync did not finish (the background task did not run). You can request it again.';
+$string['task_calendar_delete_event'] = 'Delete the Google Calendar event of a deleted Google Meet activity';
+$string['task_calendar_update_event'] = 'Update the Google Calendar event of an edited Google Meet activity';
+$string['task_sync_recordings'] = 'Sync Google Meet recordings requested by a teacher';

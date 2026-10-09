@@ -511,5 +511,32 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026101001, 'googlemeet');
     }
 
+    // track: w2-calsync.
+    if ($oldversion < 2026101130) {
+        // PERF-02 / DAT-04 / OPS-04: operational sync log.
+        $table = new xmldb_table('googlemeet_sync_log');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('googlemeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('kind', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timequeued', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timestarted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timefinished', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('stats', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        $table->add_index('googlemeetid_kind', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid', 'kind']);
+        $table->add_index('timequeued', XMLDB_INDEX_NOTUNIQUE, ['timequeued']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2026101130, 'googlemeet');
+    }
+
     return true;
 }

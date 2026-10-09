@@ -4424,3 +4424,28 @@ mark.googlemeet-transcript-match-current {
     color: var(--bs-danger-text-emphasis, #842029);
     font-weight: 600;
 }
+
+/* === track: w2-calsync === */
+/* PERF-02: background sync progress/result inside the sync panel. */
+.googlemeet-sync-panel .googlemeet-sync-progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin: 0.75rem 0 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+}
+
+.googlemeet-sync-panel .googlemeet-sync-progress[hidden] {
+    display: none;
+}
+
+.googlemeet-sync-panel .googlemeet-sync-progress-reload {
+    font-weight: 600;
+}
+
+/* OPS-04: admin status page tables. */
+.googlemeet-admin-status td {
+    vertical-align: top;
+}

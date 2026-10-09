@@ -219,5 +219,25 @@
         <INDEX NAME="googlemeetid_userid_questionid" UNIQUE="false" FIELDS="googlemeetid, userid, questionid" COMMENT="Latest attempt per question for one student."/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="googlemeet_sync_log" COMMENT="Operational log of Google syncs: manual/auto Drive sync, Calendar update/delete (no personal data).">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="googlemeetid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Activity instance (may no longer exist for caldelete rows)."/>
+        <FIELD NAME="kind" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="manual, auto, calupdate, caldelete."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="queued, running, success, retry, exhausted, error."/>
+        <FIELD NAME="timequeued" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timestarted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timefinished" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="stats" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON sync counters."/>
+        <FIELD NAME="message" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Result or error text."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid_kind" UNIQUE="false" FIELDS="googlemeetid, kind"/>
+        <INDEX NAME="timequeued" UNIQUE="false" FIELDS="timequeued"/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>
