@@ -760,7 +760,7 @@ class client {
      * @param string $customfilter Custom filter pattern set by user
      * @return array Filtered array of recordings
      */
-    private function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid, $customfilter = '') {
+    protected function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid, $customfilter = '') {
         global $DB;
 
         if (empty($recordings)) {
@@ -772,13 +772,19 @@ class client {
             return $r->id ?? null;
         }, $recordings));
 
+        // Map Drive recording id => [googlemeetid => true]. A Drive file can legitimately belong to
+        // several activities: a duplicated/restored activity keeps the recordings of its source
+        // (DAT-03). Keying by recordingid alone kept only one arbitrary activity per file, so the
+        // copy's own (restored) recordings were skipped here and then trashed by the sync.
         $existingrecordings = [];
         if (!empty($recordingids)) {
             list($insql, $params) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
-            $records = $DB->get_records_select('googlemeet_recordings', "recordingid $insql", $params, '', 'recordingid, googlemeetid');
+            $records = $DB->get_recordset_select('googlemeet_recordings', "recordingid $insql", $params, '',
+                'id, recordingid, googlemeetid');
             foreach ($records as $rec) {
-                $existingrecordings[$rec->recordingid] = $rec->googlemeetid;
+                $existingrecordings[$rec->recordingid][(int)$rec->googlemeetid] = true;
             }
+            $records->close();
         }
 
         $filtered = [];
@@ -791,15 +797,16 @@ class client {
             $recordingid = $recording->id ?? null;
 
             // Check if this recording already exists using our batch-loaded map.
-            $existinggooglemeetid = $existingrecordings[$recordingid] ?? null;
+            $owners = $existingrecordings[$recordingid] ?? [];
 
-            if ($existinggooglemeetid !== null && $existinggooglemeetid != $googlemeetid) {
-                // Skip this recording - it's already associated with another activity.
+            if (!empty($owners) && empty($owners[(int)$googlemeetid])) {
+                // Skip this recording - it's already associated with another activity (and not
+                // with this one).
                 continue;
             }
 
             // If recording already exists in this activity, include it (for updates).
-            if ($existinggooglemeetid !== null && $existinggooglemeetid == $googlemeetid) {
+            if (!empty($owners[(int)$googlemeetid])) {
                 $filtered[] = $recording;
                 continue;
             }

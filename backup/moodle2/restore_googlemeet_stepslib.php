@@ -89,6 +89,16 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $data->eventenddate = $this->apply_date_offset($data->eventenddate);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
 
+        // DAT-03: the copy must never act on the source activity's Google Calendar event. The
+        // eventid is the original's event (a future Calendar patch/delete would hit it), so drop it;
+        // the Meet URL is kept so the copy keeps using the same room. lastsync describes the
+        // original's Drive sync, not the copy's.
+        // creatoremail is intentionally kept: it identifies the Google account that owns the Meet
+        // room and its Drive recordings, which the copy still uses; clearing it would make
+        // autosync close every event of the copy as "no identity" (permanent failure).
+        $data->eventid = null;
+        $data->lastsync = null;
+
         // Insert the googlemeet record.
         $newitemid = $DB->insert_record('googlemeet', $data);
         // Immediately after inserting "activity" record, call this.
@@ -110,6 +120,17 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $data->googlemeetid = $this->get_new_parentid('googlemeet');
         $data->eventdate = $this->apply_date_offset($data->eventdate);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        // DAT-03: auto-sync bookkeeping. Sessions already over keep the backed-up state, so a
+        // restore does not re-trigger auto-sync against old sessions. Sessions that (after the date
+        // offset of a course restore) are still to come have never been synced for this copy: reset
+        // them, otherwise an "autosynced" flag copied from the original would block their sync.
+        $duration = (int)($data->duration ?? 0);
+        if ((int)$data->eventdate + $duration > time()) {
+            $data->autosynced = 0;
+            $data->syncattempts = 0;
+            $data->nextsyncattempt = 0;
+        }
 
         $newitemid = $DB->insert_record('googlemeet_events', $data);
         $this->set_mapping('googlemeet_event', $oldid, $newitemid);
