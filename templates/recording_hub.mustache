@@ -163,6 +163,7 @@
 
   <div class="tab-content pt-3">
     <div class="tab-pane fade {{#summaryactive}}show active{{/summaryactive}}" id="googlemeet-summary-panel" role="tabpanel" aria-labelledby="googlemeet-summary-tab">
+      {{> mod_googlemeet/ai_review_hub }}
       {{#hasanalysis}}
         <div class="googlemeet-study-toolbar">
           <span class="googlemeet-ai-origin">{{# str }} hub_ai_generated_note, mod_googlemeet {{/ str }}</span>

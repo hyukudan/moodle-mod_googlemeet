@@ -40,6 +40,9 @@ class ai_service {
     /** @var int[] Back-off schedule in seconds, indexed by (retrycount - 1): 2h, 4h, 8h, 24h. */
     const TRANSIENT_BACKOFF = [7200, 14400, 28800, 86400];
 
+    /** @var int Default minutes after which a 'processing' analysis counts as stuck (F-8). */
+    const DEFAULT_STUCK_MINUTES = 60;
+
     /** @var gemini_client The Gemini API client */
     private $client;
 
@@ -126,7 +129,8 @@ class ai_service {
         // re-update it and re-queue a second adhoc task, even when regenerate=true
         // (C2 - race condition). The only legitimate way to act on a 'processing'
         // row is to have just claimed it ourselves, signalled by $alreadyclaimed.
-        if ($existing && $existing->status === 'processing' && !$alreadyclaimed) {
+        // F-8: a row stuck in 'processing' (its worker died) may be retried by hand.
+        if ($existing && $existing->status === 'processing' && !$alreadyclaimed && !self::is_stuck($existing)) {
             $existing->keypoints = [];
             $existing->topics = [];
             return $existing;
@@ -245,6 +249,10 @@ class ai_service {
             $analysis->error = null;
             $analysis->aimodel = $this->client->get_last_used_model() ?? $this->client->get_model();
             $analysis->timemodified = time();
+            // IA-04: new AI text waits for a teacher review.
+            foreach (\mod_googlemeet\local\ai_review::unreviewed_fields() as $key => $value) {
+                $analysis->$key = $value;
+            }
 
             $DB->update_record('googlemeet_ai_analysis', $analysis);
 
@@ -382,6 +390,8 @@ class ai_service {
             throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'Chapters field is not available');
         }
 
+        // IA-04: chapter-only (re)generation keeps the review state of the analysis. Resetting it here
+        // would hide every published summary again when cli/backfill_chapters.php runs over a course.
         $DB->update_record('googlemeet_ai_analysis', (object) [
             'id' => $analysis->id,
             'chapters' => json_encode($chapters),
@@ -607,6 +617,66 @@ class ai_service {
                  WHERE id $insql AND status = 'processing'";
         $DB->execute($sql, $params);
 
+        return count($stale);
+    }
+
+    /**
+     * Minutes after which a 'processing' analysis is considered stuck (F-8).
+     *
+     * Config googlemeet/aistuckminutes; never below 15 so a healthy tier-3 (video) run is not cut short.
+     *
+     * @return int Seconds.
+     */
+    public static function get_stuck_threshold(): int {
+        $minutes = (int)get_config('googlemeet', 'aistuckminutes');
+        if ($minutes <= 0) {
+            $minutes = self::DEFAULT_STUCK_MINUTES;
+        }
+        return max(15, $minutes) * MINSECS;
+    }
+
+    /**
+     * Whether an analysis has been in 'processing' for longer than the stuck threshold (F-8).
+     *
+     * @param stdClass|null|false $analysis Analysis row (status, timemodified).
+     * @param int|null $now Reference time.
+     * @return bool
+     */
+    public static function is_stuck($analysis, ?int $now = null): bool {
+        if (!$analysis || ($analysis->status ?? '') !== 'processing') {
+            return false;
+        }
+        $now = $now ?? time();
+        return (int)($analysis->timemodified ?? 0) < $now - self::get_stuck_threshold();
+    }
+
+    /**
+     * Scheduled cleanup (F-8): mark analyses stuck in 'processing' as failed.
+     *
+     * Uses the transient-failure bookkeeping, so a stuck row is retried automatically with
+     * back-off while the retry budget lasts, and then stays failed (no endless loop when the
+     * worker keeps dying on the same recording). The teacher sees the failure and can retry.
+     *
+     * @param int|null $maxage Seconds in 'processing' before a row is stale (default: the stuck threshold).
+     * @return int Number of rows marked failed.
+     */
+    public function fail_stale_processing(?int $maxage = null): int {
+        global $DB;
+
+        $maxage = $maxage ?? self::get_stuck_threshold();
+        $stale = $DB->get_records_select('googlemeet_ai_analysis',
+            "status = 'processing' AND timemodified < :threshold",
+            ['threshold' => time() - $maxage], '', 'id, retrycount');
+        $minutes = (int)round($maxage / MINSECS);
+        foreach ($stale as $row) {
+            $retrycount = (int)$row->retrycount;
+            $message = get_string('ai_error_stuck', 'googlemeet', $minutes);
+            if ($retrycount >= self::MAX_TRANSIENT_RETRIES) {
+                $this->record_permanent_failure((int)$row->id, $message);
+            } else {
+                $this->record_transient_failure((int)$row->id, $retrycount, $message);
+            }
+        }
         return count($stale);
     }
 

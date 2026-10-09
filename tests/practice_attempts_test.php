@@ -99,6 +99,7 @@ final class practice_attempts_test extends \advanced_testcase {
                 'keypoints' => json_encode(['k']),
                 'topics' => json_encode($topics),
                 'status' => 'completed',
+                'reviewed' => 1, // IA-04: published, so students see its topics.
                 'timecreated' => time(),
                 'timemodified' => time(),
             ]);

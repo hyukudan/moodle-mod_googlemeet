@@ -136,7 +136,11 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'retrycount',
             'nextretry',
             'timecreated',
-            'timemodified'
+            'timemodified',
+            // IA-04 review state (reviewedby is annotated as a user when user data is included).
+            'reviewed',
+            'timereviewed',
+            'reviewedby'
         ]);
 
         $holidays = new backup_nested_element('holidays');
@@ -209,6 +213,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $recordingprogress->annotate_ids('user', 'userid');
             $recordingsub->annotate_ids('user', 'userid');
             $practiceattempt->annotate_ids('user', 'userid');
+            $aianalysis->annotate_ids('user', 'reviewedby');
         }
 
         // Define file annotations.

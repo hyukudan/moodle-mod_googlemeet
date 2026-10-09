@@ -143,6 +143,9 @@ class provider implements
                 'topics' => 'privacy:metadata:googlemeet_ai_analysis:topics',
                 'chapters' => 'privacy:metadata:googlemeet_ai_analysis:chapters',
                 'transcript' => 'privacy:metadata:googlemeet_ai_analysis:transcript',
+                // IA-04: the teacher who published the AI content to students (exported/anonymised per user).
+                'reviewedby' => 'privacy:metadata:googlemeet_ai_analysis:reviewedby',
+                'timereviewed' => 'privacy:metadata:googlemeet_ai_analysis:timereviewed',
             ],
             'privacy:metadata:googlemeet_ai_analysis'
         );
@@ -242,7 +245,15 @@ class provider implements
             INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel4
             INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname4
             INNER JOIN {googlemeet_practice_attempts} gpa ON gpa.googlemeetid = cm.instance
-                 WHERE gpa.userid = :userid4";
+                 WHERE gpa.userid = :userid4
+                 UNION
+                SELECT c.id
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel5
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname5
+            INNER JOIN {googlemeet_recordings} gr5 ON gr5.googlemeetid = cm.instance
+            INNER JOIN {googlemeet_ai_analysis} gaa ON gaa.recordingid = gr5.id
+                 WHERE gaa.reviewedby = :userid5";
 
         $params = [
             'modname1' => 'googlemeet',
@@ -257,6 +268,9 @@ class provider implements
             'modname4' => 'googlemeet',
             'contextlevel4' => CONTEXT_MODULE,
             'userid4' => $userid,
+            'modname5' => 'googlemeet',
+            'contextlevel5' => CONTEXT_MODULE,
+            'userid5' => $userid,
         ];
 
         $contextlist = new contextlist();
@@ -319,6 +333,16 @@ class provider implements
                  WHERE cm.id = :cmid";
 
         $userlist->add_from_sql('userid', $sql, $params);
+
+        // IA-04: teachers who published AI content.
+        $sql = "SELECT gaa.reviewedby
+                  FROM {course_modules} cm
+                  JOIN {modules} m ON m.id = cm.module AND m.name = :modulename
+                  JOIN {googlemeet_recordings} gr ON gr.googlemeetid = cm.instance
+                  JOIN {googlemeet_ai_analysis} gaa ON gaa.recordingid = gr.id
+                 WHERE cm.id = :cmid AND gaa.reviewedby > 0";
+
+        $userlist->add_from_sql('reviewedby', $sql, $params);
     }
 
     /**
@@ -487,6 +511,34 @@ class provider implements
                 ]
             );
         }
+
+        // IA-04: AI summaries this user (a teacher) published to students.
+        $sql = "SELECT gaa.id,
+                       cm.id AS cmid,
+                       gr.id AS recordingid,
+                       gr.name AS recordingname,
+                       gaa.timereviewed
+                  FROM {context} c
+            INNER JOIN {course_modules} cm ON cm.id = c.instanceid AND c.contextlevel = :contextlevel
+            INNER JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+            INNER JOIN {googlemeet_recordings} gr ON gr.googlemeetid = cm.instance
+            INNER JOIN {googlemeet_ai_analysis} gaa ON gaa.recordingid = gr.id
+                 WHERE c.id {$contextsql}
+                   AND gaa.reviewedby = :userid
+              ORDER BY cm.id, gr.id";
+        $reviews = $DB->get_recordset_sql($sql, $params);
+        foreach ($reviews as $review) {
+            writer::with_context(\context_module::instance($review->cmid))->export_related_data(
+                [get_string('privacy:aireviews', 'googlemeet')],
+                'recording_' . $review->recordingid,
+                (object)[
+                    'recordingid' => (int)$review->recordingid,
+                    'recordingname' => $review->recordingname,
+                    'timereviewed' => \core_privacy\local\request\transform::datetime($review->timereviewed),
+                ]
+            );
+        }
+        $reviews->close();
     }
 
     /**
@@ -580,7 +632,28 @@ class provider implements
                 ]
             );
             self::delete_recording_preferences($instanceid, [$userid]);
+            self::anonymise_reviewer($instanceid, [$userid]);
         }
+    }
+
+    /**
+     * IA-04: forget who published the AI content (the content and its reviewed state stay).
+     *
+     * @param int $googlemeetid Instance id.
+     * @param int[] $userids Users.
+     */
+    protected static function anonymise_reviewer(int $googlemeetid, array $userids): void {
+        global $DB;
+
+        if (empty($userids)) {
+            return;
+        }
+        [$usql, $uparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'ru');
+        $DB->execute("UPDATE {googlemeet_ai_analysis}
+                         SET reviewedby = 0
+                       WHERE reviewedby {$usql}
+                         AND recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :rgmid)",
+            $uparams + ['rgmid' => $googlemeetid]);
     }
 
     /**
@@ -646,6 +719,7 @@ class provider implements
         $DB->delete_records_select('googlemeet_recording_progress', $select, $params);
 
         self::delete_recording_preferences((int)$cm->instance, $userlist->get_userids());
+        self::anonymise_reviewer((int)$cm->instance, $userlist->get_userids());
     }
 
     /**

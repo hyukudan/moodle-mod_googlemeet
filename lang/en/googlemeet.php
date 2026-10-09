@@ -708,3 +708,38 @@ $string['report_question_deleted'] = '(deleted question)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
+
+// track: w2-aireview
+// IA-04: teacher review of AI content before students see it.
+$string['requireaireview'] = 'Review AI summaries before students see them';
+$string['requireaireview_desc'] = 'When enabled, a new or regenerated AI analysis (summary, key points, topics and chapters) stays hidden from students until a teacher publishes it from the lesson page. Editing the analysis by hand also publishes it. Analyses that existed before this setting was introduced stay visible.';
+$string['aireview_pending_title'] = 'Pending review — students cannot see it yet';
+$string['aireview_pending_hint'] = 'Check the summary, key points, topics and chapters (for example, that no student personal data appears) and publish them. Saving a manual edit also publishes them.';
+$string['aireview_publish'] = 'Publish summary';
+$string['aireview_publish_failed'] = 'The summary could not be published. Reload the page and try again.';
+$string['aireview_publish_all'] = 'Publish all reviewable summaries';
+$string['aireview_publish_all_button'] = 'Publish all';
+$string['aireview_publish_all_confirm'] = '{$a} AI summaries will become visible to students. Have you reviewed them?';
+$string['aireview_bulk_message'] = '{$a} AI summaries are waiting for your review: students cannot see them yet.';
+$string['aireview_bulk_message_one'] = '1 AI summary is waiting for your review: students cannot see it yet.';
+$string['aireview_bulk_hint'] = 'Open each lesson to review it, or publish them all at once if you have already checked them.';
+$string['aireview_chip'] = 'Pending review';
+$string['privacy:metadata:googlemeet_ai_analysis:reviewedby'] = 'The teacher who published the AI content to students.';
+$string['privacy:metadata:googlemeet_ai_analysis:timereviewed'] = 'When the AI content was published to students.';
+$string['privacy:aireviews'] = 'Published AI summaries';
+// IA-03: Gemini content safety.
+$string['aisafetythreshold'] = 'Gemini safety threshold';
+$string['aisafetythreshold_desc'] = 'Which content Gemini refuses to process. Class transcripts about law, health or security often contain words that stricter levels block by mistake.';
+$string['aisafetythreshold_high'] = 'Block only high-probability harmful content (recommended)';
+$string['aisafetythreshold_medium'] = 'Block medium and high probability';
+$string['aisafetythreshold_low'] = 'Block low, medium and high probability (strictest)';
+$string['aisafetythreshold_none'] = 'Do not block (subject to Google policy)';
+$string['ai_error_safety'] = 'Gemini blocked this analysis with its content-safety filters (it considered the content sensitive). Check the transcript, or lower the safety threshold in the plugin settings, and regenerate it.';
+// F-8: stuck analyses.
+$string['aistuckminutes'] = 'Stuck analysis after (minutes)';
+$string['aistuckminutes_desc'] = 'An AI analysis still "in progress" after this many minutes is shown to teachers as stuck (with a retry button), and the scheduled task marks it as failed. Minimum 15.';
+$string['ai_status_stuck'] = 'The analysis seems stuck: it has been "in progress" for more than {$a} minutes. You can retry it.';
+$string['ai_status_stuck_panel'] = 'The analysis seems stuck (it has been in progress for too long). Use "Regenerate" to retry it.';
+$string['ai_status_chip_stuck'] = 'Analysis stuck';
+$string['ai_stuck_retry'] = 'Retry analysis';
+$string['ai_error_stuck'] = 'The analysis was stuck "in progress" for more than {$a} minutes and was stopped. It will be retried automatically; you can also regenerate it.';

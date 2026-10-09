@@ -713,3 +713,38 @@ $string['report_question_deleted'] = '(pregunta eliminada)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Práctica: {$a->pct}% de aciertos ({$a->attempts} respuestas de {$a->users} alumnos)';
+
+// track: w2-aireview
+// IA-04: revisión docente del contenido IA antes de que lo vean los alumnos.
+$string['requireaireview'] = 'Revisar los resúmenes IA antes de que los vean los alumnos';
+$string['requireaireview_desc'] = 'Si está activado, un análisis IA nuevo o regenerado (resumen, puntos clave, temas y capítulos) queda oculto para los alumnos hasta que un profesor lo publique desde la página de la clase. Editar el análisis a mano también lo publica. Los análisis que ya existían antes de este ajuste siguen visibles.';
+$string['aireview_pending_title'] = 'Pendiente de revisión — los alumnos aún no lo ven';
+$string['aireview_pending_hint'] = 'Revisa el resumen, los puntos clave, los temas y los capítulos (por ejemplo, que no aparezcan datos personales de alumnos) y publícalos. Guardar una edición manual también los publica.';
+$string['aireview_publish'] = 'Publicar resumen';
+$string['aireview_publish_failed'] = 'No se ha podido publicar el resumen. Recarga la página e inténtalo de nuevo.';
+$string['aireview_publish_all'] = 'Publicar todos los resúmenes revisables';
+$string['aireview_publish_all_button'] = 'Publicar todos';
+$string['aireview_publish_all_confirm'] = '{$a} resúmenes IA pasarán a ser visibles para los alumnos. ¿Los has revisado?';
+$string['aireview_bulk_message'] = '{$a} resúmenes IA esperan tu revisión: los alumnos aún no los ven.';
+$string['aireview_bulk_message_one'] = '1 resumen IA espera tu revisión: los alumnos aún no lo ven.';
+$string['aireview_bulk_hint'] = 'Abre cada clase para revisarlo o publícalos todos a la vez si ya los has comprobado.';
+$string['aireview_chip'] = 'Pendiente de revisión';
+$string['privacy:metadata:googlemeet_ai_analysis:reviewedby'] = 'El profesor que publicó el contenido IA para los alumnos.';
+$string['privacy:metadata:googlemeet_ai_analysis:timereviewed'] = 'Cuándo se publicó el contenido IA para los alumnos.';
+$string['privacy:aireviews'] = 'Resúmenes IA publicados';
+// IA-03: seguridad de contenido de Gemini.
+$string['aisafetythreshold'] = 'Umbral de seguridad de Gemini';
+$string['aisafetythreshold_desc'] = 'Qué contenido se niega a procesar Gemini. Las transcripciones de temarios de derecho, sanidad o seguridad contienen a menudo palabras que los niveles más estrictos bloquean por error.';
+$string['aisafetythreshold_high'] = 'Bloquear solo contenido dañino con probabilidad alta (recomendado)';
+$string['aisafetythreshold_medium'] = 'Bloquear probabilidad media y alta';
+$string['aisafetythreshold_low'] = 'Bloquear probabilidad baja, media y alta (más estricto)';
+$string['aisafetythreshold_none'] = 'No bloquear (sujeto a la política de Google)';
+$string['ai_error_safety'] = 'Gemini ha bloqueado este análisis con sus filtros de seguridad de contenido (ha considerado el contenido sensible). Revisa la transcripción, o baja el umbral de seguridad en la configuración del plugin, y regenéralo.';
+// F-8: análisis atascados.
+$string['aistuckminutes'] = 'Análisis atascado tras (minutos)';
+$string['aistuckminutes_desc'] = 'Un análisis IA que sigue «en curso» pasado este tiempo se muestra al profesor como atascado (con botón de reintento) y la tarea programada lo marca como fallido. Mínimo 15.';
+$string['ai_status_stuck'] = 'El análisis parece atascado: lleva más de {$a} minutos «en curso». Puedes reintentarlo.';
+$string['ai_status_stuck_panel'] = 'El análisis parece atascado (lleva demasiado tiempo en curso). Pulsa «Regenerar» para reintentarlo.';
+$string['ai_status_chip_stuck'] = 'Análisis atascado';
+$string['ai_stuck_retry'] = 'Reintentar análisis';
+$string['ai_error_stuck'] = 'El análisis se quedó atascado «en curso» más de {$a} minutos y se ha detenido. Se reintentará automáticamente; también puedes regenerarlo.';

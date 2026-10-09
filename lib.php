@@ -443,7 +443,8 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
     $aidata = [];
     if ($includeai && !empty($recordingids)) {
         list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
-        $sql = "SELECT recordingid, summary, keypoints, topics, status, error, aimodel, timemodified, retrycount, nextretry
+        $sql = "SELECT recordingid, summary, keypoints, topics, status, error, aimodel, timemodified, retrycount, nextretry,
+                       reviewed
                 FROM {googlemeet_ai_analysis}
                 WHERE recordingid $insql";
         $airecords = $DB->get_records_sql($sql, $inparams);
@@ -451,6 +452,9 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
             $aidata[$ai->recordingid] = $ai;
         }
     }
+
+    // IA-04: whether the current user may see unreviewed AI content, per activity instance.
+    $canseeunreviewed = [];
 
     $formattedrecordings = [];
     foreach ($recordings as $recording) {
@@ -476,6 +480,29 @@ function googlemeet_list_recordings($params, $includeai = false, $order = 'DESC'
         // hasai keeps its existing meaning: a COMPLETED analysis with content.
         $hascontent = $ai && $status === 'completed'
             && (trim((string)$ai->summary) !== '' || ($ai->keypoints ?? '') !== '' || ($ai->topics ?? '') !== '');
+        // IA-04: unreviewed content is dropped for students, so the list snippet, search, topic chips and
+        // topic practice built from this list never expose it. Teachers get a "pending review" flag.
+        $recording->aipendingreview = false;
+        if ($hascontent && \mod_googlemeet\local\ai_review::is_pending_review($ai)) {
+            $gmid = (int)$recording->googlemeetid;
+            if (!array_key_exists($gmid, $canseeunreviewed)) {
+                $canseeunreviewed[$gmid] = \mod_googlemeet\local\ai_review::can_see_unreviewed($gmid);
+            }
+            $hascontent = $canseeunreviewed[$gmid];
+            $recording->aipendingreview = $hascontent;
+        }
+        // F-8: teachers see a stuck analysis as such (not as an endless "in progress").
+        $recording->aistatusisstuck = false;
+        if ($ai && \mod_googlemeet\ai_service::is_stuck($ai)) {
+            $gmid = (int)$recording->googlemeetid;
+            if (!array_key_exists($gmid, $canseeunreviewed)) {
+                $canseeunreviewed[$gmid] = \mod_googlemeet\local\ai_review::can_see_unreviewed($gmid);
+            }
+            if ($canseeunreviewed[$gmid]) {
+                $recording->aistatusisstuck = true;
+                $recording->aistatusisprocessing = false;
+            }
+        }
         if ($hascontent) {
             $recording->hasai = true;
             $recording->aisummary = $ai->summary;
@@ -922,10 +949,15 @@ function googlemeet_assign_lesson_titles(array $items, array $genericnames): arr
  */
 function googlemeet_get_lesson_titles(stdClass $googlemeet, bool $includehidden): array {
     global $DB;
-    static $cache = [];
-    $cachekey = (int)$googlemeet->id . ':' . (int)$includehidden;
-    if (isset($cache[$cachekey])) {
-        return $cache[$cachekey];
+    // IA-04: topics of an unreviewed analysis must not become a student-visible lesson title.
+    $canseeunreviewed = !\mod_googlemeet\local\ai_review::is_required()
+        || \mod_googlemeet\local\ai_review::can_see_unreviewed((int)$googlemeet->id);
+    // Request cache (purged between PHPUnit tests, unlike a static array).
+    $cache = \cache::make_from_params(\cache_store::MODE_REQUEST, 'mod_googlemeet', 'lessontitles');
+    $cachekey = (int)$googlemeet->id . '_' . (int)$includehidden . '_' . (int)$canseeunreviewed;
+    $cached = $cache->get($cachekey);
+    if ($cached !== false) {
+        return $cached;
     }
 
     $params = ['googlemeetid' => (int)$googlemeet->id, 'deleted' => 0];
@@ -934,7 +966,7 @@ function googlemeet_get_lesson_titles(stdClass $googlemeet, bool $includehidden)
         $visiblewhere = 'AND r.visible = 1';
     }
     $rows = $DB->get_records_sql(
-        "SELECT r.id, r.name, a.topics
+        "SELECT r.id, r.name, a.topics, a.reviewed
            FROM {googlemeet_recordings} r
       LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
           WHERE r.googlemeetid = :googlemeetid AND r.deleted = :deleted {$visiblewhere}",
@@ -942,12 +974,14 @@ function googlemeet_get_lesson_titles(stdClass $googlemeet, bool $includehidden)
     );
     $items = [];
     foreach ($rows as $row) {
-        $items[$row->id] = ['name' => (string)$row->name, 'topics' => json_decode((string)$row->topics) ?: []];
+        $topics = ($canseeunreviewed || !empty($row->reviewed)) ? (json_decode((string)$row->topics) ?: []) : [];
+        $items[$row->id] = ['name' => (string)$row->name, 'topics' => $topics];
     }
 
-    $cache[$cachekey] = googlemeet_assign_lesson_titles($items,
+    $titles = googlemeet_assign_lesson_titles($items,
         [(string)($googlemeet->name ?? ''), (string)($googlemeet->originalname ?? '')]);
-    return $cache[$cachekey];
+    $cache->set($cachekey, $titles);
+    return $titles;
 }
 
 /**

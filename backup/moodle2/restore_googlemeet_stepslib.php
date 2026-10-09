@@ -181,6 +181,14 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $data->recordingid = $this->get_new_parentid('googlemeet_recording');
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+        // IA-04: backups made before the review existed hold content students could already see.
+        if (!isset($data->reviewed)) {
+            $data->reviewed = 1;
+            $data->timereviewed = 0;
+            $data->reviewedby = 0;
+        }
+        $data->timereviewed = empty($data->timereviewed) ? 0 : $this->apply_date_offset($data->timereviewed);
+        $data->reviewedby = empty($data->reviewedby) ? 0 : (int)($this->get_mappingid('user', $data->reviewedby) ?: 0);
 
         $newitemid = $DB->insert_record('googlemeet_ai_analysis', $data);
         $this->set_mapping('googlemeet_aianalysis', $oldid, $newitemid);
