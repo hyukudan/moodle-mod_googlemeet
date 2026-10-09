@@ -218,7 +218,8 @@ class soft_delete_test extends \advanced_testcase {
             \mod_googlemeet_external::restore_recording($otherid, $cm->id);
             $this->fail('Expected invalidrecord for a recording from another instance.');
         } catch (\moodle_exception $e) {
-            $this->assertSame('invalidrecord', $e->errorcode);
+            $this->assertSame('recordingnotfound', $e->errorcode);
+            $this->assertStringNotContainsString('{$a}', $e->getMessage());
         }
 
         $recordingid = $this->create_recording($googlemeet->id, 'drive-restore', [
@@ -248,7 +249,8 @@ class soft_delete_test extends \advanced_testcase {
             \mod_googlemeet_external::trash_recording($otherid, $cm->id);
             $this->fail('Expected invalidrecord for a recording from another instance.');
         } catch (\moodle_exception $e) {
-            $this->assertSame('invalidrecord', $e->errorcode);
+            $this->assertSame('recordingnotfound', $e->errorcode);
+            $this->assertStringNotContainsString('{$a}', $e->getMessage());
         }
         $other = $DB->get_record('googlemeet_recordings', ['id' => $otherid], '*', MUST_EXIST);
         $this->assertSame(0, (int)$other->deleted);
@@ -261,7 +263,8 @@ class soft_delete_test extends \advanced_testcase {
             \mod_googlemeet_external::trash_recording($alreadydeletedid, $cm->id);
             $this->fail('Expected invalidrecord for an already-deleted recording.');
         } catch (\moodle_exception $e) {
-            $this->assertSame('invalidrecord', $e->errorcode);
+            $this->assertSame('recordingnotfound', $e->errorcode);
+            $this->assertStringNotContainsString('{$a}', $e->getMessage());
         }
 
         $recordingid = $this->create_recording($googlemeet->id, 'drive-trash');
@@ -291,7 +294,8 @@ class soft_delete_test extends \advanced_testcase {
             \mod_googlemeet_external::purge_recording($otherid, $cm->id);
             $this->fail('Expected invalidrecord for a recording from another instance.');
         } catch (\moodle_exception $e) {
-            $this->assertSame('invalidrecord', $e->errorcode);
+            $this->assertSame('recordingnotfound', $e->errorcode);
+            $this->assertStringNotContainsString('{$a}', $e->getMessage());
         }
         $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $otherid]));
 
@@ -464,5 +468,36 @@ class soft_delete_test extends \advanced_testcase {
             \mod_googlemeet\task\notify_new_recordings::class
         );
         $this->assertCount(0, $notificationtasks);
+    }
+
+    /**
+     * Stale, trashed and hidden recording links give a complete message (no raw {$a}) and the helper hides them.
+     */
+    public function test_stale_recording_links_have_friendly_message_and_helper(): void {
+        $this->resetAfterTest();
+        [$course, $googlemeet, $cm, $context] = $this->create_googlemeet_fixture();
+        $trashed = $this->create_recording($googlemeet->id, 'drive-trashed', ['deleted' => 1, 'timedeleted' => time()]);
+        $hidden = $this->create_recording($googlemeet->id, 'drive-hidden', ['visible' => 0]);
+        $ok = $this->create_recording($googlemeet->id, 'drive-ok');
+
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        foreach ([$trashed, $hidden, 999999] as $id) {
+            $this->assertFalse(googlemeet_get_accessible_recording($googlemeet, $context, $id));
+            try {
+                \mod_googlemeet_external::mark_recording_progress($id, $cm->id, 1, false);
+                $this->fail('Expected recordingnotfound.');
+            } catch (\moodle_exception $e) {
+                $this->assertSame('recordingnotfound', $e->errorcode);
+                $this->assertStringNotContainsString('{$a}', $e->getMessage());
+                $this->assertSame(get_string('recordingnotfound', 'googlemeet'), $e->getMessage());
+            }
+        }
+        $this->assertNotFalse(googlemeet_get_accessible_recording($googlemeet, $context, $ok));
+
+        $this->setAdminUser();
+        $this->assertNotFalse(googlemeet_get_accessible_recording($googlemeet, $context, $hidden));
+        $this->assertFalse(googlemeet_get_accessible_recording($googlemeet, $context, $trashed));
     }
 }

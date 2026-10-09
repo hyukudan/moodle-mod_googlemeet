@@ -73,6 +73,7 @@ $string['invalideventendtime'] = 'The end time must be greater than start time';
 $string['invalidissuerid'] = 'The OAuth service selected in the "Google Meet™ for Moodle" settings is not supported by Google';
 $string['invalidstoredurl'] = 'Cannot display this resource, Google Meet URL is invalid.';
 $string['invalidstoredurl_editor'] = 'The Google Meet URL stored for this activity is invalid, so the join button is hidden. Students can still see the recordings. <a href="{$a}">Edit the activity settings</a> to fix it.';
+$string['recordingnotfound'] = 'This recording is no longer available or has been deleted.';
 $string['isnotcreatoremail'] = 'Log in with organizer account or change organizer email in settings to sync recordings.';
 $string['jstableinfo'] = 'Showing {start} to {end} of {rows} recordings';
 $string['jstableinfofiltered'] = 'Showing {start} to {end} of {rows} recordings (filtered from {rowsTotal} recordings)';

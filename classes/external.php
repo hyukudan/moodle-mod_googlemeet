@@ -88,7 +88,10 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         $recording->name = $name;
         $recording->timemodified = time();
@@ -156,7 +159,10 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         if ($recording->visible) {
             $recording->visible = false;
@@ -292,7 +298,7 @@ class mod_googlemeet_external extends external_api {
         $recording = $DB->get_record('googlemeet_recordings',
             ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
         if (!$recording || empty($recording->deleted)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $DB->update_record('googlemeet_recordings', (object)[
@@ -356,7 +362,7 @@ class mod_googlemeet_external extends external_api {
         $recording = $DB->get_record('googlemeet_recordings',
             ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
         if (!$recording || !empty($recording->deleted)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $now = time();
@@ -421,7 +427,7 @@ class mod_googlemeet_external extends external_api {
         $recording = $DB->get_record('googlemeet_recordings',
             ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance]);
         if (!$recording || empty($recording->deleted)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $fs = get_file_storage();
@@ -488,8 +494,10 @@ class mod_googlemeet_external extends external_api {
         require_capability('mod/googlemeet:generateai', $context);
 
         // Verify the recording belongs to this googlemeet instance before delegating (prevent IDOR).
-        $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
+        if (!$DB->record_exists('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0])) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         $aiservice = new \mod_googlemeet\ai_service();
 
@@ -729,7 +737,10 @@ class mod_googlemeet_external extends external_api {
 
         // Verify the recording exists and belongs to this googlemeet instance (prevent IDOR).
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
+            ['id' => $recordingid, 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         // Parse keypoints (one per line).
         $keypointsarray = [];
@@ -1246,8 +1257,10 @@ class mod_googlemeet_external extends external_api {
         $context = \context_module::instance($cm->id);
         self::validate_context($context);
         require_capability('mod/googlemeet:managequestions', $context);
-        $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
+        if (!$DB->record_exists('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0])) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         $service = new \mod_googlemeet\ai_service();
         if (!$service->is_available()) {
@@ -1298,8 +1311,10 @@ class mod_googlemeet_external extends external_api {
         self::validate_context($context);
         require_capability('mod/googlemeet:managequestions', $context);
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
-        $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], 'id', MUST_EXIST);
+        if (!$DB->record_exists('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0])) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         $service = new \mod_googlemeet\question_service();
         return ['questions' => $service->get_questions($googlemeet, $cm, $context, $params['recordingid'], false)];
@@ -1380,9 +1395,12 @@ class mod_googlemeet_external extends external_api {
         $recording = $DB->get_record('googlemeet_recordings',
             ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0],
             'id,visible,duration',
-            MUST_EXIST);
+            IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
         if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $delta = max(0, min(60, (int)$params['watchedsecondsdelta']));
@@ -1491,9 +1509,12 @@ class mod_googlemeet_external extends external_api {
 
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
         if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $service = new \mod_googlemeet\question_service();
@@ -1560,9 +1581,12 @@ class mod_googlemeet_external extends external_api {
 
         $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
         $recording = $DB->get_record('googlemeet_recordings',
-            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', MUST_EXIST);
+            ['id' => $params['recordingid'], 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id,visible', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
         if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
-            throw new \moodle_exception('invalidrecord', 'error');
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
         $service = new \mod_googlemeet\question_service();

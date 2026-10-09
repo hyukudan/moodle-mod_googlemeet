@@ -102,7 +102,10 @@ class ai_service {
             . ", alreadyclaimed=" . ($alreadyclaimed ? 'true' : 'false'), DEBUG_DEVELOPER);
 
         // Get the recording.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
         debugging("AI Service: Found recording '{$recording->name}'", DEBUG_DEVELOPER);
 
         // Check if analysis already exists.
@@ -193,7 +196,10 @@ class ai_service {
         global $DB;
 
         // Get the recording.
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         // Check if analysis already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);
@@ -303,7 +309,10 @@ class ai_service {
     public function generate_questions_for_recording(int $recordingid, int $count = 10): int {
         global $DB;
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
         $googlemeet = $DB->get_record('googlemeet', ['id' => $recording->googlemeetid], '*', MUST_EXIST);
         $cm = get_coursemodule_from_instance('googlemeet', $googlemeet->id, $googlemeet->course, false, MUST_EXIST);
         $context = \context_module::instance($cm->id);
@@ -343,8 +352,14 @@ class ai_service {
     public function generate_chapters_for_recording(int $recordingid): array {
         global $DB;
 
-        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', MUST_EXIST);
-        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid], '*', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], '*', IGNORE_MISSING);
+        if (!$recording) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
+        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid], '*', IGNORE_MISSING);
+        if (!$analysis) {
+            throw new \moodle_exception('invalidrecord', 'error', '', 'googlemeet_ai_analysis');
+        }
         if ($analysis->status !== 'completed') {
             throw new moodle_exception('ai_invalid_analysis', 'googlemeet', '', 'Analysis is not completed');
         }
@@ -604,7 +619,9 @@ class ai_service {
     public function queue_for_analysis(int $recordingid): stdClass {
         global $DB;
 
-        $DB->get_record('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0], 'id', MUST_EXIST);
+        if (!$DB->record_exists('googlemeet_recordings', ['id' => $recordingid, 'deleted' => 0])) {
+            throw new \moodle_exception('recordingnotfound', 'googlemeet');
+        }
 
         // Check if already exists.
         $existing = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recordingid]);

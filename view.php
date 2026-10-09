@@ -104,6 +104,17 @@ $hasinvalidmeeturl = ($url !== '' && !preg_match($pattern, $url));
 $hasvalidmeeturl = ($url !== '' && !$hasinvalidmeeturl);
 unset($url);
 
+// Resolve the requested recording before any output so a stale or trashed link
+// can redirect back to the activity instead of showing a raw error.
+$recording = null;
+if ($recordingid > 0) {
+    $recording = googlemeet_get_accessible_recording($googlemeet, $context, $recordingid);
+    if (!$recording) {
+        redirect(new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]),
+            get_string('recordingnotfound', 'googlemeet'), null, \core\output\notification::NOTIFY_WARNING);
+    }
+}
+
 // Completion and trigger events.
 googlemeet_view($googlemeet, $course, $cm, $context);
 
@@ -118,15 +129,7 @@ if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $cont
 // the title and description, so we don't call googlemeet_print_heading
 // or googlemeet_print_intro to avoid duplication.
 
-if ($recordingid > 0) {
-    $recording = $DB->get_record('googlemeet_recordings',
-        ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0]);
-    if (!$recording) {
-        throw new moodle_exception('invalidrecord', 'error');
-    }
-    if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
-        throw new moodle_exception('invalidrecord', 'error');
-    }
+if ($recording) {
     googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording);
     echo $OUTPUT->footer();
     exit;

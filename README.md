@@ -171,6 +171,10 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.28.1 (2026-10-09) — Friendly message for stale recording links
+
+- Opening a trashed, deleted or hidden recording link no longer shows "Can't find data record in database table {$a}": view.php redirects to the activity with a warning and web services return the new `recordingnotfound` string. Internal `invalidrecord` errors now carry their table name.
+
 ### Version 2.28.0 (2026-10-09) — Practice questions survive duplication and course copies
 - **Questions in backup/duplicate (DAT-02)** - the module declares `FEATURE_USES_QUESTIONS` (private question bank in the module context, like `mod_quiz`; it does not publish questions) and the activity backup now annotates its question categories, so duplicating the activity or backing up/restoring/copying the course carries the AI practice questions with their draft/published status. After restore the category idnumber is rewritten to `googlemeet_cm_<new cmid>` and each `googlemeet-rec-<id>` tag is remapped to the restored recording id; questions of recordings that were in the trash (not backed up) are kept under a `googlemeet-orphan-rec-<oldid>` tag. `get_category()` also self-heals an activity whose only category still carries another cmid.
 - **Coherent restore (DAT-03, minimal)** - a restored/duplicated activity no longer keeps the original's Google Calendar `eventid` (so it can never edit the original event) nor its `lastsync`; future sessions get fresh auto-sync bookkeeping (past sessions keep theirs, so old sessions are not re-synced). The organizer email is kept (it owns the Meet room and the Drive recordings the copy keeps using).

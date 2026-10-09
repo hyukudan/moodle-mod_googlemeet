@@ -470,13 +470,13 @@ class question_service {
         $rows = $this->require_questions_for_recording($googlemeet, $cm, $context, $recordingid, [$questionid], true);
         $row = reset($rows);
         if (!$row || $row->qtype !== 'multichoice') {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         $answers = $DB->get_records('question_answers', ['question' => $questionid], 'id ASC',
             'id, answer, answerformat, fraction');
         if (empty($answers) || !isset($answers[$answerid])) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         $correctanswer = null;
@@ -487,10 +487,13 @@ class question_service {
             }
         }
         if (!$correctanswer) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
-        $question = $DB->get_record('question', ['id' => $questionid], 'generalfeedback,generalfeedbackformat', MUST_EXIST);
+        $question = $DB->get_record('question', ['id' => $questionid], 'generalfeedback,generalfeedbackformat', IGNORE_MISSING);
+        if (!$question) {
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
+        }
 
         return [
             'correct' => (float)$answers[$answerid]->fraction > 0,
@@ -520,11 +523,14 @@ class question_service {
     ): array {
         global $DB;
 
-        $DB->get_record('googlemeet_recordings',
-            ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id', MUST_EXIST);
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0], 'id', IGNORE_MISSING);
+        if (!$recording) {
+            throw new moodle_exception('recordingnotfound', 'googlemeet');
+        }
         $category = $this->get_category($googlemeet, $cm, $context, false);
         if (!$category || empty($questionids)) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         $questionids = array_values(array_unique(array_map('intval', $questionids)));
@@ -555,7 +561,7 @@ class question_service {
                    {$statussql}";
         $records = $DB->get_records_sql($sql, $params);
         if (count($records) !== count($questionids)) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         return $records;
@@ -607,7 +613,7 @@ class question_service {
             question_version_status::QUESTION_STATUS_DRAFT,
             question_version_status::QUESTION_STATUS_READY,
         ], true)) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         // Puerta contra fugas internas (04-10-2026): al PUBLICAR (ready) se valida la
@@ -669,12 +675,12 @@ class question_service {
 
         $row = reset($questionrows);
         if (!$row || $row->qtype !== 'multichoice') {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
         $stem = trim($stem);
         $options = array_values($options);
         if ($stem === '' || count($options) !== 4 || $correctindex < 0 || $correctindex > 3) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
 
         // Puerta contra fugas internas (04-10-2026): edición del docente (modo humano).
@@ -687,7 +693,10 @@ class question_service {
             fugas_exigir_limpia($visibles, ['baraja' => false], 'googlemeet: editar pregunta', true);
         }
 
-        $question = $DB->get_record('question', ['id' => $row->id], '*', MUST_EXIST);
+        $question = $DB->get_record('question', ['id' => $row->id], '*', IGNORE_MISSING);
+        if (!$question) {
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
+        }
         $question->name = shorten_text(clean_param($stem, PARAM_TEXT), 250);
         $question->questiontext = $this->html_paragraph($stem);
         $question->questiontextformat = FORMAT_HTML;
@@ -698,7 +707,7 @@ class question_service {
 
         $answers = array_values($DB->get_records('question_answers', ['question' => $row->id], 'id ASC'));
         if (count($answers) !== 4) {
-            throw new moodle_exception('invalidrecord', 'error');
+            throw new moodle_exception('invalidrecord', 'error', '', 'question');
         }
         foreach ($answers as $i => $answer) {
             $answer->answer = $this->html_paragraph((string)$options[$i]);

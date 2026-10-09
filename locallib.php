@@ -1192,6 +1192,31 @@ function googlemeet_hub_transcript($analysis, $recording): string {
 }
 
 /**
+ * Returns a recording the current user may open, or false.
+ *
+ * Trashed recordings, recordings of another activity and hidden recordings (for
+ * users without editrecording) are all reported identically as "not available".
+ *
+ * @param object $googlemeet Activity record.
+ * @param context_module $context Activity context.
+ * @param int $recordingid Recording id.
+ * @return object|false
+ */
+function googlemeet_get_accessible_recording($googlemeet, $context, int $recordingid) {
+    global $DB;
+
+    $recording = $DB->get_record('googlemeet_recordings',
+        ['id' => $recordingid, 'googlemeetid' => $googlemeet->id, 'deleted' => 0]);
+    if (!$recording) {
+        return false;
+    }
+    if (empty($recording->visible) && !has_capability('mod/googlemeet:editrecording', $context)) {
+        return false;
+    }
+    return $recording;
+}
+
+/**
  * Print the per-recording hub.
  *
  * @param object $googlemeet Activity record.
