@@ -286,14 +286,12 @@ function googlemeet_delete_instance($id) {
 
     googlemeet_delete_events($id);
 
-    // Delete AI analyses for all recordings of this instance.
-    $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$id]);
-    if (!empty($recordingids)) {
-        list($insql, $inparams) = $DB->get_in_or_equal($recordingids);
-        $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
-    }
+    // DAT-01: recordings and every dependent (AI, progress, attempts, files, preferences). The module
+    // question bank is deleted by core right after this callback, so questions are left to it.
+    $cm = get_coursemodule_from_instance('googlemeet', $id, 0, false, IGNORE_MISSING);
+    $context = $cm ? context_module::instance($cm->id, IGNORE_MISSING) : false;
+    \mod_googlemeet\local\recording_cleanup::purge_instance_recordings((int)$id, $context ?: null, false);
 
-    $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
@@ -1412,6 +1410,7 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
                 'name' => $restorerecording->name,
                 'createdtime' => $restorerecording->createdTime,
                 'duration' => $restorerecording->duration,
+                'durationseconds' => googlemeet_recording_duration_to_seconds($restorerecording->duration) ?: null,
                 'webviewlink' => $restorerecording->webViewLink,
                 'deleted' => 0,
                 'timedeleted' => 0,
@@ -1437,6 +1436,7 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
             $recording->name = $insertrecording->name;
             $recording->createdtime = $insertrecording->createdTime;
             $recording->duration = $insertrecording->duration;
+            $recording->durationseconds = googlemeet_recording_duration_to_seconds($insertrecording->duration) ?: null;
             $recording->webviewlink = $insertrecording->webViewLink;
             $recording->deleted = 0;
             $recording->timedeleted = 0;
@@ -1687,4 +1687,65 @@ function googlemeet_extend_settings_navigation(settings_navigation $settingsnav,
             new moodle_url('/mod/googlemeet/report.php', ['id' => $cm->id]),
             navigation_node::TYPE_SETTING, null, 'mod_googlemeet_report', new pix_icon('i/report', ''));
     }
+}
+
+/**
+ * Delete everything that depends on the given recordings (DAT-01), not the recording rows.
+ *
+ * Thin wrapper of {@see \mod_googlemeet\local\recording_cleanup::delete_dependents()}; use
+ * recording_cleanup::purge_recordings() to also delete the recordings themselves.
+ *
+ * @param int[] $recordingids Recording ids of the activity of $context.
+ * @param context_module $context Module context.
+ * @return array Counters by kind.
+ */
+function googlemeet_delete_recording_dependents(array $recordingids, context_module $context): array {
+    return \mod_googlemeet\local\recording_cleanup::delete_dependents($recordingids, $context);
+}
+
+/**
+ * Course reset form elements.
+ *
+ * @param MoodleQuickForm $mform Reset form.
+ * @return void
+ */
+function googlemeet_reset_course_form_definition(&$mform) {
+    $mform->addElement('header', 'googlemeetheader', get_string('modulenameplural', 'googlemeet'));
+    $mform->addElement('advcheckbox', 'reset_googlemeet_userdata', get_string('reset_userdata', 'googlemeet'));
+    $mform->addHelpButton('reset_googlemeet_userdata', 'reset_userdata', 'googlemeet');
+}
+
+/**
+ * Course reset form defaults.
+ *
+ * @param stdClass $course Course.
+ * @return array
+ */
+function googlemeet_reset_course_form_defaults($course) {
+    return ['reset_googlemeet_userdata' => 1];
+}
+
+/**
+ * Course reset: delete the students' data of every Google Meet activity of the course.
+ *
+ * Recordings, AI analysis and practice questions are course content and are kept.
+ *
+ * @param stdClass $data Reset form data.
+ * @return array Status rows.
+ */
+function googlemeet_reset_userdata($data) {
+    global $DB;
+
+    $status = [];
+    if (empty($data->reset_googlemeet_userdata)) {
+        return $status;
+    }
+    $ids = $DB->get_fieldset_select('googlemeet', 'id', 'course = ?', [$data->courseid]);
+    \mod_googlemeet\local\recording_cleanup::delete_user_data($ids);
+    $status[] = [
+        'component' => get_string('modulenameplural', 'googlemeet'),
+        'item' => get_string('reset_userdata', 'googlemeet'),
+        'error' => false,
+    ];
+    return $status;
 }

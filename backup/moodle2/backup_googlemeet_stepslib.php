@@ -123,10 +123,13 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timecreated'
         ]);
 
-        $aianalysis = new backup_nested_element('aianalysis', ['id'], [
+        // The AI summary, key points, topics and chapters are course content (they also feed the
+        // readable lesson titles), so they are always backed up: a duplicated activity or a course
+        // copy keeps them. The AI transcript is participant-derived personal data and only travels
+        // with user information.
+        $aifields = [
             'summary',
             'keypoints',
-            'transcript',
             'topics',
             'chapters',
             'language',
@@ -137,7 +140,11 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'nextretry',
             'timecreated',
             'timemodified'
-        ]);
+        ];
+        if ($userinfo) {
+            $aifields[] = 'transcript';
+        }
+        $aianalysis = new backup_nested_element('aianalysis', ['id'], $aifields);
 
         $holidays = new backup_nested_element('holidays');
         $holiday = new backup_nested_element('holiday', ['id'], [
@@ -160,10 +167,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
 
         $googlemeet->add_child($recordings);
         $recordings->add_child($recording);
-        // AI analysis includes a transcript (participant-derived personal data): only back it up
-        // when the backup carries user information.
+        $recording->add_child($aianalysis);
         if ($userinfo) {
-            $recording->add_child($aianalysis);
             $recording->add_child($recordingprogresses);
             $recordingprogresses->add_child($recordingprogress);
             $googlemeet->add_child($recordingsubs);
@@ -192,8 +197,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             [backup::VAR_PARENTID]
         );
 
+        $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
         if ($userinfo) {
-            $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
             $recordingprogress->set_source_table('googlemeet_recording_progress', ['recordingid' => backup::VAR_PARENTID]);
             $recordingsub->set_source_table('googlemeet_recording_subs', ['googlemeetid' => backup::VAR_PARENTID]);
             $practiceattempt->set_source_table('googlemeet_practice_attempts', ['googlemeetid' => backup::VAR_PARENTID],

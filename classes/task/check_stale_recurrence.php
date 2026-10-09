@@ -73,23 +73,20 @@ class check_stale_recurrence extends \core\task\scheduled_task {
         $sent = 0;
         foreach ($stale as $info) {
             $stillstale[(int) $info->id] = true;
-            $last = get_config('googlemeet', 'stalealert_' . $info->id);
-            if ($last === false || (time() - (int) $last) > $renotifydays * DAYSECS) {
+            // DAT-06: the alert state lives in googlemeet.stalealerttime (0 = no open alert).
+            $last = (int) $DB->get_field('googlemeet', 'stalealerttime', ['id' => $info->id]);
+            if ($last === 0 || (time() - $last) > $renotifydays * DAYSECS) {
                 googlemeet_send_stale_alert($info);
-                set_config('stalealert_' . $info->id, time(), 'googlemeet');
+                $DB->set_field('googlemeet', 'stalealerttime', time(), ['id' => $info->id]);
                 $sent++;
             }
         }
 
         // Re-arm: drop stored state for instances that are no longer stale.
-        $like = $DB->sql_like('name', ':pattern');
-        $records = $DB->get_records_select('config_plugins',
-            "plugin = :plugin AND $like",
-            ['plugin' => 'googlemeet', 'pattern' => 'stalealert_%'], '', 'id, name');
-        foreach ($records as $rec) {
-            $gmid = (int) substr($rec->name, strlen('stalealert_'));
-            if (empty($stillstale[$gmid])) {
-                unset_config('stalealert_' . $gmid, 'googlemeet');
+        $alerted = $DB->get_fieldset_select('googlemeet', 'id', 'stalealerttime > 0');
+        foreach ($alerted as $gmid) {
+            if (empty($stillstale[(int) $gmid])) {
+                $DB->set_field('googlemeet', 'stalealerttime', 0, ['id' => $gmid]);
             }
         }
 

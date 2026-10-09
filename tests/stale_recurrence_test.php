@@ -161,7 +161,7 @@ class stale_recurrence_test extends \advanced_testcase {
         $sink = $this->redirectMessages();
         $this->run_task();
         $this->assertCount(count(get_admins()), $sink->get_messages());
-        $this->assertNotEmpty(get_config('googlemeet', 'stalealert_' . $gm->id));
+        $this->assertNotEmpty($DB->get_field('googlemeet', 'stalealerttime', ['id' => $gm->id]));
         $sink->close();
 
         // Second run (within renotify window): no new message.
@@ -171,7 +171,7 @@ class stale_recurrence_test extends \advanced_testcase {
         $sink->close();
 
         // Age the last-alert timestamp beyond the renotify window: notifies again.
-        set_config('stalealert_' . $gm->id, time() - 40 * DAYSECS, 'googlemeet');
+        $DB->set_field('googlemeet', 'stalealerttime', time() - 40 * DAYSECS, ['id' => $gm->id]);
         $sink = $this->redirectMessages();
         $this->run_task();
         $this->assertCount(count(get_admins()), $sink->get_messages());
@@ -195,12 +195,12 @@ class stale_recurrence_test extends \advanced_testcase {
         $this->add_recording($gm->id, time() - 40 * DAYSECS);
 
         $this->run_task();
-        $this->assertNotEmpty(get_config('googlemeet', 'stalealert_' . $gm->id));
+        $this->assertNotEmpty($DB->get_field('googlemeet', 'stalealerttime', ['id' => $gm->id]));
 
         // Remove the future session → no longer stale → state must be cleared.
         $DB->delete_records('googlemeet_events', ['id' => $eventid]);
         $this->run_task();
-        $this->assertFalse(get_config('googlemeet', 'stalealert_' . $gm->id));
+        $this->assertEquals(0, (int)$DB->get_field('googlemeet', 'stalealerttime', ['id' => $gm->id]));
     }
 
     public function test_task_noop_when_disabled(): void {

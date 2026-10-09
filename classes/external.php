@@ -234,14 +234,8 @@ class mod_googlemeet_external extends external_api {
         // Always operate on the instance bound to the validated course module (prevent IDOR).
         $googlemeetid = $cm->instance;
 
-        // Get recording IDs to delete associated AI analyses.
-        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$googlemeetid]);
-        if (!empty($recordingids)) {
-            list($insql, $inparams) = $DB->get_in_or_equal($recordingids);
-            $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
-        }
-
-        $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $googlemeetid]);
+        // DAT-01: permanent delete of every recording with all its dependents.
+        \mod_googlemeet\local\recording_cleanup::purge_instance_recordings((int)$googlemeetid, $context);
 
         // Use set_field instead of get_record + update_record.
         $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
@@ -430,11 +424,8 @@ class mod_googlemeet_external extends external_api {
             throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
 
-        $fs = get_file_storage();
-        $fs->delete_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recording->id);
-        $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
-        $DB->delete_records('googlemeet_practice_attempts', ['recordingid' => $recording->id]);
-        $DB->delete_records('googlemeet_recordings', ['id' => $recording->id]);
+        // DAT-01: one cascade for every dependent (AI, progress, attempts, files, preferences, questions).
+        \mod_googlemeet\local\recording_cleanup::purge_recordings([(int)$recording->id], $context);
 
         return ['success' => true];
     }

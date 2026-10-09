@@ -1097,6 +1097,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             'timedeleted DESC, createdtime DESC',
             'id,name,createdtime,timedeleted'
         );
+        $retentiondays = \mod_googlemeet\local\recording_cleanup::get_retention_days();
         foreach ($deletedrecords as $deletedrecording) {
             $deletedrecordings[] = [
                 'id' => $deletedrecording->id,
@@ -1105,6 +1106,9 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
                 'timedeletedformatted' => !empty($deletedrecording->timedeleted)
                     ? userdate($deletedrecording->timedeleted)
                     : get_string('never', 'googlemeet'),
+                // OPS-03: when the retention task will purge it ('' when automatic purge is off).
+                'purgenotice' => \mod_googlemeet\local\recording_cleanup::purge_notice(
+                    (int)$deletedrecording->timedeleted, $retentiondays),
             ];
         }
     }

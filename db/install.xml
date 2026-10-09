@@ -33,6 +33,7 @@
         <FIELD NAME="recordingsorder" TYPE="char" LENGTH="4" NOTNULL="true" DEFAULT="DESC" SEQUENCE="false" COMMENT="Order of recordings: DESC (newest first) or ASC (oldest first)."/>
         <FIELD NAME="recordingfilter" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom name pattern to filter recordings from Google Drive."/>
         <FIELD NAME="autosynchours" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Hours after session end to auto-sync recordings from Google Drive. 0 = disabled."/>
+        <FIELD NAME="stalealerttime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When admins were last alerted that this recurrence looks abandoned. 0 = no open alert."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -69,6 +70,7 @@
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The name of the video."/>
         <FIELD NAME="createdtime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of the video creation date."/>
         <FIELD NAME="duration" TYPE="char" LENGTH="16" NOTNULL="true" SEQUENCE="false" COMMENT="Duration of the video."/>
+        <FIELD NAME="durationseconds" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Duration of the video in seconds, parsed from duration. NULL when it could not be parsed."/>
         <FIELD NAME="webviewlink" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Video preview link."/>
         <FIELD NAME="transcripttext" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Original transcript from Google Meet."/>
         <FIELD NAME="transcriptfileid" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Google Drive file ID of the transcript."/>
@@ -86,6 +88,7 @@
       <INDEXES>
         <INDEX NAME="googlemeetid" UNIQUE="false" FIELDS="googlemeetid"/>
         <INDEX NAME="googlemeetid_createdtime" UNIQUE="false" FIELDS="googlemeetid, createdtime"/>
+        <INDEX NAME="googlemeetid_deleted_createdtime" UNIQUE="false" FIELDS="googlemeetid, deleted, createdtime" COMMENT="Recording list and trash queries."/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="googlemeet_notify_done" COMMENT="Stores references from Google Meet recordings.">
