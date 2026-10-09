@@ -1173,6 +1173,25 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
 }
 
 /**
+ * Transcript shown in the teacher-only hub tab.
+ *
+ * Prefers the AI analysis transcript and falls back to the recording's own (Meet or subtitle) transcript,
+ * as the AI web services and chapter/question generation already do: analyses built from an existing
+ * transcript store an empty analysis transcript.
+ *
+ * @param stdClass|false|null $analysis googlemeet_ai_analysis row.
+ * @param stdClass $recording googlemeet_recordings row.
+ * @return string Plain-text transcript ('' when none).
+ */
+function googlemeet_hub_transcript($analysis, $recording): string {
+    $transcript = ($analysis && ($analysis->status ?? '') === 'completed') ? (string)($analysis->transcript ?? '') : '';
+    if (trim($transcript) === '') {
+        $transcript = (string)($recording->transcripttext ?? '');
+    }
+    return trim($transcript) === '' ? '' : $transcript;
+}
+
+/**
  * Print the per-recording hub.
  *
  * @param object $googlemeet Activity record.
@@ -1203,6 +1222,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
     $analysiscompleted = $analysis && $analysis->status === 'completed';
     $statusflags = googlemeet_ai_status_flags($analysis->status ?? null);
+    // Teacher-only tab: never render the transcript into a student's page.
+    $hubtranscript = $caneditrecording ? googlemeet_hub_transcript($analysis, $recording) : '';
     $keypoints = [];
     $topics = [];
     $chapters = [];
@@ -1365,7 +1386,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'chapters' => $chapters,
         'haschapters' => !empty($chapters),
         'chaptercount' => count($chapters),
-        'transcript' => $analysiscompleted ? format_text($analysis->transcript, FORMAT_PLAIN, ['context' => $context]) : '',
+        'transcript' => $hubtranscript !== '' ? format_text($hubtranscript, FORMAT_PLAIN, ['context' => $context]) : '',
+        'hastranscript' => $hubtranscript !== '',
         'hasnotes' => !empty($recording->notestext),
         'notes' => !empty($recording->notestext)
             ? format_text($recording->notestext, FORMAT_HTML, ['context' => $context])
