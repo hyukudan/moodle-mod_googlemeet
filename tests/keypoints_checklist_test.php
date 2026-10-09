@@ -97,7 +97,8 @@ final class keypoints_checklist_test extends \advanced_testcase {
         set_user_preference($name, '1a2b3c4d:111', $other);
 
         $collection = provider::get_metadata(new \core_privacy\local\metadata\collection('mod_googlemeet'));
-        $names = array_map(static fn($p) => $p, array_keys($collection->get_user_preferences()));
+        $names = array_map(static fn($t) => $t->get_name(), array_filter($collection->get_collection(),
+            static fn($t) => $t instanceof \core_privacy\local\metadata\types\user_preference));
         $this->assertContains(provider::KEYPOINTS_PREFIX . '<recordingid>', $names);
 
         provider::export_user_preferences($user->id);
@@ -110,10 +111,12 @@ final class keypoints_checklist_test extends \advanced_testcase {
         $context = \context_module::instance($cm->id);
         $list = new \core_privacy\local\request\approved_contextlist($user, 'mod_googlemeet', [$context->id]);
         provider::delete_data_for_user($list);
-        $this->assertFalse(get_user_preferences($name, false, $user));
-        $this->assertSame('1a2b3c4d:111', get_user_preferences($name, false, $other));
+        // Check the table: the $user objects keep their own preference cache within the same second.
+        $this->assertFalse($DB->record_exists('user_preferences', ['userid' => $user->id, 'name' => $name]));
+        $this->assertSame('1a2b3c4d:111', $DB->get_field('user_preferences', 'value',
+            ['userid' => $other->id, 'name' => $name]));
 
         provider::delete_data_for_all_users_in_context($context);
-        $this->assertFalse(get_user_preferences($name, false, $other));
+        $this->assertFalse($DB->record_exists('user_preferences', ['name' => $name]));
     }
 }

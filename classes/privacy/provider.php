@@ -604,6 +604,10 @@ class provider implements
         [$usql, $uparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'pu');
         [$nsql, $nparams] = $DB->get_in_or_equal($names, SQL_PARAMS_NAMED, 'pn');
         $DB->delete_records_select('user_preferences', "userid $usql AND name $nsql", $uparams + $nparams);
+        foreach ($userids as $userid) {
+            // Invalidate the preference cache of live sessions (and of $user objects already loaded).
+            mark_user_preferences_changed($userid);
+        }
     }
 
     /**
