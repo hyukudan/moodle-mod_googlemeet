@@ -580,13 +580,15 @@
             <div class="form-group">
               <label for="googlemeet-ai-edit-transcript">{{# str }} ai_transcript, mod_googlemeet {{/ str }}</label>
               <textarea class="form-control" id="googlemeet-ai-edit-transcript" rows="8" placeholder="{{# str }} ai_edit_transcript_placeholder, mod_googlemeet {{/ str }}"></textarea>
-              <small class="form-text text-muted">{{# str }} ai_analyze_transcript_hint, mod_googlemeet {{/ str }}</small>
-              <button type="button" class="btn btn-info btn-sm mt-2" id="googlemeet-ai-analyze-transcript">
+              <small class="form-text text-muted d-block">{{# str }} ai_analyze_transcript_hint, mod_googlemeet {{/ str }}</small>
+              <div class="googlemeet-ai-analyze-row mt-2">
+              <button type="button" class="btn btn-primary btn-sm" id="googlemeet-ai-analyze-transcript">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-1">
                   <path d="M12 2L14.09 8.26L20.5 8.27L15.21 12.14L17.29 18.39L12 14.53L6.71 18.39L8.79 12.14L3.5 8.27L9.91 8.26L12 2Z" fill="currentColor"/>
                 </svg>
                 {{# str }} ai_analyze_with_gemini, mod_googlemeet {{/ str }}
               </button>
+              </div>
             </div>
           </form>
         </div>

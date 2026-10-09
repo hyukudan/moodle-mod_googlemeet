@@ -594,3 +594,10 @@ $string['hub_cta_practice_text'] = '{$a} preguntas tipo examen sobre esta clase.
 $string['hub_cta_practice_button'] = 'Empezar a practicar';
 $string['hub_cta_materials_button'] = 'Ver materiales de la clase';
 $string['hub_print_summary'] = 'Imprimir resumen';
+
+// track: ai
+$string['ai_replace_confirm_title'] = '¿Sustituir el análisis actual?';
+$string['ai_replace_confirm_button'] = 'Sustituir';
+$string['ai_analyze_replace_confirm'] = 'Esto sustituirá el resumen, los puntos clave y los temas actuales por los que genere Gemini a partir de la transcripción, y se guardarán en ese momento. Los capítulos no cambian.';
+$string['ai_regenerate_replace_confirm'] = 'Esto sustituirá el resumen, los puntos clave, los temas y los capítulos actuales por un análisis nuevo de la grabación.';
+$string['ai_replace_manual_warning'] = 'Este análisis se editó a mano: perderás esos cambios.';

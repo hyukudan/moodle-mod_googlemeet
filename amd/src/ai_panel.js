@@ -55,6 +55,11 @@ const stringRequests = [
     {key: 'ai_edit_save', component: COMPONENT},
     {key: 'ai_edit_saved', component: COMPONENT},
     {key: 'ai_timeout_hint', component: COMPONENT},
+    {key: 'ai_replace_confirm_title', component: COMPONENT},
+    {key: 'ai_replace_confirm_button', component: COMPONENT},
+    {key: 'ai_analyze_replace_confirm', component: COMPONENT},
+    {key: 'ai_regenerate_replace_confirm', component: COMPONENT},
+    {key: 'ai_replace_manual_warning', component: COMPONENT},
     {key: 'error', component: 'core'},
 ];
 
@@ -62,6 +67,8 @@ let initialised = false;
 let settings = {};
 let strings = {};
 const loadedTranscripts = {};
+/** @type {{recordingid: string, hasanalysis: boolean, manual: boolean}} State of the analysis open in the edit modal. */
+let editState = {recordingid: '', hasanalysis: false, manual: false};
 const pollingIntervals = {};
 
 /**
@@ -582,6 +589,43 @@ const checkAnalysisStatus = (recordingid, callback) => {
 };
 
 /**
+ * Readable lesson title for a recording, as shown in the recordings list.
+ *
+ * Falls back to the raw Drive name stored on the trigger when the row is not on the page.
+ *
+ * @param {number|string} recordingid Recording ID.
+ * @param {string} fallback Fallback name (raw recording name).
+ * @returns {string}
+ */
+const displayTitle = (recordingid, fallback) => {
+    const title = getRecordingItem(recordingid).find('.recording-name-text').first().text().trim();
+    return title || fallback || '';
+};
+
+/**
+ * Ask the teacher to confirm that the current analysis will be replaced.
+ *
+ * Uses a Moodle modal (Notification.saveCancelPromise). The promise rejects on cancel.
+ *
+ * @param {string} message Main confirmation text.
+ * @param {boolean} manual Whether the current analysis was edited by hand.
+ * @param {HTMLElement} trigger Element that opened the confirmation (focus is returned to it).
+ * @returns {Promise}
+ */
+const confirmReplace = (message, manual, trigger) => {
+    let body = '<p>' + escapeHtml(message) + '</p>';
+    if (manual) {
+        body += '<p class="fw-bold mb-0">' + escapeHtml(strings.ai_replace_manual_warning) + '</p>';
+    }
+    return Notification.saveCancelPromise(
+        strings.ai_replace_confirm_title,
+        body,
+        strings.ai_replace_confirm_button,
+        {triggerElement: trigger}
+    );
+};
+
+/**
  * Bind AI panel toggle/generation/copy events.
  *
  * @returns {void}
@@ -611,10 +655,24 @@ const bindPanelEvents = () => {
     });
 
     $(document).on('click', '.googlemeet-ai-generate-btn', function() {
-        const recordingid = $(this).attr('data-id');
+        const trigger = this;
+        const recordingid = $(trigger).attr('data-id');
         const content = $('.googlemeet-ai-content[data-recordingid="' + recordingid + '"]');
         const hasAi = content.attr('data-hasai') === '1';
-        generateAiAnalysis(recordingid, hasAi);
+        if (!hasAi) {
+            generateAiAnalysis(recordingid, false);
+            return;
+        }
+        // Regenerating replaces summary, key points, topics and chapters: confirm first,
+        // and warn explicitly when the current analysis was edited by hand (aimodel = 'manual').
+        const ask = manual => confirmReplace(strings.ai_regenerate_replace_confirm, manual, trigger)
+            .then(() => generateAiAnalysis(recordingid, true))
+            .catch(() => null);
+        call('mod_googlemeet_get_ai_analysis', {
+            recordingid: recordingid,
+            coursemoduleid: settings.cmid,
+        }).then(response => ask(!!response.found && response.aimodel === 'manual'))
+            .fail(() => ask(false));
     });
 
     $(document).on('click', '.googlemeet-ai-refresh-btn', function() {
@@ -661,8 +719,9 @@ const bindManualEditEvents = () => {
     $(document).on('click', '.googlemeet-ai-edit-btn', function(event) {
         event.stopPropagation();
         const recordingid = $(this).attr('data-id');
-        const recordingname = $(this).attr('data-recordingname') || '';
+        const recordingname = displayTitle(recordingid, $(this).attr('data-recordingname') || '');
 
+        editState = {recordingid: recordingid, hasanalysis: false, manual: false};
         $('#googlemeet-ai-edit-recordingid').val(recordingid);
         $('#googlemeet-ai-edit-summary').val('');
         $('#googlemeet-ai-edit-keypoints').val('');
@@ -674,7 +733,9 @@ const bindManualEditEvents = () => {
             recordingid: recordingid,
             coursemoduleid: settings.cmid,
         }).then(response => {
-            if (response.found && response.status === 'completed') {
+            if (response.found && response.status === 'completed' && editState.recordingid === recordingid) {
+                editState.hasanalysis = true;
+                editState.manual = response.aimodel === 'manual';
                 $('#googlemeet-ai-edit-summary').val(response.summary || '');
                 $('#googlemeet-ai-edit-keypoints').val((response.keypoints || []).join('\n'));
                 $('#googlemeet-ai-edit-topics').val((response.topics || []).join(', '));
@@ -685,19 +746,15 @@ const bindManualEditEvents = () => {
         $('#googlemeet-ai-edit-modal').modal('show');
     });
 
-    $('#googlemeet-ai-analyze-transcript').on('click', function() {
-        const button = $(this);
+    /**
+     * Run the Gemini transcript analysis and load the result into the edit form.
+     *
+     * @param {JQuery} button Analyze button.
+     * @param {string} transcript Transcript text.
+     * @returns {void}
+     */
+    const analyzeTranscript = (button, transcript) => {
         const recordingid = $('#googlemeet-ai-edit-recordingid').val();
-        const transcript = $('#googlemeet-ai-edit-transcript').val();
-
-        if (!transcript.trim()) {
-            Notification.addNotification({
-                message: strings.ai_analyze_empty_transcript,
-                type: 'warning',
-            });
-            return;
-        }
-
         const originalText = button.html();
         button.prop('disabled', true)
             .html('<span class="spinner-border spinner-border-sm me-1"></span> ' + escapeHtml(strings.ai_analyzing));
@@ -709,6 +766,8 @@ const bindManualEditEvents = () => {
         }, 120000).then(response => {
             button.prop('disabled', false).html(originalText);
             if (response.success) {
+                editState.hasanalysis = true;
+                editState.manual = false;
                 $('#googlemeet-ai-edit-summary').val(response.summary || '');
                 $('#googlemeet-ai-edit-keypoints').val((response.keypoints || []).join('\n'));
                 $('#googlemeet-ai-edit-topics').val((response.topics || []).join(', '));
@@ -726,6 +785,31 @@ const bindManualEditEvents = () => {
             button.prop('disabled', false).html(originalText);
             Notification.exception(ex);
         });
+    };
+
+    $('#googlemeet-ai-analyze-transcript').on('click', function() {
+        const button = $(this);
+        const transcript = $('#googlemeet-ai-edit-transcript').val();
+
+        if (!transcript.trim()) {
+            Notification.addNotification({
+                message: strings.ai_analyze_empty_transcript,
+                type: 'warning',
+            });
+            return;
+        }
+
+        // The analyze WS saves the new summary/key points/topics straight away: when there is
+        // something to lose (a stored analysis or text typed in the form), confirm first.
+        const formHasContent = ['#googlemeet-ai-edit-summary', '#googlemeet-ai-edit-keypoints', '#googlemeet-ai-edit-topics']
+            .some(selector => ($(selector).val() || '').trim() !== '');
+        if (!editState.hasanalysis && !formHasContent) {
+            analyzeTranscript(button, transcript);
+            return;
+        }
+        confirmReplace(strings.ai_analyze_replace_confirm, editState.manual, this)
+            .then(() => analyzeTranscript(button, transcript))
+            .catch(() => null);
     });
 
     $('#googlemeet-ai-edit-save').on('click', function() {
