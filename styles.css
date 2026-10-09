@@ -3738,6 +3738,7 @@ mark.googlemeet-transcript-match-current {
         padding: 0.55rem 0.8rem;
     }
 }
+
 /* === track: hub === */
 /* Chapters panel: the toggle only exists on phones. Theme .btn rules (RemUI) load after this
    file with the same specificity, so the selectors below carry an extra class. */
@@ -3900,6 +3901,73 @@ mark.googlemeet-transcript-match-current {
 [data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-time,
 [data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link {
     color: var(--gm-accent-on-dark);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-partial {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffd666;
+}
+
+
+/* === track: ai === */
+.path-mod-googlemeet .googlemeet-question-bulkbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.5rem;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+}
+.path-mod-googlemeet .googlemeet-question-selectall-wrap {
+    margin-right: auto;
+}
+.path-mod-googlemeet .googlemeet-question-bulk-status:empty {
+    display: none;
+}
+.path-mod-googlemeet .googlemeet-question-answer > p {
+    display: inline;
+    margin: 0;
+}
+.path-mod-googlemeet .googlemeet-question-answer-correct {
+    font-weight: 700;
+}
+.path-mod-googlemeet .googlemeet-question-correct-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.5rem;
+    padding: 0 0.45rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: var(--bs-success-text-emphasis, #0a3622);
+    background: var(--bs-success-bg-subtle, #d1e7dd);
+    font-size: 0.8em;
+    font-weight: 700;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+.path-mod-googlemeet .googlemeet-practice-option-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+.path-mod-googlemeet .googlemeet-practice-option-statetext {
+    font-size: 0.8rem;
+}
+@media (max-width: 575.98px) {
+    .path-mod-googlemeet .googlemeet-practice-option-state {
+        white-space: normal;
+        flex-shrink: 0;
+    }
+    .path-mod-googlemeet .googlemeet-practice-option-statetext {
+        max-width: 4.75rem;
+        line-height: 1.15;
+        text-align: left;
+    }
+}
 
 
 /* === track: list === */
@@ -4031,63 +4099,6 @@ mark.googlemeet-transcript-match-current {
     display: none;
 }
 .googlemeet-filters-body {
-
-
-/* === track: analytics === */
-.googlemeet-hero-practice {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    margin-top: 0.75rem;
-}
-.googlemeet-practice-landing-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-    gap: 1rem;
-    max-width: 60rem;
-}
-.googlemeet-practice-landing-card {
-    border: 1px solid var(--bs-border-color, #dee2e6);
-    border-radius: 0.5rem;
-    padding: 1rem 1.25rem;
-    background: var(--bs-body-bg, #fff);
-}
-.googlemeet-practice-topic-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-}
-.googlemeet-practice-topic {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem;
-    background: var(--bs-tertiary-bg, #f8f9fa);
-    text-decoration: none;
-}
-.googlemeet-practice-topic:hover,
-.googlemeet-practice-topic:focus {
-    background: var(--bs-secondary-bg, #e9ecef);
-}
-.googlemeet-practice-topic-meta {
-    color: var(--bs-secondary-color, #5f6368);
-    font-size: 0.875rem;
-    white-space: nowrap;
-}
-.googlemeet-practice-session .googlemeet-practice-player {
-    margin-inline: auto;
-}
-.googlemeet-practice-source {
-    display: inline-block;
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-}
-.googlemeet-report-filters {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -4156,67 +4167,6 @@ mark.googlemeet-transcript-match-current {
     background: rgba(255, 193, 7, 0.15);
     color: #ffd666;
 }
-
-
-/* === track: ai === */
-.path-mod-googlemeet .googlemeet-question-bulkbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--bs-border-color, #dee2e6);
-    border-radius: 0.5rem;
-    background: var(--bs-tertiary-bg, #f8f9fa);
-}
-.path-mod-googlemeet .googlemeet-question-selectall-wrap {
-    margin-right: auto;
-}
-.path-mod-googlemeet .googlemeet-question-bulk-status:empty {
-    display: none;
-}
-.path-mod-googlemeet .googlemeet-question-answer > p {
-    display: inline;
-    margin: 0;
-}
-.path-mod-googlemeet .googlemeet-question-answer-correct {
-    font-weight: 700;
-}
-.path-mod-googlemeet .googlemeet-question-correct-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-left: 0.5rem;
-    padding: 0 0.45rem;
-    border: 1px solid currentColor;
-    border-radius: 999px;
-    color: var(--bs-success-text-emphasis, #0a3622);
-    background: var(--bs-success-bg-subtle, #d1e7dd);
-    font-size: 0.8em;
-    font-weight: 700;
-    line-height: 1.6;
-    white-space: nowrap;
-}
-.path-mod-googlemeet .googlemeet-practice-option-state {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    white-space: nowrap;
-}
-.path-mod-googlemeet .googlemeet-practice-option-statetext {
-    font-size: 0.8rem;
-}
-@media (max-width: 575.98px) {
-    .path-mod-googlemeet .googlemeet-practice-option-state {
-        white-space: normal;
-        flex-shrink: 0;
-    }
-    .path-mod-googlemeet .googlemeet-practice-option-statetext {
-        max-width: 4.75rem;
-        line-height: 1.15;
-        text-align: left;
-    }
-
 [data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-summary-meter .googlemeet-progress-started-segment {
     background-color: #ffd666;
 }
@@ -4259,7 +4209,68 @@ mark.googlemeet-transcript-match-current {
 }
 [data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-filters-panel[open] .googlemeet-filters-body {
     border-color: var(--bs-border-color);
+}
 
+
+/* === track: analytics === */
+.googlemeet-hero-practice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+.googlemeet-practice-landing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+    max-width: 60rem;
+}
+.googlemeet-practice-landing-card {
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--bs-body-bg, #fff);
+}
+.googlemeet-practice-topic-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.googlemeet-practice-topic {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+    text-decoration: none;
+}
+.googlemeet-practice-topic:hover,
+.googlemeet-practice-topic:focus {
+    background: var(--bs-secondary-bg, #e9ecef);
+}
+.googlemeet-practice-topic-meta {
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+.googlemeet-practice-session .googlemeet-practice-player {
+    margin-inline: auto;
+}
+.googlemeet-practice-source {
+    display: inline-block;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+.googlemeet-report-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
     margin-bottom: 1rem;
 }
 .googlemeet-report-filter {
