@@ -892,7 +892,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $cangenerateai = $aienabled && has_capability('mod/googlemeet:generateai', $context);
 
     // Get pagination settings.
-    $maxrecordings = isset($googlemeet->maxrecordings) ? (int) $googlemeet->maxrecordings : 5;
+    $maxrecordings = isset($googlemeet->maxrecordings) ? (int) $googlemeet->maxrecordings : 12;
     $maxrecordings = max(1, min(20, $maxrecordings));
 
     // Get order - use override if provided, otherwise use instance setting.
