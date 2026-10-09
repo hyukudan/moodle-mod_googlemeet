@@ -1208,8 +1208,6 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'viewlisturl' => $viewlisturl,
     ] + googlemeet_progress_summary_context($progresssummary));
 
-    $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
-
     if ($hascapability) {
         $lastsync = get_string('never', 'googlemeet');
         if ($googlemeet->lastsync) {
@@ -1536,7 +1534,6 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
     ], $progressstate, $aireview);
 
-    $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
 }
 
