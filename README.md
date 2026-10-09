@@ -53,6 +53,8 @@ The Google Meet™ for Moodle plugin allows teachers to create Google Meet rooms
 - **Draft → teacher review → publish** workflow (questions are created as drafts; students only see published ones)
 - **One-at-a-time student practice** with immediate feedback, the correct answer and an explanation/citation (formative, no grade) — also available in the Moodle mobile app
 - **Materials per recording** - teachers attach files to a specific recording; learners download them from the Materials tab
+- **Chapters jump to the minute** - clicking an AI chapter (or any timestamp in the AI summary, key points or transcript) reloads the Drive preview at that moment; deep links (`&t=N`) and a "copy link to this moment" action are supported
+- **Study-friendly hub** - lesson header (date · duration · chapters), status bar with a primary "Mark as viewed", chronological previous/next navigation, summary with paragraphs and "Read more", key-points checklist, topic chips that open the filtered list, tabs with counts and `#hash` deep links, and a study sidebar
 
 ### Abandoned-recurrence alerts
 
@@ -167,6 +169,37 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.27.0 (2026-10-08) — Hub and list design pass
+- **Distinguishable lesson titles** - lesson titles are told apart from the AI topics shown beside them.
+- **Hub header and navigation** - date · duration · chapters header, a status bar with "Mark as viewed" as the primary action, and previous/next links in chronological order.
+- **Study-friendly summary** - the AI summary is split into paragraphs with a "Read more" toggle; key points become a checklist (checked state is stored in the browser only, via `localStorage`); topic chips link to the recording list filtered by that topic.
+- **Tabs** - scrollable tabs with item counts and `#hash` deep links (the tab is restored from the URL); shorter study tab on phones.
+- **Practice** - tappable options, live score, result summary and a "Review missed questions" action (attempts are still not stored).
+- **Lesson list** - "N of M viewed" progress, a "Pending" filter, compact rows and a compact hero on phones.
+- **Study sidebar** with shortcuts to topics, practice and materials.
+- **Print summary** - a "Print summary" action and a print stylesheet for study notes.
+- **Dark mode fixes** for the hub, chapters, lesson list and hero.
+
+### Version 2.26.0 (2026-10-08) — Player improvements
+- **Chapters seek the Drive preview** - a chapter click reloads the embedded preview iframe at that minute (`?t=`).
+- **Clickable timestamps** in the AI output (summary, key points) and in the transcript.
+- **Deep links** (`&t=N`) open the recording at a given moment, plus a "copy link to this moment" button per chapter.
+- **Approximate "Continue at mm:ss"** - resumes from the last jump point; stored as the per-user preference `mod_googlemeet_lastjump_<recordingid>` (declared in the privacy provider).
+- **Chapter panel layout** - side by side with the video on desktop, collapsible on mobile.
+- **Transcript search** (teachers) with jump to the matching moment.
+- **Player help** - a "Can't see the video?" help block and iframe hardening (`loading="lazy"`, `referrerpolicy`).
+
+#### Known limitations (2.26 / 2.27)
+- The embedded Drive viewer cannot report the playback position, so there is no real progress tracking or resume: "Continue at mm:ss" is only the last point the user jumped to.
+- Recordings are shared "anyone with the link" on Drive by design (`makerecordingspublic`) so enrolled students can play them.
+- Practice attempts are not stored; the score and "review missed" list exist only during the session.
+- The `?t=` parameter of the Drive preview is undocumented Drive behaviour and may change.
+
+#### Deployment notes (2.26 / 2.27)
+- Run `upgrade.php` (Site administration > Notifications or `admin/cli/upgrade.php`) and purge caches; reset opcache too when `opcache.validate_timestamps=0`.
+- No database schema changes in 2.26 or 2.27.
+- New user preference: `mod_googlemeet_lastjump_<recordingid>`.
 
 ### Version 2.25.3 (2026-07-06)
 - **Live hide/show toggle** - the "Hide from students" / "Show to students" control now flips its label via AJAX with no page reload.
