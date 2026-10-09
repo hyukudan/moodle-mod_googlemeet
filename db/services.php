@@ -113,6 +113,14 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:managequestions',
     ),
+    'mod_googlemeet_publish_activity_drafts' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'publish_activity_drafts',
+        'description' => 'Publish every draft question of a Google Meet activity',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:managequestions',
+    ),
     'mod_googlemeet_unpublish_questions' => array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'unpublish_questions',

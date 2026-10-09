@@ -35,8 +35,6 @@ const stringRequests = [
     {key: 'question_unpublish_confirm', component: COMPONENT},
     {key: 'question_discard', component: COMPONENT},
     {key: 'question_discard_confirm', component: COMPONENT},
-    {key: 'question_bulk_discard', component: COMPONENT},
-    {key: 'question_bulk_discard_confirm', component: COMPONENT},
     {key: 'recording_rename', component: COMPONENT},
     {key: 'question_empty_student', component: COMPONENT},
     {key: 'ai_error_unknown', component: COMPONENT},
@@ -132,7 +130,7 @@ const rememberHubState = () => {
  *
  * @returns {void}
  */
-const reloadHub = () => {
+export const reloadHub = () => {
     rememberHubState();
     window.location.reload();
 };
@@ -1131,25 +1129,6 @@ const bindTranscriptSearch = () => {
 };
 
 /**
- * Return selected question IDs.
- *
- * @returns {Array}
- */
-const selectedIds = () => $('.googlemeet-question-select:checked').map(function() {
-    return parseInt(this.value, 10);
-}).get();
-
-/**
- * Enable or disable bulk action buttons.
- *
- * @returns {void}
- */
-const refreshBulkState = () => {
-    const hasSelection = selectedIds().length > 0;
-    $('.googlemeet-question-bulk-publish, .googlemeet-question-bulk-discard').prop('disabled', !hasSelection);
-};
-
-/**
  * Bind teacher question-management actions.
  *
  * @returns {void}
@@ -1161,15 +1140,6 @@ const bindQuestionManagement = () => {
             recordingid: settings.recordingid,
             coursemoduleid: settings.cmid,
             count: parseInt($(this).attr('data-count'), 10) || 10,
-            sesskey: settings.sesskey,
-        });
-    });
-
-    $('.googlemeet-question-publish').on('click', function() {
-        call('mod_googlemeet_publish_questions', {
-            recordingid: settings.recordingid,
-            coursemoduleid: settings.cmid,
-            questionids: [parseInt($(this).closest('.googlemeet-question-card').attr('data-questionid'), 10)],
             sesskey: settings.sesskey,
         });
     });
@@ -1212,42 +1182,7 @@ const bindQuestionManagement = () => {
         );
     });
 
-    $('.googlemeet-question-select').on('change', refreshBulkState);
-    refreshBulkState();
-
-    $('.googlemeet-question-bulk-publish').on('click', () => {
-        const ids = selectedIds();
-        if (!ids.length) {
-            return;
-        }
-        call('mod_googlemeet_publish_questions', {
-            recordingid: settings.recordingid,
-            coursemoduleid: settings.cmid,
-            questionids: ids,
-            sesskey: settings.sesskey,
-        });
-    });
-
-    $('.googlemeet-question-bulk-discard').on('click', function() {
-        const ids = selectedIds();
-        if (!ids.length) {
-            return;
-        }
-        confirmAction(
-            strings.question_bulk_discard,
-            strings.question_bulk_discard_confirm,
-            strings.question_bulk_discard,
-            this,
-            () => {
-                call('mod_googlemeet_discard_questions', {
-                    recordingid: settings.recordingid,
-                    coursemoduleid: settings.cmid,
-                    questionids: ids,
-                    sesskey: settings.sesskey,
-                });
-            }
-        );
-    });
+    // Selection, publish and bulk actions live in mod_googlemeet/question_review.
 
     $('.googlemeet-question-edit').on('click', function() {
         const button = $(this);
@@ -1573,11 +1508,11 @@ const bindPracticePlayer = () => {
                 const state = option.find('.googlemeet-practice-option-state');
                 if (parseInt($(this).val(), 10) === parseInt(response.correctanswerid, 10)) {
                     option.addClass('googlemeet-practice-option-correct');
-                    state.html('<span aria-hidden="true">&#10003;</span><span class="visually-hidden">' +
+                    state.html('<span aria-hidden="true">&#10003;</span><span class="googlemeet-practice-option-statetext">' +
                         escapeHtml(strings.practice_right_option) + '</span>');
                 } else if ($(this).is(':checked')) {
                     option.addClass('googlemeet-practice-option-incorrect');
-                    state.html('<span aria-hidden="true">&#10007;</span><span class="visually-hidden">' +
+                    state.html('<span aria-hidden="true">&#10007;</span><span class="googlemeet-practice-option-statetext">' +
                         escapeHtml(strings.practice_your_answer) + '</span>');
                 }
             });
