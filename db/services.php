@@ -165,7 +165,7 @@ $functions = array(
         'classname' => 'mod_googlemeet_external',
         'methodname' => 'check_practice_answer',
         'description' => 'Check a Google Meet recording student practice answer',
-        'type' => 'read',
+        'type' => 'write', // ANA-05: also stores the attempt.
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
@@ -174,6 +174,14 @@ $functions = array(
         'methodname' => 'mark_recording_progress',
         'description' => 'Mark Google Meet recording viewing progress for the current user',
         'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+    ),
+    // track: analytics.
+    'mod_googlemeet_get_practice_session' => array(
+        'classname' => 'mod_googlemeet\\external\\get_practice_session',
+        'description' => 'Get an activity-wide practice session (failed questions or by topic)',
+        'type' => 'read',
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
