@@ -132,6 +132,8 @@ if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $cont
         (new moodle_url('/course/modedit.php', ['update' => $cm->id, 'return' => 1]))->out()),
         \core\output\notification::NOTIFY_WARNING);
 }
+// ANA-03: the organiser must link Google again to grant the Meet attendance scope.
+echo \mod_googlemeet\local\attendance\scope::relink_notice($googlemeet, $context);
 // Note: In Moodle 4.0+, the activity header automatically displays
 // the title and description, so we don't call googlemeet_print_heading
 // or googlemeet_print_intro to avoid duplication.

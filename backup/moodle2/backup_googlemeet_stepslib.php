@@ -65,7 +65,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'autosynchours',
             'completionrecordings',
             'completionwatchpercent',
-            'completionpractice'
+            'completionpractice',
+            'attendanceenabled'
         ]);
 
         $events = new backup_nested_element('events');
@@ -142,6 +143,23 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timemodified'
         ]);
 
+        // ANA-03: attendance read from Google Meet (user data), nested in its session.
+        $attendances = new backup_nested_element('attendances');
+        $attendance = new backup_nested_element('attendance', ['id'], [
+            'userid',
+            'email',
+            'displayname',
+            'googleuserid',
+            'participanttype',
+            'matchedby',
+            'timejoined',
+            'timeleft',
+            'durationseconds',
+            'sessions',
+            'timecreated',
+            'timemodified'
+        ]);
+
         $holidays = new backup_nested_element('holidays');
         $holiday = new backup_nested_element('holiday', ['id'], [
             'name',
@@ -174,6 +192,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             // After the recordings, so their ids are mapped when attempts are restored.
             $googlemeet->add_child($practiceattempts);
             $practiceattempts->add_child($practiceattempt);
+            $event->add_child($attendances);
+            $attendances->add_child($attendance);
         }
 
         $googlemeet->add_child($holidays);
@@ -201,6 +221,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $recordingsub->set_source_table('googlemeet_recording_subs', ['googlemeetid' => backup::VAR_PARENTID]);
             $practiceattempt->set_source_table('googlemeet_practice_attempts', ['googlemeetid' => backup::VAR_PARENTID],
                 'id ASC');
+            $attendance->set_source_table('googlemeet_attendance', ['eventid' => backup::VAR_PARENTID], 'id ASC');
         }
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
@@ -212,6 +233,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $recordingprogress->annotate_ids('user', 'userid');
             $recordingsub->annotate_ids('user', 'userid');
             $practiceattempt->annotate_ids('user', 'userid');
+            $attendance->annotate_ids('user', 'userid');
         }
 
         // Define file annotations.

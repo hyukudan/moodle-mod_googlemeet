@@ -220,4 +220,18 @@ if ($ADMIN->fulltree) {
         28,
         PARAM_INT
     ));
+
+    // track: w2-completion. ANA-03: real attendance from the Google Meet REST API (off by default).
+    $settings->add(new admin_setting_heading(
+        'googlemeet/attendance_heading',
+        get_string('attendance_heading', 'googlemeet'),
+        get_string('attendance_heading_desc', 'googlemeet')
+    ));
+    $attendancesetting = new admin_setting_configcheckbox(
+        'googlemeet/attendanceenabled',
+        get_string('attendanceenabled', 'googlemeet'),
+        get_string('attendanceenabled_desc', 'googlemeet'),
+        0
+    );
+    $settings->add($attendancesetting);
 }

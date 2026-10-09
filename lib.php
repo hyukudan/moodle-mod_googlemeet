@@ -298,6 +298,7 @@ function googlemeet_delete_instance($id) {
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $id]);
+    \mod_googlemeet\local\attendance\service::delete_for_activity((int)$id);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $id]);
 
@@ -1728,5 +1729,11 @@ function googlemeet_extend_settings_navigation(settings_navigation $settingsnav,
         $googlemeetnode->add(get_string('report_title', 'googlemeet'),
             new moodle_url('/mod/googlemeet/report.php', ['id' => $cm->id]),
             navigation_node::TYPE_SETTING, null, 'mod_googlemeet_report', new pix_icon('i/report', ''));
+    }
+    // ANA-03: attendance read from Google Meet (site setting + activity opt-in).
+    if (has_capability('mod/googlemeet:viewreports', $context) && \mod_googlemeet\local\attendance\scope::site_enabled()) {
+        $googlemeetnode->add(get_string('attendance_title', 'googlemeet'),
+            new moodle_url('/mod/googlemeet/attendance.php', ['id' => $cm->id]),
+            navigation_node::TYPE_SETTING, null, 'mod_googlemeet_attendance', new pix_icon('i/users', ''));
     }
 }

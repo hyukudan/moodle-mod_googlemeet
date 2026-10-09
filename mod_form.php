@@ -363,6 +363,9 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         ]);
         $mform->addHelpButton('attachments', 'attachments', 'googlemeet');
 
+        // ANA-03 (track: w2-completion): per-activity opt-in to real attendance from Google Meet.
+        \mod_googlemeet\local\attendance\settings_form::add_activity_fields($mform);
+
         // Add standard elements.
         $this->standard_coursemodule_elements();
 

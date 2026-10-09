@@ -61,6 +61,8 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
                 '/activity/googlemeet/recordingsubs/recordingsub');
             $paths[] = new restore_path_element('googlemeet_practiceattempt',
                 '/activity/googlemeet/practiceattempts/practiceattempt');
+            $paths[] = new restore_path_element('googlemeet_attendance',
+                '/activity/googlemeet/events/event/attendances/attendance');
         }
 
         $paths[] = new restore_path_element('googlemeet_holiday',
@@ -259,6 +261,46 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
             return;
         }
         $DB->insert_record('googlemeet_practice_attempts', $data);
+    }
+
+    /**
+     * Process an attendance restore (ANA-03).
+     *
+     * Unmatched participants (userid 0) keep userid 0; rows of users that cannot be mapped are
+     * skipped. The session is marked as fetched so the copy does not query Google again.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_attendance($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->googlemeetid = $this->get_new_parentid('googlemeet');
+        $data->eventid = $this->get_new_parentid('googlemeet_event');
+        if (!empty($data->userid)) {
+            $data->userid = (int)$this->get_mappingid('user', $data->userid);
+            if (empty($data->userid)) {
+                return;
+            }
+        } else {
+            $data->userid = 0;
+        }
+        $data->timejoined = $this->apply_date_offset($data->timejoined);
+        $data->timeleft = $this->apply_date_offset($data->timeleft);
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+        $data->timemodified = $this->apply_date_offset($data->timemodified);
+        $DB->insert_record('googlemeet_attendance', $data);
+
+        if (!$DB->record_exists('googlemeet_attendance_sync', ['eventid' => $data->eventid])) {
+            $DB->insert_record('googlemeet_attendance_sync', (object)[
+                'googlemeetid' => $data->googlemeetid,
+                'eventid' => $data->eventid,
+                'status' => 'done',
+                'attempts' => 1,
+                'timemodified' => time(),
+            ]);
+        }
     }
 
     /**

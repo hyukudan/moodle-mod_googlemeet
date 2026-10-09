@@ -70,6 +70,22 @@ class client {
     const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events';
 
     /**
+     * Scopes requested from Google.
+     *
+     * ANA-03: the Meet REST API read-only scope is only requested while real attendance is enabled
+     * for the site, so sites that do not use it never ask teachers for it.
+     *
+     * @return string Space-separated scopes.
+     */
+    public static function get_scopes(): string {
+        $scopes = self::SCOPES;
+        if (\mod_googlemeet\local\attendance\scope::site_enabled()) {
+            $scopes .= ' ' . \mod_googlemeet\local\attendance\scope::MEET_SCOPE;
+        }
+        return $scopes;
+    }
+
+    /**
      * Constructor.
      *
      * @return void
@@ -110,9 +126,19 @@ class client {
         $returnurl->param('callback', 'yes');
         $returnurl->param('sesskey', sesskey());
 
-        $this->client = \core\oauth2\api::get_user_oauth_client($this->issuer, $returnurl, self::SCOPES, true);
+        $this->client = \core\oauth2\api::get_user_oauth_client($this->issuer, $returnurl, self::get_scopes(), true);
 
         return $this->client;
+    }
+
+    /**
+     * Meet REST API attendance source authenticated as the current user (ANA-03).
+     *
+     * @return \mod_googlemeet\local\attendance\meet_api_source
+     */
+    public function get_attendance_source(): \mod_googlemeet\local\attendance\meet_api_source {
+        return new \mod_googlemeet\local\attendance\meet_api_source(
+            new \mod_googlemeet\local\attendance\meet_rest($this->get_user_oauth_client()));
     }
 
     /**
