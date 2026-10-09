@@ -45,58 +45,24 @@
       {{#totalrecordings}}<span class="badge bg-secondary ms-2">{{totalrecordings}}</span>{{/totalrecordings}}
     </h4>
 
-    <div class="googlemeet-recordings-controls d-flex align-items-center">
-      {{#cansubscriberecordings}}
-      <form method="post" action="view.php" class="me-2 mb-0">
-        <input type="hidden" name="id" value="{{coursemoduleid}}">
-        <input type="hidden" name="sesskey" value="{{sesskey}}">
-        {{#issubscribed}}
-          <input type="hidden" name="subscribe" value="0">
-          <button type="submit" class="btn btn-outline-secondary btn-sm">
-            {{# str }} unsubscriberecordings, mod_googlemeet {{/ str }}
-          </button>
-        {{/issubscribed}}
-        {{^issubscribed}}
-          <input type="hidden" name="subscribe" value="1">
-          <button type="submit" class="btn btn-outline-primary btn-sm">
-            {{# str }} subscriberecordings, mod_googlemeet {{/ str }}
-          </button>
-        {{/issubscribed}}
-      </form>
-      {{/cansubscriberecordings}}
-      {{#hasrecordings}}
-      <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
-      <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group">
-        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
-           class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
-          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
-          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
-        </a>
-        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
-           class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
-          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
-          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
-        </a>
-      </div>
-      <label class="ms-3 me-2 mb-0 small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</label>
-      <div class="btn-group btn-group-sm googlemeet-view-toggle" role="radiogroup" aria-label="{{# str }} recordings_view_label, mod_googlemeet {{/ str }}">
-        <a href="{{viewcardsurl}}" role="radio"
-           class="btn {{#isviewcards}}btn-primary active{{/isviewcards}}{{^isviewcards}}btn-outline-secondary{{/isviewcards}}"
-           aria-checked="{{#isviewcards}}true{{/isviewcards}}{{^isviewcards}}false{{/isviewcards}}"
-           {{#isviewcards}}aria-current="true"{{/isviewcards}}
-           aria-label="{{# str }} recordings_view_cards_aria, mod_googlemeet {{/ str }}">
-          {{# pix }} i/grades, core {{/ pix }} {{# str }} recordings_view_cards, mod_googlemeet {{/ str }}
-        </a>
-        <a href="{{viewlisturl}}" role="radio"
-           class="btn {{#isviewlist}}btn-primary active{{/isviewlist}}{{^isviewlist}}btn-outline-secondary{{/isviewlist}}"
-           aria-checked="{{#isviewlist}}true{{/isviewlist}}{{^isviewlist}}false{{/isviewlist}}"
-           {{#isviewlist}}aria-current="true"{{/isviewlist}}
-           aria-label="{{# str }} recordings_view_list_aria, mod_googlemeet {{/ str }}">
-          {{# pix }} i/menu, core {{/ pix }} {{# str }} recordings_view_list, mod_googlemeet {{/ str }}
-        </a>
-      </div>
-      {{/hasrecordings}}
-    </div>
+    {{#cansubscriberecordings}}
+    <form method="post" action="view.php" class="googlemeet-subscribe-form mb-0">
+      <input type="hidden" name="id" value="{{coursemoduleid}}">
+      <input type="hidden" name="sesskey" value="{{sesskey}}">
+      {{#issubscribed}}
+        <input type="hidden" name="subscribe" value="0">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+          {{# str }} unsubscriberecordings, mod_googlemeet {{/ str }}
+        </button>
+      {{/issubscribed}}
+      {{^issubscribed}}
+        <input type="hidden" name="subscribe" value="1">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+          {{# str }} subscriberecordings, mod_googlemeet {{/ str }}
+        </button>
+      {{/issubscribed}}
+    </form>
+    {{/cansubscriberecordings}}
   </div>
 
   {{#hascapability}}{{#hasdeletedrecordings}}
@@ -149,25 +115,74 @@
   </div>
   {{/showprogresssummary}}
 
-  {{#hasrecordings}}
-  <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
+  {{#showfilterbar}}
+  {{! Search filters as you type (debounced auto-submit, server-side filtering and pagination). Topic, order
+      and view live in a "Filtros" panel that is open on desktop and collapsed on phones. }}
+  <form method="get" action="view.php#googlemeet_recordings_table" id="googlemeet-filter-form-{{coursemoduleid}}"
+        class="googlemeet-recordings-filterbar mb-3" data-region="recordings-filterbar">
     <input type="hidden" name="id" value="{{coursemoduleid}}">
     <input type="hidden" name="rorder" value="{{#isorderdesc}}DESC{{/isorderdesc}}{{#isorderasc}}ASC{{/isorderasc}}">
     {{#ispendingfilter}}<input type="hidden" name="rpending" value="1">{{/ispendingfilter}}
-    <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
-    <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
-           placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
-    {{#alltopics.0}}
-    <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
-    <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm" style="max-width:260px">
-      <option value="">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</option>
-      {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
-    </select>
-    {{/alltopics.0}}
-    <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_button, mod_googlemeet {{/ str }}</button>
-    {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
+    <div class="googlemeet-filterbar-search">
+      <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
+      <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" autocomplete="off"
+             placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
+      <button type="submit" class="btn btn-sm btn-primary googlemeet-filter-submit">{{# str }} recordings_search_button, mod_googlemeet {{/ str }}</button>
+    </div>
+    <details class="googlemeet-filters-panel" open>
+      <summary class="btn btn-outline-secondary btn-sm googlemeet-filters-summary">
+        {{# str }} recordings_filters, mod_googlemeet {{/ str }}
+        {{#activefiltercount}}<span class="badge rounded-pill bg-primary googlemeet-filters-count" aria-label="{{# str }} recordings_filters_active, mod_googlemeet, {{activefiltercount}} {{/ str }}">{{activefiltercount}}</span>{{/activefiltercount}}
+      </summary>
+      <div class="googlemeet-filters-body">
+        {{#alltopics.0}}
+        <div class="googlemeet-filters-group">
+          <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
+          <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm">
+            <option value="">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</option>
+            {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
+          </select>
+        </div>
+        {{/alltopics.0}}
+        <div class="googlemeet-filters-group googlemeet-recordings-controls">
+          <span class="googlemeet-filters-label small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</span>
+          <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group" aria-label="{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}">
+            <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
+               class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}" {{#isorderdesc}}aria-current="true"{{/isorderdesc}}>
+              <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
+              <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
+            </a>
+            <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
+               class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}" {{#isorderasc}}aria-current="true"{{/isorderasc}}>
+              <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
+              <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
+            </a>
+          </div>
+        </div>
+        <div class="googlemeet-filters-group googlemeet-recordings-controls">
+          <span class="googlemeet-filters-label small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</span>
+          <div class="btn-group btn-group-sm googlemeet-view-toggle" role="radiogroup" aria-label="{{# str }} recordings_view_label, mod_googlemeet {{/ str }}">
+            <a href="{{viewcardsurl}}" role="radio"
+               class="btn {{#isviewcards}}btn-primary active{{/isviewcards}}{{^isviewcards}}btn-outline-secondary{{/isviewcards}}"
+               aria-checked="{{#isviewcards}}true{{/isviewcards}}{{^isviewcards}}false{{/isviewcards}}"
+               {{#isviewcards}}aria-current="true"{{/isviewcards}}
+               aria-label="{{# str }} recordings_view_cards_aria, mod_googlemeet {{/ str }}">
+              {{# pix }} i/grades, core {{/ pix }} {{# str }} recordings_view_cards, mod_googlemeet {{/ str }}
+            </a>
+            <a href="{{viewlisturl}}" role="radio"
+               class="btn {{#isviewlist}}btn-primary active{{/isviewlist}}{{^isviewlist}}btn-outline-secondary{{/isviewlist}}"
+               aria-checked="{{#isviewlist}}true{{/isviewlist}}{{^isviewlist}}false{{/isviewlist}}"
+               {{#isviewlist}}aria-current="true"{{/isviewlist}}
+               aria-label="{{# str }} recordings_view_list_aria, mod_googlemeet {{/ str }}">
+              {{# pix }} i/menu, core {{/ pix }} {{# str }} recordings_view_list, mod_googlemeet {{/ str }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </details>
+    {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link googlemeet-filters-clear">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
   </form>
-  {{/hasrecordings}}
+  {{/showfilterbar}}
 
   {{#hasrecordings}}
   {{#haspagination}}
@@ -526,7 +541,8 @@
       </div>
       {{#hasactivefilters}}
         {{#ispendingfilter}}{{#progresssummarydone}}<p class="fw-bold">{{# str }} recordings_pending_none, mod_googlemeet {{/ str }}</p>{{/progresssummarydone}}{{/ispendingfilter}}
-        <p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>
+        {{#recordingquery}}<p>{{# str }} recordings_no_query_results, mod_googlemeet, {{recordingquery}} {{/ str }}</p>{{/recordingquery}}
+        {{^recordingquery}}<p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>{{/recordingquery}}
         <a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>
       {{/hasactivefilters}}
       {{^hasactivefilters}}
@@ -585,6 +601,74 @@
     </div>
   </div>
 </div>
+
+{{#js}}
+(function() {
+  var form = document.getElementById('googlemeet-filter-form-{{coursemoduleid}}');
+  if (!form) {
+    return;
+  }
+  var focuskey = 'mod_googlemeet_rq_focus_{{coursemoduleid}}';
+  form.classList.add('googlemeet-filterbar-live');
+
+  // "Filtros" panel: open on desktop, collapsed on phones (the count badge shows what is active).
+  var panel = form.querySelector('.googlemeet-filters-panel');
+  var phone = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+  var syncpanel = function() {
+    if (panel && phone) {
+      panel.open = !phone.matches;
+    }
+  };
+  syncpanel();
+  if (phone && phone.addEventListener) {
+    phone.addEventListener('change', syncpanel);
+  }
+
+  var submitfilters = function(keepfocus) {
+    if (keepfocus) {
+      try {
+        sessionStorage.setItem(focuskey, '1');
+      } catch (e) {
+        // Storage may be blocked; the search still works, only the caret is not restored.
+      }
+    }
+    form.submit();
+  };
+
+  // Search as you type: lessons are filtered and paginated server-side, so submit after a pause.
+  var input = form.querySelector('input[name="rq"]');
+  if (input) {
+    var timer = null;
+    var submitted = input.value.trim();
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        var value = input.value.trim();
+        if (value === submitted || value.length === 1) {
+          return;
+        }
+        submitted = value;
+        submitfilters(true);
+      }, 600);
+    });
+    try {
+      if (sessionStorage.getItem(focuskey)) {
+        sessionStorage.removeItem(focuskey);
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    } catch (e) {
+      // Ignore storage failures.
+    }
+  }
+  var topic = form.querySelector('select[name="topic"]');
+  if (topic) {
+    topic.addEventListener('change', function() {
+      submitfilters(false);
+    });
+  }
+})();
+{{/js}}
 
 {{#js}}
 require(['mod_googlemeet/sync'], function(m) {

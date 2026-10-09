@@ -607,3 +607,6 @@ $string['list_teacherstats_completed'] = 'Fully viewed: {$a}';
 $string['list_teacherstats_none'] = 'No student has opened it yet';
 $string['list_teacherstats_opened'] = '{$a} students have opened it';
 $string['list_teacherstats_opened_one'] = '{$a} student has opened it';
+$string['recordings_filters'] = 'Filters';
+$string['recordings_filters_active'] = 'Active filters: {$a}';
+$string['recordings_no_query_results'] = 'No classes match "{$a}".';

@@ -1152,6 +1152,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $viewlisturl = (new moodle_url('/mod/googlemeet/view.php',
         $viewurlparams + ['rview' => 'list']))->out(false);
 
+    $hasactivefilters = trim((string)$query) !== '' || trim((string)$topic) !== '' || $pendingonly;
     $html .= $OUTPUT->render_from_template('mod_googlemeet/recordingstable', [
         'recordings' => $recordings,
         'hasrecordings' => !empty($recordings),
@@ -1187,7 +1188,12 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         'recordingquery' => $query,
         'selectedtopic' => $topic,
         'alltopics' => $topicchips,
-        'hasactivefilters' => (trim((string)$query) !== '' || trim((string)$topic) !== '' || $pendingonly),
+        'hasactivefilters' => $hasactivefilters,
+        // Keep the filter bar while a search returns nothing, so the query can still be edited.
+        'showfilterbar' => !empty($recordings) || $hasactivefilters,
+        // Filters folded into the "Filtros" panel on phones: topic and a non-default order.
+        'activefiltercount' => (trim((string)$topic) !== '' ? 1 : 0)
+            + ($order !== (strtoupper((string)($googlemeet->recordingsorder ?? 'DESC')) === 'ASC' ? 'ASC' : 'DESC') ? 1 : 0),
         'showprogresssummary' => $showprogresssummary,
         'ispendingfilter' => $pendingonly,
         'pendingparam' => $pendingonly ? 1 : 0,

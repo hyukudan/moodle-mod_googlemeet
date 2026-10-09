@@ -612,3 +612,6 @@ $string['list_teacherstats_completed'] = 'Vista completa: {$a}';
 $string['list_teacherstats_none'] = 'Ningún alumno la ha abierto';
 $string['list_teacherstats_opened'] = '{$a} alumnos la han abierto';
 $string['list_teacherstats_opened_one'] = '{$a} alumno la ha abierto';
+$string['recordings_filters'] = 'Filtros';
+$string['recordings_filters_active'] = 'Filtros activos: {$a}';
+$string['recordings_no_query_results'] = 'No hay clases que coincidan con «{$a}».';
