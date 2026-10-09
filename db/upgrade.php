@@ -471,5 +471,19 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026070502, 'googlemeet');
     }
 
+    // NOTE for the release: this savepoint must match the version.php bump that ships it.
+    if ($oldversion < 2026100903) {
+        // Lessons per page: the old default (5) forced students to page through long courses.
+        // New default 12; instances still on the old default 5 move to 12, any other explicit choice is kept.
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('maxrecordings', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '12', 'maxupcomingevents');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_default($table, $field);
+        }
+        $DB->set_field('googlemeet', 'maxrecordings', 12, ['maxrecordings' => 5]);
+
+        upgrade_mod_savepoint(true, 2026100903, 'googlemeet');
+    }
+
     return true;
 }

@@ -45,58 +45,24 @@
       {{#totalrecordings}}<span class="badge bg-secondary ms-2">{{totalrecordings}}</span>{{/totalrecordings}}
     </h4>
 
-    <div class="googlemeet-recordings-controls d-flex align-items-center">
-      {{#cansubscriberecordings}}
-      <form method="post" action="view.php" class="me-2 mb-0">
-        <input type="hidden" name="id" value="{{coursemoduleid}}">
-        <input type="hidden" name="sesskey" value="{{sesskey}}">
-        {{#issubscribed}}
-          <input type="hidden" name="subscribe" value="0">
-          <button type="submit" class="btn btn-outline-secondary btn-sm">
-            {{# str }} unsubscriberecordings, mod_googlemeet {{/ str }}
-          </button>
-        {{/issubscribed}}
-        {{^issubscribed}}
-          <input type="hidden" name="subscribe" value="1">
-          <button type="submit" class="btn btn-outline-primary btn-sm">
-            {{# str }} subscriberecordings, mod_googlemeet {{/ str }}
-          </button>
-        {{/issubscribed}}
-      </form>
-      {{/cansubscriberecordings}}
-      {{#hasrecordings}}
-      <label class="me-2 mb-0 small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</label>
-      <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group">
-        <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
-           class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}">
-          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
-          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
-        </a>
-        <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
-           class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}">
-          <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
-          <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
-        </a>
-      </div>
-      <label class="ms-3 me-2 mb-0 small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</label>
-      <div class="btn-group btn-group-sm googlemeet-view-toggle" role="radiogroup" aria-label="{{# str }} recordings_view_label, mod_googlemeet {{/ str }}">
-        <a href="{{viewcardsurl}}" role="radio"
-           class="btn {{#isviewcards}}btn-primary active{{/isviewcards}}{{^isviewcards}}btn-outline-secondary{{/isviewcards}}"
-           aria-checked="{{#isviewcards}}true{{/isviewcards}}{{^isviewcards}}false{{/isviewcards}}"
-           {{#isviewcards}}aria-current="true"{{/isviewcards}}
-           aria-label="{{# str }} recordings_view_cards_aria, mod_googlemeet {{/ str }}">
-          {{# pix }} i/grades, core {{/ pix }} {{# str }} recordings_view_cards, mod_googlemeet {{/ str }}
-        </a>
-        <a href="{{viewlisturl}}" role="radio"
-           class="btn {{#isviewlist}}btn-primary active{{/isviewlist}}{{^isviewlist}}btn-outline-secondary{{/isviewlist}}"
-           aria-checked="{{#isviewlist}}true{{/isviewlist}}{{^isviewlist}}false{{/isviewlist}}"
-           {{#isviewlist}}aria-current="true"{{/isviewlist}}
-           aria-label="{{# str }} recordings_view_list_aria, mod_googlemeet {{/ str }}">
-          {{# pix }} i/menu, core {{/ pix }} {{# str }} recordings_view_list, mod_googlemeet {{/ str }}
-        </a>
-      </div>
-      {{/hasrecordings}}
-    </div>
+    {{#cansubscriberecordings}}
+    <form method="post" action="view.php" class="googlemeet-subscribe-form mb-0">
+      <input type="hidden" name="id" value="{{coursemoduleid}}">
+      <input type="hidden" name="sesskey" value="{{sesskey}}">
+      {{#issubscribed}}
+        <input type="hidden" name="subscribe" value="0">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">
+          {{# str }} unsubscriberecordings, mod_googlemeet {{/ str }}
+        </button>
+      {{/issubscribed}}
+      {{^issubscribed}}
+        <input type="hidden" name="subscribe" value="1">
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+          {{# str }} subscriberecordings, mod_googlemeet {{/ str }}
+        </button>
+      {{/issubscribed}}
+    </form>
+    {{/cansubscriberecordings}}
   </div>
 
   {{#hascapability}}{{#hasdeletedrecordings}}
@@ -149,25 +115,74 @@
   </div>
   {{/showprogresssummary}}
 
-  {{#hasrecordings}}
-  <form method="get" action="view.php" class="googlemeet-recordings-filterbar d-flex flex-wrap gap-2 align-items-center mb-3">
+  {{#showfilterbar}}
+  {{! Search filters as you type (debounced auto-submit, server-side filtering and pagination). Topic, order
+      and view live in a "Filtros" panel that is open on desktop and collapsed on phones. }}
+  <form method="get" action="view.php#googlemeet_recordings_table" id="googlemeet-filter-form-{{coursemoduleid}}"
+        class="googlemeet-recordings-filterbar mb-3" data-region="recordings-filterbar">
     <input type="hidden" name="id" value="{{coursemoduleid}}">
     <input type="hidden" name="rorder" value="{{#isorderdesc}}DESC{{/isorderdesc}}{{#isorderasc}}ASC{{/isorderasc}}">
     {{#ispendingfilter}}<input type="hidden" name="rpending" value="1">{{/ispendingfilter}}
-    <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
-    <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" style="max-width:320px"
-           placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
-    {{#alltopics.0}}
-    <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
-    <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm" style="max-width:260px">
-      <option value="">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</option>
-      {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
-    </select>
-    {{/alltopics.0}}
-    <button type="submit" class="btn btn-sm btn-primary">{{# str }} recordings_search_button, mod_googlemeet {{/ str }}</button>
-    {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
+    <div class="googlemeet-filterbar-search">
+      <label class="visually-hidden" for="googlemeet-rq">{{# str }} recordings_search_label, mod_googlemeet {{/ str }}</label>
+      <input type="search" id="googlemeet-rq" name="rq" value="{{recordingquery}}" class="form-control form-control-sm" autocomplete="off"
+             placeholder="{{#hascapability}}{{# str }} recordings_search_placeholder, mod_googlemeet {{/ str }}{{/hascapability}}{{^hascapability}}{{# str }} recordings_search_placeholder_student, mod_googlemeet {{/ str }}{{/hascapability}}">
+      <button type="submit" class="btn btn-sm btn-primary googlemeet-filter-submit">{{# str }} recordings_search_button, mod_googlemeet {{/ str }}</button>
+    </div>
+    <details class="googlemeet-filters-panel" open>
+      <summary class="btn btn-outline-secondary btn-sm googlemeet-filters-summary">
+        {{# str }} recordings_filters, mod_googlemeet {{/ str }}
+        {{#activefiltercount}}<span class="badge rounded-pill bg-primary googlemeet-filters-count" aria-label="{{# str }} recordings_filters_active, mod_googlemeet, {{activefiltercount}} {{/ str }}">{{activefiltercount}}</span>{{/activefiltercount}}
+      </summary>
+      <div class="googlemeet-filters-body">
+        {{#alltopics.0}}
+        <div class="googlemeet-filters-group">
+          <label class="visually-hidden" for="googlemeet-topic-select">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</label>
+          <select name="topic" id="googlemeet-topic-select" class="form-select form-select-sm">
+            <option value="">{{# str }} recordings_filter_all_topics, mod_googlemeet {{/ str }}</option>
+            {{#alltopics}}<option value="{{text}}" {{#active}}selected{{/active}}>{{text}}</option>{{/alltopics}}
+          </select>
+        </div>
+        {{/alltopics.0}}
+        <div class="googlemeet-filters-group googlemeet-recordings-controls">
+          <span class="googlemeet-filters-label small text-muted">{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}:</span>
+          <div class="btn-group btn-group-sm googlemeet-sort-toggle" role="group" aria-label="{{# str }} recordings_sort_by, mod_googlemeet {{/ str }}">
+            <a href="?id={{coursemoduleid}}&rorder=DESC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
+               class="btn {{#isorderdesc}}btn-primary{{/isorderdesc}}{{^isorderdesc}}btn-outline-secondary{{/isorderdesc}}" {{#isorderdesc}}aria-current="true"{{/isorderdesc}}>
+              <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_desc, mod_googlemeet {{/ str }}</span>
+              <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_desc_short, mod_googlemeet {{/ str }}</span>
+            </a>
+            <a href="?id={{coursemoduleid}}&rorder=ASC&rpage=0&rq={{recordingquery}}&topic={{selectedtopic}}&rpending={{pendingparam}}"
+               class="btn {{#isorderasc}}btn-primary{{/isorderasc}}{{^isorderasc}}btn-outline-secondary{{/isorderasc}}" {{#isorderasc}}aria-current="true"{{/isorderasc}}>
+              <span class="googlemeet-sort-label-full">{{# str }} recordingsorder_asc, mod_googlemeet {{/ str }}</span>
+              <span class="googlemeet-sort-label-short">{{# str }} recordingsorder_asc_short, mod_googlemeet {{/ str }}</span>
+            </a>
+          </div>
+        </div>
+        <div class="googlemeet-filters-group googlemeet-recordings-controls">
+          <span class="googlemeet-filters-label small text-muted">{{# str }} recordings_view_label, mod_googlemeet {{/ str }}:</span>
+          <div class="btn-group btn-group-sm googlemeet-view-toggle" role="radiogroup" aria-label="{{# str }} recordings_view_label, mod_googlemeet {{/ str }}">
+            <a href="{{viewcardsurl}}" role="radio"
+               class="btn {{#isviewcards}}btn-primary active{{/isviewcards}}{{^isviewcards}}btn-outline-secondary{{/isviewcards}}"
+               aria-checked="{{#isviewcards}}true{{/isviewcards}}{{^isviewcards}}false{{/isviewcards}}"
+               {{#isviewcards}}aria-current="true"{{/isviewcards}}
+               aria-label="{{# str }} recordings_view_cards_aria, mod_googlemeet {{/ str }}">
+              {{# pix }} i/grades, core {{/ pix }} {{# str }} recordings_view_cards, mod_googlemeet {{/ str }}
+            </a>
+            <a href="{{viewlisturl}}" role="radio"
+               class="btn {{#isviewlist}}btn-primary active{{/isviewlist}}{{^isviewlist}}btn-outline-secondary{{/isviewlist}}"
+               aria-checked="{{#isviewlist}}true{{/isviewlist}}{{^isviewlist}}false{{/isviewlist}}"
+               {{#isviewlist}}aria-current="true"{{/isviewlist}}
+               aria-label="{{# str }} recordings_view_list_aria, mod_googlemeet {{/ str }}">
+              {{# pix }} i/menu, core {{/ pix }} {{# str }} recordings_view_list, mod_googlemeet {{/ str }}
+            </a>
+          </div>
+        </div>
+      </div>
+    </details>
+    {{#hasactivefilters}}<a href="{{clearfiltersurl}}" class="btn btn-sm btn-link googlemeet-filters-clear">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>{{/hasactivefilters}}
   </form>
-  {{/hasrecordings}}
+  {{/showfilterbar}}
 
   {{#hasrecordings}}
   {{#haspagination}}
@@ -192,7 +207,6 @@
           <div class="googlemeet-card-body">
             <div class="googlemeet-card-title">
               <a href="{{huburl}}" class="recording-name-text" title="{{originalname}}" data-originalname="{{originalname}}">{{displayname}}</a>
-              {{#hascapability}}<button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>{{/hascapability}}
             </div>
             <div class="googlemeet-card-meta">
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
@@ -217,6 +231,10 @@
               {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
             </div>
             {{/matchsource}}{{/hascapability}}
+            {{#hascapability}}
+            <div class="googlemeet-card-progress googlemeet-teacher-stats">{{> mod_googlemeet/local/recording_teacher_stats }}</div>
+            {{/hascapability}}
+            {{^hascapability}}
             <div class="googlemeet-card-progress" data-region="recording-progress" aria-label="{{progressarialabel}}">
               <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}">
                 {{#progresscompleted}}<span aria-hidden="true">&#10003;</span>{{/progresscompleted}}
@@ -232,30 +250,20 @@
                 </div>
               {{/showprogressbar}}
             </div>
+            {{/hascapability}}
             <div class="googlemeet-card-footer">
               <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
               <div class="googlemeet-card-actions googlemeet-recording-actions">
-                <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>
-                {{#hascapability}}
-                  <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
-                  <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
-                  <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
-                {{/hascapability}}
-                {{#aienabled}}{{#hascapability}}
-                  <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
-                  </button>
-                {{/hascapability}}{{/aienabled}}
+                {{^hascapability}}<a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>{{/hascapability}}
+                {{#hascapability}}{{> mod_googlemeet/local/recording_row_actions }}{{/hascapability}}
               </div>
             </div>
           </div>
 
-          {{! Materials: teachers always get a manage button (so they can add the first
-              file); students only see download chips when files exist. }}
+          {{! Materials: download chips when files exist (teachers manage them from the "Acciones" menu). }}
           {{#hascapability}}
+          {{#hasmaterials}}
           <div class="googlemeet-card-materials mt-2">
-            <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
-            {{#hasmaterials}}
             <div class="googlemeet-materials-list googlemeet-materials-list-card">
               {{#cardmaterials}}
               <a href="{{url}}" class="googlemeet-material-row" aria-label="{{# str }} download, core {{/ str }} {{name}}">
@@ -274,8 +282,8 @@
               <a href="{{materialshuburl}}" class="googlemeet-material-more" aria-label="{{# str }} materials_more_aria, mod_googlemeet, {{cardmaterialoverflow}} {{/ str }}">{{# str }} materials_more, mod_googlemeet, {{cardmaterialoverflow}} {{/ str }}</a>
               {{/cardhasmaterialoverflow}}
             </div>
-            {{/hasmaterials}}
           </div>
+          {{/hasmaterials}}
           {{/hascapability}}
           {{^hascapability}}{{#hasmaterials}}
           <div class="googlemeet-card-materials mt-2">
@@ -322,7 +330,6 @@
               {{#isnew}}<span class="googlemeet-card-newbadge">{{# str }} recording_new, mod_googlemeet {{/ str }}</span>{{/isnew}}
               {{#hascapability}}{{^visible}}<span class="googlemeet-listitem-hidden-tag">{{# str }} recording_hidden, mod_googlemeet {{/ str }}</span>{{/visible}}{{/hascapability}}
               {{#hasai}}<span class="googlemeet-card-aibadge" title="{{# str }} ai_analysis_available, mod_googlemeet {{/ str }}">{{# str }} ai_badge_label, mod_googlemeet {{/ str }}</span>{{/hasai}}
-              {{#hascapability}}<button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} edit {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>{{/hascapability}}
               <span class="googlemeet-recording-date visually-hidden">{{createdtimeformatted}}</span>
             </div>
             <div class="googlemeet-listitem-meta googlemeet-card-meta">
@@ -348,9 +355,8 @@
             {{/matchsource}}{{/hascapability}}
             {{! Materials row (same rules as the card view). }}
             {{#hascapability}}
+            {{#hasmaterials}}
             <div class="googlemeet-card-materials mt-1">
-              <a href="{{managematerialsurl}}" class="btn btn-outline-secondary btn-sm">{{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}</a>
-              {{#hasmaterials}}
               <div class="googlemeet-materials-list googlemeet-materials-list-compact">
                 {{#materials}}
                 <a href="{{url}}" class="googlemeet-material-row googlemeet-material-row-compact" aria-label="{{# str }} download, core {{/ str }} {{name}}">
@@ -366,8 +372,8 @@
                 </a>
                 {{/materials}}
               </div>
-              {{/hasmaterials}}
             </div>
+            {{/hasmaterials}}
             {{/hascapability}}
             {{^hascapability}}{{#hasmaterials}}
             <div class="googlemeet-card-materials mt-1">
@@ -390,6 +396,10 @@
             </div>
             {{/hasmaterials}}{{/hascapability}}
           </div>
+          {{#hascapability}}
+          <div class="googlemeet-listitem-progress googlemeet-teacher-stats">{{> mod_googlemeet/local/recording_teacher_stats }}</div>
+          {{/hascapability}}
+          {{^hascapability}}
           <div class="googlemeet-listitem-progress" data-region="recording-progress" aria-label="{{progressarialabel}}">
             <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}">
               {{#progresscompleted}}<span aria-hidden="true">&#10003;</span>{{/progresscompleted}}
@@ -405,19 +415,11 @@
               </div>
             {{/showprogressbar}}
           </div>
+          {{/hascapability}}
           <div class="googlemeet-listitem-actions googlemeet-recording-actions">
             <a href="{{huburl}}" class="btn btn-primary btn-sm googlemeet-card-cta">{{# str }} recording_watch_cta, mod_googlemeet {{/ str }}</a>
-            <a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>
-            {{#hascapability}}
-              <button type="button" class="recordinghowhide googlemeet-visibility-btn googlemeet-button-reset" data-id="{{id}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}" title="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}" aria-label="{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}">{{#visible}}{{# pix }} i/hide, core {{/ pix }}{{/visible}}{{^visible}}{{# pix }} i/show, core {{/ pix }}{{/visible}}</button>
-              <button type="button" class="googlemeet-ai-edit-btn googlemeet-button-reset" data-id="{{id}}" data-recordingname="{{originalname}}" title="{{# str }} ai_edit_manual, mod_googlemeet {{/ str }}">{{# pix }} i/edit, core {{/ pix }}</button>
-              <button type="button" class="googlemeet-trash-recording googlemeet-trash-btn googlemeet-button-reset" data-id="{{id}}" title="{{# str }} recording_trash, mod_googlemeet {{/ str }}" aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}"><span aria-hidden="true">{{# pix }} t/delete, core {{/ pix }}</span></button>
-            {{/hascapability}}
-            {{#aienabled}}{{#hascapability}}
-              <button type="button" class="googlemeet-ai-toggle-btn googlemeet-button-reset {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}" data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" title="{{# str }} ai_analysis, mod_googlemeet {{/ str }}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="googlemeet-ai-toggle-icon"><path d="M7.41 8.59L12 13.17L16.59 8.59L18 10L12 16L6 10L7.41 8.59Z" fill="currentColor"/></svg>
-              </button>
-            {{/hascapability}}{{/aienabled}}
+            {{^hascapability}}<a href="{{webviewlink}}" target="_blank" rel="noopener" class="googlemeet-drive-link" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}" aria-label="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{displayname}}">{{# pix }} i/externallink, core {{/ pix }}</a>{{/hascapability}}
+            {{#hascapability}}{{> mod_googlemeet/local/recording_row_actions }}{{/hascapability}}
             {{#aienabled}}{{^hascapability}}
               {{#hasai}}<a href="{{huburl}}" class="googlemeet-card-summarylink">{{# str }} recording_view_summary, mod_googlemeet {{/ str }} ›</a>{{/hasai}}
             {{/hascapability}}{{/aienabled}}
@@ -539,7 +541,8 @@
       </div>
       {{#hasactivefilters}}
         {{#ispendingfilter}}{{#progresssummarydone}}<p class="fw-bold">{{# str }} recordings_pending_none, mod_googlemeet {{/ str }}</p>{{/progresssummarydone}}{{/ispendingfilter}}
-        <p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>
+        {{#recordingquery}}<p>{{# str }} recordings_no_query_results, mod_googlemeet, {{recordingquery}} {{/ str }}</p>{{/recordingquery}}
+        {{^recordingquery}}<p>{{# str }} recordings_no_filter_results, mod_googlemeet {{/ str }}</p>{{/recordingquery}}
         <a href="{{clearfiltersurl}}" class="btn btn-sm btn-link">{{# str }} recordings_filter_clear, mod_googlemeet {{/ str }}</a>
       {{/hasactivefilters}}
       {{^hasactivefilters}}
@@ -600,6 +603,74 @@
     </div>
   </div>
 </div>
+
+{{#js}}
+(function() {
+  var form = document.getElementById('googlemeet-filter-form-{{coursemoduleid}}');
+  if (!form) {
+    return;
+  }
+  var focuskey = 'mod_googlemeet_rq_focus_{{coursemoduleid}}';
+  form.classList.add('googlemeet-filterbar-live');
+
+  // "Filtros" panel: open on desktop, collapsed on phones (the count badge shows what is active).
+  var panel = form.querySelector('.googlemeet-filters-panel');
+  var phone = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
+  var syncpanel = function() {
+    if (panel && phone) {
+      panel.open = !phone.matches;
+    }
+  };
+  syncpanel();
+  if (phone && phone.addEventListener) {
+    phone.addEventListener('change', syncpanel);
+  }
+
+  var submitfilters = function(keepfocus) {
+    if (keepfocus) {
+      try {
+        sessionStorage.setItem(focuskey, '1');
+      } catch (e) {
+        // Storage may be blocked; the search still works, only the caret is not restored.
+      }
+    }
+    form.submit();
+  };
+
+  // Search as you type: lessons are filtered and paginated server-side, so submit after a pause.
+  var input = form.querySelector('input[name="rq"]');
+  if (input) {
+    var timer = null;
+    var submitted = input.value.trim();
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        var value = input.value.trim();
+        if (value === submitted || value.length === 1) {
+          return;
+        }
+        submitted = value;
+        submitfilters(true);
+      }, 600);
+    });
+    try {
+      if (sessionStorage.getItem(focuskey)) {
+        sessionStorage.removeItem(focuskey);
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    } catch (e) {
+      // Ignore storage failures.
+    }
+  }
+  var topic = form.querySelector('select[name="topic"]');
+  if (topic) {
+    topic.addEventListener('change', function() {
+      submitfilters(false);
+    });
+  }
+})();
+{{/js}}
 
 {{#js}}
 require(['mod_googlemeet/sync'], function(m) {
@@ -675,20 +746,19 @@ require([
     restoreRecordingAnchor();
 
     {{#hascapability}}
-      // Edit recording name
+      // Rename (from the row "Acciones" menu): edit the title inline in its row.
       $('.recordingeditname').on('click', function() {
-        var card = $(this).closest('.googlemeet-card-title');
-        var text = card.find('.recording-name-text');
-        var editBtn = $(this);
         var recordingid = $(this).attr('data-id');
+        var card = $('#googlemeet-recording-' + recordingid).find('.googlemeet-card-title').first();
+        var text = card.find('.recording-name-text');
         var originalname = text.attr('data-originalname') || text.text().trim();
 
         text.hide();
-        editBtn.hide();
 
         var inputtext = document.createElement('input');
         inputtext.type = 'text';
         inputtext.className = 'form-control googlemeet-edit-input';
+        inputtext.setAttribute('aria-label', {{# quote }}{{# str }} list_action_rename, mod_googlemeet {{/ str }}{{/ quote }});
         inputtext.id = recordingid;
         inputtext.value = originalname;
         inputtext.setAttribute('data-value', originalname);
@@ -718,7 +788,6 @@ require([
         element = $(element);
         var card = element.closest('.googlemeet-card-title');
         var text = card.find('.recording-name-text');
-        var editBtn = card.find('.recordingeditname');
 
         var loading = $('<span class="googlemeet-inline-loading">{{# pix }} i/processing16, googlemeet, {{# str }} loading, mod_googlemeet {{/ str }} {{/ pix }}</span>');
 
@@ -740,12 +809,10 @@ require([
           $('.googlemeet-ai-edit-btn[data-id="' + element.attr('id') + '"]').attr('data-recordingname', response.name);
           element.remove();
           loading.remove();
-          editBtn.show();
         }).fail(Notification.exception).fail(function() {
           text.text(element.attr('data-value')).show();
           element.remove();
           loading.remove();
-          editBtn.show();
         });
       }
 
@@ -758,10 +825,8 @@ require([
 
         var card = element.closest('.googlemeet-card-title');
         var text = card.find('.recording-name-text');
-        var editBtn = card.find('.recordingeditname');
         element.remove();
         text.show();
-        editBtn.show();
       }
 
       // Toggle visibility
@@ -771,9 +836,10 @@ require([
         // Works in both views: card grid (.googlemeet-recording-card) and
         // list view (.googlemeet-recording-listitem).
         var card = btn.closest('.googlemeet-recording-card, .googlemeet-recording-listitem');
-        var oldContent = btn.html();
+        var label = btn.find('.googlemeet-action-label');
+        var oldLabel = label.text();
 
-        btn.html('{{# pix }} i/processing16, googlemeet, {{# str }} loading, mod_googlemeet {{/ str }} {{/ pix }}');
+        btn.prop('disabled', true);
 
         Ajax.call([{
           methodname: 'mod_googlemeet_showhide_recording',
@@ -785,12 +851,11 @@ require([
           var visible = response.visible === true || response.visible === 1 || response.visible === '1' || response.visible === 'true';
           var visibilityLabel = btn.attr(visible ? 'data-label-hide' : 'data-label-show');
           var isListRow = card.hasClass('googlemeet-recording-listitem');
+          btn.prop('disabled', false);
           if (visibilityLabel) {
-            btn.attr('title', visibilityLabel);
-            btn.attr('aria-label', visibilityLabel);
+            label.text(visibilityLabel);
           }
           if (visible) {
-            btn.html('{{# pix }} i/hide, core, {{# str }} hide, mod_googlemeet {{/ str }} {{/ pix }}');
             card.removeClass('googlemeet-recording-hidden');
             if (isListRow) {
               card.find('.googlemeet-listitem-hidden-tag').remove();
@@ -798,7 +863,6 @@ require([
               card.find('.googlemeet-recording-hidden-badge').remove();
             }
           } else {
-            btn.html('{{# pix }} i/show, core, {{# str }} show, mod_googlemeet {{/ str }} {{/ pix }}');
             card.addClass('googlemeet-recording-hidden');
             if (isListRow) {
               if (!card.find('.googlemeet-listitem-hidden-tag').length) {
@@ -811,7 +875,8 @@ require([
             }
           }
         }).fail(Notification.exception).fail(function() {
-          btn.html(oldContent);
+          btn.prop('disabled', false);
+          label.text(oldLabel);
         });
       });
 

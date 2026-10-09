@@ -150,7 +150,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             $maxrecordings[$i] = $i;
         }
         $mform->addElement('select', 'maxrecordings', get_string('maxrecordings', 'googlemeet'), $maxrecordings);
-        $mform->setDefault('maxrecordings', 5);
+        $mform->setDefault('maxrecordings', 12);
         $mform->addHelpButton('maxrecordings', 'maxrecordings', 'googlemeet');
 
         // Recordings order.

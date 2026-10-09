@@ -124,6 +124,7 @@ if ($recording) {
     $PAGE->activityheader->set_description('');
     $PAGE->add_body_class('googlemeet-hub-page');
 }
+
 googlemeet_print_header($googlemeet, $cm, $course);
 
 if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $context)) {
