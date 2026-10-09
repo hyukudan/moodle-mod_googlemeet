@@ -168,6 +168,20 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 
 ## Changes in this fork
 
+### Version 2.29.0 (2026-10-10)
+- **Folder fingerprint is now the primary recording-matching rule** (fixes production bug: renaming the Moodle activity or the meeting soft-deleted all previously synced recordings). Matching semantics are now: Drive is the source of truth for *existence*, the assigned Drive folder for *ownership*, and the file name decides nothing on its own.
+  - **Drive query extension**: `syncrecordings()` now also fetches every video inside Drive folders already assigned to the activity (`googlemeet_recordings.drivefolderid`), chunked like folder discovery, so recordings whose filename no longer matches the activity name/meeting code are still returned.
+  - **Import rules in `filter_recordings_for_activity()`**: a file in a folder assigned to this activity is imported/kept even if its name matches nothing; a file in a folder assigned to another activity is never imported here; unassigned folders keep the name-based logic (custom filter, meeting code, name, then same-name conflict resolution).
+  - **Trash only on real deletion**: a stored recording is soft-deleted only when its Drive file id is absent from the sync result set. Renaming the activity, the meeting or the file can no longer orphan recordings.
+  - **Rename propagation**: stored rows get name/webviewlink/createdtime/duration updated in place when the Drive file changes (no delete+reinsert, so viewing progress, visibility, materials and AI analysis are preserved and no duplicate "new recording" notifications fire).
+  - Sync logs (mtrace/debugging) report how many recordings matched via folder fingerprint vs name. No schema change (reuses `drivefolderid`); version bump + purge caches after deploy.
+
+### Version 2.27.0 (2026-10-06)
+- **Fixed same-name room collisions in recording sync**: when two activities share the same name, the first one to sync claimed *all* of their recordings, because the meeting code never appears in Drive filenames and the name-based fallback cannot tell the rooms apart. Name-matched recordings are now disambiguated when a same-named sibling exists (same creator email): (1) **Drive folder fingerprint** — since the July 2026 Drive layout, one subfolder per meeting *series* holds all sessions of a room, so recordings follow the activity that already owns their folder (new `drivefolderid` column on `googlemeet_recordings`); (2) **event-slot bootstrap** — an unknown folder is assigned to the activity whose scheduled slot (`googlemeet_events`) overlaps the recording interval the most, with a ±15-minute margin and no assignment on ties; (3) **manual reassignment** — teachers get a "Move to…" control per recording to move it to another Meet activity in the same course, which also redirects future recordings of that folder. Activities with unique names are unaffected (previous behaviour preserved). Unit tests in `tests/client_test.php`.
+
+### Version 2.26.0 (2026-09-15)
+- **Adapted recording sync to Google's new "Google Meet" Drive folder** ([Google Workspace update, July 2026](https://workspaceupdates.googleblog.com/2026/07/google-meet-now-organizes-your-meeting-notes-transcripts-and-recordings-in-your-Google-Drive.html)): recordings now live in a "Google Meet" root folder with one subfolder per meeting, and the old "Meet Recordings" folder is renamed "Legacy Meet Recordings" and moved inside it. Folder discovery now finds both layouts (root search by name, breadth-first subfolder enumeration up to depth 2) and scopes the Drive video/transcript queries to the discovered folders in chunked `parents` clauses (50 ids per chunk, 500 folders cap). The all-Drive name-based fallback is unchanged for accounts without Meet folders. Unit tests for the discovery and chunking in `tests/client_test.php`.
+
 ### Version 2.25.3 (2026-07-06)
 - **Live hide/show toggle** - the "Hide from students" / "Show to students" control now flips its label via AJAX with no page reload.
 - **"View full schedule"** link is always visible in the classroom hero.

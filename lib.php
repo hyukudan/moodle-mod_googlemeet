@@ -1118,11 +1118,13 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
     ];
 
     $updatednotes = 0;
+    $updatedmetadata = 0;
     foreach ($googlemeetrecordings as $googlemeetrecording) {
         // O(1) lookup with isset() instead of O(n) in_array().
         if (!isset($fileidsmap[$googlemeetrecording->recordingid])) {
             if (empty($googlemeetrecording->deleted)) {
-                // Accumulate every orphaned active recording id, not just the last one.
+                // The file is genuinely gone from Drive (not returned by any query
+                // leg): accumulate every orphaned active recording id for trashing.
                 $trashrecordings[] = $googlemeetrecording->id;
             }
             continue;
@@ -1132,24 +1134,53 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
             continue;
         }
 
+        $incoming = $filesbyid[$googlemeetrecording->recordingid] ?? null;
+
         // Backfill notes for an existing recording that just received them (Gemini
-        // notes are often published after the recording first synced). This is the
-        // only field updated on existing rows; all Drive metadata stays immutable.
-        if (empty($googlemeetrecording->notestext)
-                && !empty($fileidsmap[$googlemeetrecording->recordingid])) {
-            $incoming = $filesbyid[$googlemeetrecording->recordingid] ?? null;
-            if ($incoming && !empty($incoming->notestext)) {
-                $DB->update_record('googlemeet_recordings', (object)[
-                    'id' => $googlemeetrecording->id,
-                    'notestext' => $incoming->notestext,
-                    'notesdocid' => $incoming->notesdocid ?? null,
-                    'timemodified' => time(),
-                ]);
-                $updatednotes++;
+        // notes are often published after the recording first synced).
+        if ($incoming && empty($googlemeetrecording->notestext) && !empty($incoming->notestext)) {
+            $DB->update_record('googlemeet_recordings', (object)[
+                'id' => $googlemeetrecording->id,
+                'notestext' => $incoming->notestext,
+                'notesdocid' => $incoming->notesdocid ?? null,
+                'timemodified' => time(),
+            ]);
+            $updatednotes++;
+        }
+
+        // Propagate Drive-side renames and metadata changes to the stored row.
+        // The Drive file id is stable across renames, so the row is updated in
+        // place — never deleted+reinserted: the row carries student viewing
+        // progress, the visibility flag, materials and AI analysis, and a
+        // reinsert would re-fire "new recording" notifications.
+        if ($incoming) {
+            $update = ['id' => $googlemeetrecording->id];
+            if (isset($incoming->name) && $incoming->name !== $googlemeetrecording->name) {
+                $update['name'] = $incoming->name;
+            }
+            if (!empty($incoming->webViewLink) && $incoming->webViewLink !== $googlemeetrecording->webviewlink) {
+                $update['webviewlink'] = $incoming->webViewLink;
+            }
+            if (!empty($incoming->createdTime) && (int)$incoming->createdTime !== (int)$googlemeetrecording->createdtime) {
+                $update['createdtime'] = $incoming->createdTime;
+            }
+            if (isset($incoming->duration) && $incoming->duration !== $googlemeetrecording->duration) {
+                $update['duration'] = $incoming->duration;
+            }
+            if (count($update) > 1) {
+                $update['timemodified'] = time();
+                $DB->update_record('googlemeet_recordings', (object)$update);
+                $updatedmetadata++;
             }
         }
+
+        // Backfill the Drive folder fingerprint for rows synced before it existed.
+        if ($incoming && empty($googlemeetrecording->drivefolderid) && !empty($incoming->drivefolderid)) {
+            $DB->set_field('googlemeet_recordings', 'drivefolderid', $incoming->drivefolderid,
+                ['id' => $googlemeetrecording->id]);
+        }
     }
-    $stats['updated'] = $updatednotes;
+    $stats['updated'] = $updatednotes + $updatedmetadata;
 
     if ($trashrecordings) {
         list($insql, $inparams) = $DB->get_in_or_equal($trashrecordings, SQL_PARAMS_NAMED);
@@ -1178,6 +1209,7 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
                 'createdtime' => $restorerecording->createdTime,
                 'duration' => $restorerecording->duration,
                 'webviewlink' => $restorerecording->webViewLink,
+                'drivefolderid' => !empty($restorerecording->drivefolderid) ? $restorerecording->drivefolderid : null,
                 'deleted' => 0,
                 'timedeleted' => 0,
                 'timemodified' => time(),
@@ -1203,6 +1235,7 @@ function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
             $recording->createdtime = $insertrecording->createdTime;
             $recording->duration = $insertrecording->duration;
             $recording->webviewlink = $insertrecording->webViewLink;
+            $recording->drivefolderid = !empty($insertrecording->drivefolderid) ? $insertrecording->drivefolderid : null;
             $recording->deleted = 0;
             $recording->timedeleted = 0;
             $recording->timemodified = time();
