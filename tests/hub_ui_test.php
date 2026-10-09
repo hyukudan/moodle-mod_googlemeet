@@ -33,6 +33,7 @@ require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[CoversFunction('googlemeet_print_recording_hub')]
+#[CoversFunction('googlemeet_hub_resume_label')]
 final class hub_ui_test extends \advanced_testcase {
 
     /**
@@ -91,5 +92,22 @@ final class hub_ui_test extends \advanced_testcase {
         $this->setUser($teacher);
         $html = $this->render_hub($googlemeet, $plain);
         $this->assertStringContainsString('id="googlemeet-questions-tab"', $html);
+    }
+
+    /**
+     * The continue label names the chapter when the remembered second is a chapter start.
+     */
+    public function test_resume_label(): void {
+        $chapters = googlemeet_normalise_chapters(json_encode([
+            ['title' => 'Introducción', 'start' => '4:01'],
+            ['title' => 'Derechos de los ciudadanos', 'start' => '14:02'],
+        ]));
+        $this->assertSame(get_string('hub_resume_chapter', 'googlemeet', (object)[
+            'title' => 'Derechos de los ciudadanos', 'time' => googlemeet_format_seconds_timestamp(842),
+        ]), googlemeet_hub_resume_label(842, $chapters));
+        $this->assertSame(get_string('hub_resume_time', 'googlemeet', googlemeet_format_seconds_timestamp(900)),
+            googlemeet_hub_resume_label(900, $chapters));
+        $this->assertSame(get_string('hub_resume_time', 'googlemeet', googlemeet_format_seconds_timestamp(842)),
+            googlemeet_hub_resume_label(842, []));
     }
 }

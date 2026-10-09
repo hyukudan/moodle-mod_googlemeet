@@ -599,3 +599,6 @@ $string['hub_player_help_why'] = 'Why does this happen?';
 $string['hub_opens_new_tab'] = 'opens in a new tab';
 $string['hub_tab_notes_meet'] = 'Meet notes';
 $string['hub_notes_origin'] = 'Notes that Google Meet took automatically during this class. They only exist for classes where “Take notes” was turned on, which is why this tab is not shown for every class.';
+$string['hub_resume_chapter'] = 'Continue with chapter “{$a->title}” ({$a->time})';
+$string['hub_resume_time'] = 'Continue at {$a}';
+$string['hub_resume_note'] = 'The last point you opened from here.';

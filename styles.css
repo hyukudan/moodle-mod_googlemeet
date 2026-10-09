@@ -3881,3 +3881,9 @@ mark.googlemeet-transcript-match-current {
     color: var(--bs-secondary-color, #5f6368);
     font-size: 0.85rem;
 }
+/* Continue button: may carry a chapter title, so let it wrap. */
+.googlemeet-recording-hub .googlemeet-resume-button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+}

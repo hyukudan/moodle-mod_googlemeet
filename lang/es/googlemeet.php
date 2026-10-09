@@ -604,3 +604,6 @@ $string['hub_player_help_why'] = '¿Por qué pasa?';
 $string['hub_opens_new_tab'] = 'se abre en una pestaña nueva';
 $string['hub_tab_notes_meet'] = 'Notas de Meet';
 $string['hub_notes_origin'] = 'Notas que Google Meet tomó automáticamente durante esta clase. Solo existen en las clases en las que se activó «Tomar notas», por eso esta pestaña no aparece en todas.';
+$string['hub_resume_chapter'] = 'Seguir por el capítulo «{$a->title}» ({$a->time})';
+$string['hub_resume_time'] = 'Seguir en {$a}';
+$string['hub_resume_note'] = 'Es el último punto que abriste desde aquí.';
