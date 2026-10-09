@@ -613,3 +613,4 @@ $string['question_publish_activity_partial'] = '{$a} questions published. These 
 $string['question_publish_activity_none'] = 'There are no draft questions in this activity.';
 $string['question_publish_recording_failed'] = '{$a} questions not published in';
 $string['question_reload'] = 'Refresh the page';
+$string['question_answer_correct'] = 'Correct';

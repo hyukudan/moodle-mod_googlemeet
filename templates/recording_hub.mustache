@@ -289,7 +289,7 @@
                   </div>
                   <ol class="mt-2">
                     {{#answers}}
-                      <li class="{{#correct}}fw-bold text-success{{/correct}}">{{{text}}}</li>
+                      <li class="googlemeet-question-answer{{#correct}} googlemeet-question-answer-correct{{/correct}}">{{{text}}}{{#correct}} <span class="googlemeet-question-correct-tag"><span aria-hidden="true">&#10003;</span> {{# str }} question_answer_correct, mod_googlemeet {{/ str }}</span>{{/correct}}</li>
                     {{/answers}}
                   </ol>
                   <div class="border-top pt-2 small">{{{generalfeedback}}}</div>

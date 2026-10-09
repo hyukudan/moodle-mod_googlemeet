@@ -1491,11 +1491,11 @@ const bindPracticePlayer = () => {
                 const state = option.find('.googlemeet-practice-option-state');
                 if (parseInt($(this).val(), 10) === parseInt(response.correctanswerid, 10)) {
                     option.addClass('googlemeet-practice-option-correct');
-                    state.html('<span aria-hidden="true">&#10003;</span><span class="visually-hidden">' +
+                    state.html('<span aria-hidden="true">&#10003;</span><span class="googlemeet-practice-option-statetext">' +
                         escapeHtml(strings.practice_right_option) + '</span>');
                 } else if ($(this).is(':checked')) {
                     option.addClass('googlemeet-practice-option-incorrect');
-                    state.html('<span aria-hidden="true">&#10007;</span><span class="visually-hidden">' +
+                    state.html('<span aria-hidden="true">&#10007;</span><span class="googlemeet-practice-option-statetext">' +
                         escapeHtml(strings.practice_your_answer) + '</span>');
                 }
             });
