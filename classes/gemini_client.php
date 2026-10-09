@@ -59,6 +59,20 @@ class gemini_client {
     /** @var string Fallback model when primary fails */
     private const FALLBACK_MODEL = 'gemini-3.1-flash-lite';
 
+    /** @var string Default safety threshold (IA-03): only clearly harmful content is blocked. */
+    const DEFAULT_SAFETY_THRESHOLD = 'BLOCK_ONLY_HIGH';
+
+    /** @var string[] Thresholds accepted by the Gemini API for googlemeet/aisafetythreshold. */
+    const SAFETY_THRESHOLDS = ['BLOCK_NONE', 'BLOCK_ONLY_HIGH', 'BLOCK_MEDIUM_AND_ABOVE', 'BLOCK_LOW_AND_ABOVE'];
+
+    /** @var string[] Harm categories the safety settings are applied to. */
+    const SAFETY_CATEGORIES = [
+        'HARM_CATEGORY_HARASSMENT',
+        'HARM_CATEGORY_HATE_SPEECH',
+        'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        'HARM_CATEGORY_DANGEROUS_CONTENT',
+    ];
+
     /** @var bool Whether AI features are enabled */
     private $enabled;
 
@@ -327,6 +341,9 @@ PROMPT;
         foreach ($chain as $model) {
             try {
                 return $this->call_api_with_model($prompt, $model);
+            } catch (gemini_safety_exception $e) {
+                // Same content, same filters: another model would be blocked too.
+                throw $e;
             } catch (moodle_exception $e) {
                 $lastexception = $e;
                 // If the policy offers a further model, log the fallback and
@@ -391,24 +408,8 @@ PROMPT;
                 'topP' => 0.95,
                 'maxOutputTokens' => 8192,
             ],
-            'safetySettings' => [
-                [
-                    'category' => 'HARM_CATEGORY_HARASSMENT',
-                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_HATE_SPEECH',
-                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
-                ],
-                [
-                    'category' => 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
-                ]
-            ]
+            // IA-03: class transcripts (law, health, security syllabi) often trip MEDIUM filters.
+            'safetySettings' => self::build_safety_settings(),
         ];
 
         $curl = new \curl();
@@ -492,6 +493,56 @@ PROMPT;
     }
 
     /**
+     * Safety settings sent with every generateContent request (IA-03).
+     *
+     * Threshold from googlemeet/aisafetythreshold (default BLOCK_ONLY_HIGH); an unknown value falls back
+     * to the default.
+     *
+     * @return array
+     */
+    public static function build_safety_settings(): array {
+        $threshold = (string)get_config('googlemeet', 'aisafetythreshold');
+        if (!in_array($threshold, self::SAFETY_THRESHOLDS, true)) {
+            $threshold = self::DEFAULT_SAFETY_THRESHOLD;
+        }
+        return array_map(static function(string $category) use ($threshold): array {
+            return ['category' => $category, 'threshold' => $threshold];
+        }, self::SAFETY_CATEGORIES);
+    }
+
+    /**
+     * Throw a {@see gemini_safety_exception} when Gemini blocked the prompt or the answer (IA-03).
+     *
+     * Covers promptFeedback.blockReason (prompt refused, no candidates) and a first candidate whose
+     * finishReason is SAFETY (or the related PROHIBITED_CONTENT / BLOCKLIST / SPII reasons).
+     *
+     * @param mixed $decoded Decoded API response.
+     * @return void
+     * @throws gemini_safety_exception
+     */
+    public static function assert_not_blocked($decoded): void {
+        if (!is_object($decoded)) {
+            return;
+        }
+        $blocked = ['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII'];
+        $candidate = $decoded->candidates[0] ?? null;
+        $promptblock = $decoded->promptFeedback->blockReason ?? '';
+        $finish = is_object($candidate) ? (string)($candidate->finishReason ?? '') : '';
+        if (!in_array($finish, $blocked, true) && ($promptblock === '' || $candidate !== null)) {
+            return;
+        }
+        $ratings = is_object($candidate) ? ($candidate->safetyRatings ?? [])
+            : ($decoded->promptFeedback->safetyRatings ?? []);
+        $categories = [];
+        foreach ((array)$ratings as $rating) {
+            if (!empty($rating->blocked) || in_array($rating->probability ?? '', ['HIGH', 'MEDIUM'], true)) {
+                $categories[] = (string)($rating->category ?? '');
+            }
+        }
+        throw new gemini_safety_exception(implode(', ', array_filter($categories)));
+    }
+
+    /**
      * Parse the analysis response from the API.
      *
      * @param string $response The raw API response
@@ -500,6 +551,7 @@ PROMPT;
      */
     private function parse_analysis_response(string $response): stdClass {
         $decoded = json_decode($response);
+        self::assert_not_blocked($decoded);
 
         if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
             throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
@@ -553,6 +605,7 @@ PROMPT;
      */
     private function parse_questions_response(string $response): array {
         $decoded = json_decode($response);
+        self::assert_not_blocked($decoded);
 
         if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
             throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
@@ -619,6 +672,7 @@ PROMPT;
      */
     private function parse_chapters_response(string $response): array {
         $decoded = json_decode($response);
+        self::assert_not_blocked($decoded);
 
         if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
             throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
@@ -727,6 +781,7 @@ PROMPT;
      */
     private function extract_text_from_response(string $response): string {
         $decoded = json_decode($response);
+        self::assert_not_blocked($decoded);
 
         if (!$decoded || !isset($decoded->candidates[0]->content->parts[0]->text)) {
             throw new moodle_exception('ai_error', 'googlemeet', '', 'Invalid API response format');
@@ -1015,6 +1070,8 @@ PROMPT;
         foreach ($chain as $model) {
             try {
                 return $this->analyze_video_with_file_using_model($fileuri, $mimetype, $videoname, $duration, $model);
+            } catch (gemini_safety_exception $e) {
+                throw $e;
             } catch (moodle_exception $e) {
                 $lastexception = $e;
                 if (!$this->modelpolicy->has_fallback_after($model)) {
@@ -1096,6 +1153,7 @@ PROMPT;
                 'topP' => 0.95,
                 'maxOutputTokens' => 8192,
             ],
+            'safetySettings' => self::build_safety_settings(),
         ];
 
         $curl = new \curl();
