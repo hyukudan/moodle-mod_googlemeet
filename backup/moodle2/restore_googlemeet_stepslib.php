@@ -59,6 +59,8 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
                 '/activity/googlemeet/recordings/recording/recordingprogresses/recordingprogress');
             $paths[] = new restore_path_element('googlemeet_recordingsub',
                 '/activity/googlemeet/recordingsubs/recordingsub');
+            $paths[] = new restore_path_element('googlemeet_practiceattempt',
+                '/activity/googlemeet/practiceattempts/practiceattempt');
         }
 
         $paths[] = new restore_path_element('googlemeet_holiday',
@@ -231,6 +233,32 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
                 ['googlemeetid' => $data->googlemeetid, 'userid' => $data->userid])) {
             $DB->insert_record('googlemeet_recording_subs', $data);
         }
+    }
+
+    /**
+     * Process a practice attempt restore (ANA-05).
+     *
+     * Questions are created by the root task before any activity, so their mapping exists here.
+     * Attempts whose user, recording (e.g. trashed, not backed up) or question cannot be mapped
+     * are skipped.
+     *
+     * @param object $data The data in object form
+     * @return void
+     */
+    protected function process_googlemeet_practiceattempt($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $data->googlemeetid = $this->get_new_parentid('googlemeet');
+        $data->recordingid = (int)$this->get_mappingid('googlemeet_recording', $data->recordingid);
+        $data->questionid = (int)$this->get_mappingid('question', $data->questionid);
+        $data->userid = (int)$this->get_mappingid('user', $data->userid);
+        $data->timecreated = $this->apply_date_offset($data->timecreated);
+
+        if (empty($data->recordingid) || empty($data->questionid) || empty($data->userid)) {
+            return;
+        }
+        $DB->insert_record('googlemeet_practice_attempts', $data);
     }
 
     /**

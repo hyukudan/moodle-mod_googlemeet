@@ -295,6 +295,7 @@ function googlemeet_delete_instance($id) {
 
     $DB->delete_records('googlemeet_recordings', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $id]);
+    $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $id]);
 
@@ -1644,4 +1645,32 @@ function googlemeet_is_cancelled($timestamp, $cancelleddates) {
     }
 
     return false;
+}
+
+// Track analytics: secondary navigation entries.
+
+/**
+ * Add the practice and report pages to the activity (secondary) navigation.
+ *
+ * @param settings_navigation $settingsnav Settings navigation.
+ * @param navigation_node $googlemeetnode The activity node.
+ * @return void
+ */
+function googlemeet_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $googlemeetnode): void {
+    $cm = $settingsnav->get_page()->cm;
+    if (!$cm) {
+        return;
+    }
+    $context = context_module::instance($cm->id);
+
+    if (has_capability('mod/googlemeet:view', $context) && !has_capability('mod/googlemeet:managequestions', $context)) {
+        $googlemeetnode->add(get_string('practice_page_title', 'googlemeet'),
+            new moodle_url('/mod/googlemeet/practice.php', ['id' => $cm->id]),
+            navigation_node::TYPE_SETTING, null, 'mod_googlemeet_practice', new pix_icon('i/questions', ''));
+    }
+    if (has_capability('mod/googlemeet:viewreports', $context)) {
+        $googlemeetnode->add(get_string('report_title', 'googlemeet'),
+            new moodle_url('/mod/googlemeet/report.php', ['id' => $cm->id]),
+            navigation_node::TYPE_SETTING, null, 'mod_googlemeet_report', new pix_icon('i/report', ''));
+    }
 }

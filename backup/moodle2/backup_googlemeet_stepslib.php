@@ -113,6 +113,16 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'timemodified'
         ]);
 
+        // ANA-05: practice attempts (user data). Recording and question ids are remapped on restore.
+        $practiceattempts = new backup_nested_element('practiceattempts');
+        $practiceattempt = new backup_nested_element('practiceattempt', ['id'], [
+            'recordingid',
+            'questionid',
+            'userid',
+            'correct',
+            'timecreated'
+        ]);
+
         $aianalysis = new backup_nested_element('aianalysis', ['id'], [
             'summary',
             'keypoints',
@@ -158,6 +168,9 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $recordingprogresses->add_child($recordingprogress);
             $googlemeet->add_child($recordingsubs);
             $recordingsubs->add_child($recordingsub);
+            // After the recordings, so their ids are mapped when attempts are restored.
+            $googlemeet->add_child($practiceattempts);
+            $practiceattempts->add_child($practiceattempt);
         }
 
         $googlemeet->add_child($holidays);
@@ -183,6 +196,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             $aianalysis->set_source_table('googlemeet_ai_analysis', ['recordingid' => backup::VAR_PARENTID]);
             $recordingprogress->set_source_table('googlemeet_recording_progress', ['recordingid' => backup::VAR_PARENTID]);
             $recordingsub->set_source_table('googlemeet_recording_subs', ['googlemeetid' => backup::VAR_PARENTID]);
+            $practiceattempt->set_source_table('googlemeet_practice_attempts', ['googlemeetid' => backup::VAR_PARENTID],
+                'id ASC');
         }
 
         $holiday->set_source_table('googlemeet_holidays', ['googlemeetid' => backup::VAR_PARENTID]);
@@ -193,6 +208,7 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         if ($userinfo) {
             $recordingprogress->annotate_ids('user', 'userid');
             $recordingsub->annotate_ids('user', 'userid');
+            $practiceattempt->annotate_ids('user', 'userid');
         }
 
         // Define file annotations.

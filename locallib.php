@@ -609,6 +609,9 @@ function googlemeet_get_classroom_hero_context($googlemeet, $cm, context_module 
         'courseid' => (int)$cm->course,
         'hascontinue' => false,
         'hasroomcta' => false,
+        // Track analytics: activity-wide practice entry point (students only; null hides it).
+        'practicecta' => \mod_googlemeet\local\practice_attempts::hero_cta_context($googlemeet, $cm, $context,
+            (int)$GLOBALS['USER']->id),
     ], $eventcontext,
         googlemeet_get_room_cta_context($googlemeet, $context, $nextevent, $hasvalidmeeturl),
         googlemeet_get_continue_watching_context($googlemeet, $cm, $context),

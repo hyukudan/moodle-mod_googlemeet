@@ -433,6 +433,7 @@ class mod_googlemeet_external extends external_api {
         $fs = get_file_storage();
         $fs->delete_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recording->id);
         $DB->delete_records('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
+        $DB->delete_records('googlemeet_practice_attempts', ['recordingid' => $recording->id]);
         $DB->delete_records('googlemeet_recordings', ['id' => $recording->id]);
 
         return ['success' => true];
@@ -1653,7 +1654,7 @@ class mod_googlemeet_external extends external_api {
         }
 
         $service = new \mod_googlemeet\question_service();
-        return $service->validate_practice_answer(
+        $result = $service->validate_practice_answer(
             $googlemeet,
             $cm,
             $context,
@@ -1661,6 +1662,13 @@ class mod_googlemeet_external extends external_api {
             $params['questionid'],
             $params['answerid']
         );
+
+        // ANA-05: persist the attempt (only reached for a valid, published question of this recording).
+        global $USER;
+        \mod_googlemeet\local\practice_attempts::record((int)$googlemeet->id, (int)$params['recordingid'],
+            (int)$params['questionid'], (int)$USER->id, !empty($result['correct']));
+
+        return $result;
     }
 
     /**
