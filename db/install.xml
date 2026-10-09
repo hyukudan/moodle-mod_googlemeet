@@ -198,5 +198,26 @@
         <INDEX NAME="status" UNIQUE="false" FIELDS="status"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="googlemeet_practice_attempts" COMMENT="Stores each student practice answer (ANA-05).">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="googlemeetid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="recordingid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="correct" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when the selected answer was correct."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
+        <KEY NAME="recordingidfk" TYPE="foreign" FIELDS="recordingid" REFTABLE="googlemeet_recordings" REFFIELDS="id"/>
+        <KEY NAME="questionidfk" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+        <KEY NAME="useridfk" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid_userid_questionid" UNIQUE="false" FIELDS="googlemeetid, userid, questionid" COMMENT="Latest attempt per question for one student."/>
+      </INDEXES>
+    </TABLE>
   </TABLES>
 </XMLDB>

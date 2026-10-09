@@ -471,5 +471,32 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026070502, 'googlemeet');
     }
 
+    if ($oldversion < 2026101001) {
+        // ANA-05: persist student practice attempts.
+        $table = new xmldb_table('googlemeet_practice_attempts');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('googlemeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('recordingid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('questionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('correct', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('googlemeetidfk', XMLDB_KEY_FOREIGN, ['googlemeetid'], 'googlemeet', ['id']);
+        $table->add_key('recordingidfk', XMLDB_KEY_FOREIGN, ['recordingid'], 'googlemeet_recordings', ['id']);
+        $table->add_key('questionidfk', XMLDB_KEY_FOREIGN, ['questionid'], 'question', ['id']);
+        $table->add_key('useridfk', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+
+        $table->add_index('googlemeetid_userid_questionid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid', 'userid', 'questionid']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2026101001, 'googlemeet');
+    }
+
     return true;
 }
