@@ -602,3 +602,5 @@ $string['hub_player_fallback_text'] = '¿No carga el vídeo?';
 $string['hub_player_fallback_link'] = 'Abrir en Google Drive';
 $string['hub_player_help_why'] = '¿Por qué pasa?';
 $string['hub_opens_new_tab'] = 'se abre en una pestaña nueva';
+$string['hub_tab_notes_meet'] = 'Notas de Meet';
+$string['hub_notes_origin'] = 'Notas que Google Meet tomó automáticamente durante esta clase. Solo existen en las clases en las que se activó «Tomar notas», por eso esta pestaña no aparece en todas.';

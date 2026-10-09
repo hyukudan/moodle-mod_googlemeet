@@ -3838,3 +3838,46 @@ mark.googlemeet-transcript-match-current {
         align-items: center;
     }
 }
+/* Tab row: snap scrolling and an edge fade only while more tabs are hidden in that direction. */
+.googlemeet-recording-hub .googlemeet-hub-tabs {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1.5rem;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs .nav-item {
+    scroll-snap-align: start;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before,
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 1px;
+    width: 2.25rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before {
+    left: 0;
+    background: linear-gradient(to left, transparent, var(--bs-body-bg, #fff));
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+    right: 0;
+    background: linear-gradient(to right, transparent, var(--bs-body-bg, #fff) 85%);
+}
+.googlemeet-recording-hub .googlemeet-tabs-more-start::before,
+.googlemeet-recording-hub .googlemeet-tabs-more-end::after {
+    opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    .googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before,
+    .googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+        transition: none;
+    }
+}
+.googlemeet-notes-origin {
+    margin: 0 0 0.75rem;
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.85rem;
+}

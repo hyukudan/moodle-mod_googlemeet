@@ -597,3 +597,5 @@ $string['hub_player_fallback_text'] = 'Video not loading?';
 $string['hub_player_fallback_link'] = 'Open in Google Drive';
 $string['hub_player_help_why'] = 'Why does this happen?';
 $string['hub_opens_new_tab'] = 'opens in a new tab';
+$string['hub_tab_notes_meet'] = 'Meet notes';
+$string['hub_notes_origin'] = 'Notes that Google Meet took automatically during this class. They only exist for classes where “Take notes” was turned on, which is why this tab is not shown for every class.';

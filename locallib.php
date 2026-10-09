@@ -1426,6 +1426,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
             : '',
         'questions' => $questions,
         'hasquestions' => !empty($questions),
+        // Students only get the Questions tab when there is something to practise (published questions).
+        'showquestionstab' => $canmanagequestions || !empty($questions),
         'draftcount' => $draftcount,
         'publishedcount' => $publishedcount,
         'questioncount' => count($questions),

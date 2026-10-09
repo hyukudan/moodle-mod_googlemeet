@@ -1690,6 +1690,30 @@ const bindTabHash = () => {
 };
 
 /**
+ * Show an edge fade on the tab row only while there are more tabs to scroll to in that direction.
+ *
+ * @returns {void}
+ */
+const bindTabsOverflow = () => {
+    const wrap = document.querySelector('#googlemeet-recording-hub .googlemeet-hub-tabs-wrap');
+    const strip = wrap ? wrap.querySelector('.googlemeet-hub-tabs') : null;
+    if (!strip) {
+        return;
+    }
+    const update = () => {
+        const max = strip.scrollWidth - strip.clientWidth;
+        wrap.classList.toggle('googlemeet-tabs-more-start', max > 1 && strip.scrollLeft > 1);
+        wrap.classList.toggle('googlemeet-tabs-more-end', max > 1 && strip.scrollLeft < max - 1);
+    };
+    strip.addEventListener('scroll', update, {passive: true});
+    window.addEventListener('resize', update);
+    if (window.ResizeObserver) {
+        new window.ResizeObserver(update).observe(strip);
+    }
+    update();
+};
+
+/**
  * Stable storage key for a key point, independent of its position (text prefix, whitespace-normalised).
  *
  * @param {string} text Key point text.
@@ -1884,6 +1908,7 @@ export const init = config => {
         $(document).ready(() => {
             restoreHubState();
             bindTabHash();
+            bindTabsOverflow();
             bindQuestionManagement();
             if (settings.caneditrecording) {
                 bindRecordingManagement();
