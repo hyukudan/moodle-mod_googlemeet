@@ -75,8 +75,8 @@ Settings (Site administration → Plugins → Activity modules → Google Meet):
 
 ## Requirements
 
-- Moodle 4.0 or higher
-- PHP 7.4 or higher
+- Moodle 4.5 or higher (tested on 4.5 and 5.1)
+- PHP 8.1 or higher
 
 ## Installation
 
@@ -170,6 +170,20 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.27.1 (2026-10-09) — Fase 0 hotfixes
+- **Reminder recipients (NOT-01)** - pre-session reminders now go to users with an active enrolment who can view the activity and pass its access restrictions; suspended users, users of other courses and teachers/managers (`moodle/course:manageactivities`) are excluded.
+- **Optional leak check (QA-02)** - publishing/editing practice questions no longer fatals if `local/questions/fugaslib.php` is missing; the check is skipped with a debugging notice. With the library present, behaviour is unchanged (if one question fails, none is published).
+- **Organizer email locked (PRIV-05 mitigation)** - on existing activities the organizer email can only be changed by a site administrator or to the editor's own linked Google account.
+- **No `/tmp/yt-dlp` (PRIV-08)** - yt-dlp is resolved only from the `ytdlppath` setting or PATH; otherwise the subtitle tier is skipped.
+- **Graceful pages (UX-03)** - `material.php` without/with an invalid `recording` redirects to the activity with a notice; an invalid stored Meet URL hides the join button (warning shown only to editors) instead of breaking the page for everyone.
+- **Userinfo session cache (PERF-01)** - the linked Google account (email, name, avatar) is cached per session for one hour (`cachedef_userinfo`), removing the userinfo/avatar requests from every teacher page load; purged on logout/relink.
+- **Compatibility (QA-01, QA-04)** - requires Moodle 4.5 (`supported = [405, 501]`), declares `MOD_PURPOSE_COMMUNICATION`, and the global `sync_recordings()` is now `googlemeet_sync_recordings()`.
+
+#### Deployment notes (2.27.1)
+- Run `upgrade.php` and purge caches (registers the new `mod_googlemeet/userinfo` cache definition); reset opcache when `opcache.validate_timestamps=0`.
+- No database schema changes.
+- Make sure `googlemeet/ytdlppath` points to an executable outside `/tmp` (or yt-dlp is in the web/cron user's PATH).
 
 ### Version 2.27.0 (2026-10-08) — Hub and list design pass
 - **Distinguishable lesson titles** - lesson titles are told apart from the AI topics shown beside them.
