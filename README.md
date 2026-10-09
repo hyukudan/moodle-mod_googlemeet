@@ -172,7 +172,7 @@ The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead
 ## Changes in this fork
 
 ### Version 2.27.1 (2026-10-09) — Fase 0 hotfixes
-- **Reminder recipients (NOT-01)** - pre-session reminders now go to users with an active enrolment who can view the activity and pass its access restrictions; suspended users, users of other courses and teachers/managers (`moodle/course:manageactivities`) are excluded.
+- **Reminder recipients (NOT-01)** - pre-session reminders go to students only (a role with the `student` archetype in the course/module context or above) who have an active enrolment, can view the activity and pass its access restrictions; suspended users, users of other courses and teachers (editing or non-editing) are excluded.
 - **Optional leak check (QA-02)** - publishing/editing practice questions no longer fatals if `local/questions/fugaslib.php` is missing; the check is skipped with a debugging notice. With the library present, behaviour is unchanged (if one question fails, none is published).
 - **Organizer email locked (PRIV-05 mitigation)** - on existing activities the organizer email can only be changed by a site administrator or to the editor's own linked Google account.
 - **No `/tmp/yt-dlp` (PRIV-08)** - yt-dlp is resolved only from the `ytdlppath` setting or PATH; otherwise the subtitle tier is skipped.

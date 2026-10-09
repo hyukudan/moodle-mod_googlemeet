@@ -1599,11 +1599,11 @@ function googlemeet_has_recording($googlemeetid) {
 /**
  * Generates the list of users who should receive the reminder for an event and have not yet been notified.
  *
- * Recipients are users with an active enrolment in the activity's course who can view the activity
- * (mod/googlemeet:view in the module context), are not suspended, satisfy the activity's access
- * restrictions and do not manage activities in the course (teachers/managers are not reminded,
- * preserving the historical "students only" behaviour). Users already recorded in
- * googlemeet_notify_done for the event are excluded.
+ * Reminders are for students only. Recipients are users who hold a role with the 'student'
+ * archetype in the module context or any parent context (course, category, system), have an
+ * active enrolment in the course, can view the activity (mod/googlemeet:view), are not suspended,
+ * satisfy the activity's access restrictions and do not manage activities in the course.
+ * Users already recorded in googlemeet_notify_done for the event are excluded.
  *
  * @param int $eventid the event ID
  * @return stdClass[] users keyed by id (full user records)
@@ -1637,14 +1637,29 @@ function googlemeet_get_users_to_notify($eventid) {
         return [];
     }
 
+    // Students only: users with a 'student'-archetype role in the module context or its parents.
+    $studentroleids = array_keys(get_archetype_roles('student'));
+    if (!$studentroleids) {
+        return [];
+    }
+    [$rolesql, $roleparams] = $DB->get_in_or_equal($studentroleids, SQL_PARAMS_NAMED, 'role');
+    [$ctxsql, $ctxparams] = $DB->get_in_or_equal($context->get_parent_context_ids(true), SQL_PARAMS_NAMED, 'ctx');
+    $students = array_flip($DB->get_fieldset_sql(
+        "SELECT DISTINCT ra.userid
+           FROM {role_assignments} ra
+          WHERE ra.roleid $rolesql AND ra.contextid $ctxsql",
+        $roleparams + $ctxparams
+    ));
+
     $notified = array_flip($DB->get_fieldset_select('googlemeet_notify_done', 'userid', 'eventid = ?', [$eventid]));
 
     $users = [];
     foreach ($candidates as $user) {
-        if (isset($notified[$user->id]) || !empty($user->suspended) || !empty($user->deleted)) {
+        if (!isset($students[$user->id]) || isset($notified[$user->id])
+                || !empty($user->suspended) || !empty($user->deleted)) {
             continue;
         }
-        // Keep reminders student-facing: skip anyone who manages activities in this course.
+        // A student who also manages activities here (e.g. also editing teacher) is not reminded.
         if (has_capability('moodle/course:manageactivities', $context, $user)) {
             continue;
         }

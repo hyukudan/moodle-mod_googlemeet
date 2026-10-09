@@ -55,7 +55,8 @@ final class notify_users_test extends \advanced_testcase {
     }
 
     /**
-     * Active student is notified; suspended, other-course and teacher users are not.
+     * Active student is notified; suspended, other-course, teacher and non-editing
+     * teacher users are not.
      */
     public function test_recipients_basic(): void {
         $this->resetAfterTest();
@@ -78,6 +79,10 @@ final class notify_users_test extends \advanced_testcase {
 
         $teacher = $gen->create_user();
         $gen->enrol_user($teacher->id, $course->id, 'editingteacher');
+
+        // Non-editing teacher: can view the activity but is not a student.
+        $noneditingteacher = $gen->create_user();
+        $gen->enrol_user($noneditingteacher->id, $course->id, 'teacher');
 
         $users = googlemeet_get_users_to_notify($eventid);
         $ids = array_keys($users);
