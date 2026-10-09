@@ -593,3 +593,7 @@ $string['hub_print_summary'] = 'Print summary';
 // track: hub
 $string['hub_chapters_heading'] = 'Chapters';
 $string['hub_chapters_hint_seek'] = 'Select one to jump to that time.';
+$string['hub_player_fallback_text'] = 'Video not loading?';
+$string['hub_player_fallback_link'] = 'Open in Google Drive';
+$string['hub_player_help_why'] = 'Why does this happen?';
+$string['hub_opens_new_tab'] = 'opens in a new tab';

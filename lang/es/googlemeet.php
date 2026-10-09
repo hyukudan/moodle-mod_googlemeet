@@ -598,3 +598,7 @@ $string['hub_print_summary'] = 'Imprimir resumen';
 // track: hub
 $string['hub_chapters_heading'] = 'Capítulos';
 $string['hub_chapters_hint_seek'] = 'Pulsa uno para saltar a ese minuto.';
+$string['hub_player_fallback_text'] = '¿No carga el vídeo?';
+$string['hub_player_fallback_link'] = 'Abrir en Google Drive';
+$string['hub_player_help_why'] = '¿Por qué pasa?';
+$string['hub_opens_new_tab'] = 'se abre en una pestaña nueva';

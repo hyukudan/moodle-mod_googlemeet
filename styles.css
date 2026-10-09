@@ -3774,3 +3774,30 @@ mark.googlemeet-transcript-match-current {
         line-clamp: none;
     }
 }
+/* Visible "video not loading?" fallback right under the player. */
+.googlemeet-player-fallback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.6rem;
+    font-size: 0.875rem;
+    color: var(--gm-muted, #5f6368);
+}
+.googlemeet-player-fallback-link {
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.googlemeet-player-fallback-link::after {
+    content: " \2197";
+}
+.googlemeet-player-fallback .googlemeet-player-help {
+    font-size: 0.8rem;
+}
+.googlemeet-player-fallback .googlemeet-player-help summary {
+    min-height: 24px;
+    font-weight: 400;
+}
+.googlemeet-player-fallback .googlemeet-player-help[open] {
+    flex-basis: 100%;
+}

@@ -18,11 +18,14 @@
         <div class="ratio ratio-16x9 mb-3 googlemeet-recording-player">
           <iframe src="{{playerurl}}" data-region="recording-player-iframe" data-embed-base="{{embedurl}}" allow="autoplay; encrypted-media" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="{{originalname}}"></iframe>
         </div>
-        <details class="googlemeet-player-help mb-3">
-          <summary>{{# str }} player_help_summary, mod_googlemeet {{/ str }}</summary>
-          <p>{{# str }} player_help_body, mod_googlemeet {{/ str }}</p>
-          <a href="{{webviewlink}}" target="_blank" rel="noopener">{{# str }} openindrive, mod_googlemeet {{/ str }}</a>
-        </details>
+        <div class="googlemeet-player-fallback mb-3">
+          <span class="googlemeet-player-fallback-text">{{# str }} hub_player_fallback_text, mod_googlemeet {{/ str }}</span>
+          <a href="{{webviewlink}}" class="googlemeet-player-fallback-link" target="_blank" rel="noopener">{{# str }} hub_player_fallback_link, mod_googlemeet {{/ str }}<span class="visually-hidden"> ({{# str }} hub_opens_new_tab, mod_googlemeet {{/ str }})</span></a>
+          <details class="googlemeet-player-help">
+            <summary>{{# str }} hub_player_help_why, mod_googlemeet {{/ str }}</summary>
+            <p>{{# str }} player_help_body, mod_googlemeet {{/ str }}</p>
+          </details>
+        </div>
         <div class="visually-hidden" data-region="seek-feedback" aria-live="polite"></div>
         {{#hasresume}}
         <div class="googlemeet-resume-bar mb-3" data-region="resume-bar">
@@ -112,16 +115,13 @@
         {{#progresscompleted}}{{# str }} recording_progress_completed, mod_googlemeet {{/ str }}{{/progresscompleted}}
         {{^progresscompleted}}{{# str }} recording_mark_viewed, mod_googlemeet {{/ str }}{{/progresscompleted}}
       </button>
+      {{#caneditrecording}}
       <div class="googlemeet-hub-secondary-actions">
-        <a href="{{webviewlink}}" class="btn btn-link btn-sm" target="_blank" rel="noopener" title="{{# str }} openindrive, mod_googlemeet {{/ str }}: {{originalname}}">
-          {{# pix }} i/externallink, core {{/ pix }} {{# str }} openindrive, mod_googlemeet {{/ str }}
-        </a>
-        {{#caneditrecording}}
           <button type="button" class="btn btn-outline-secondary btn-sm recordinghowhide" data-id="{{recordingid}}" data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}" data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}">
             {{visibilitybuttonlabel}}
           </button>
-        {{/caneditrecording}}
       </div>
+      {{/caneditrecording}}
     </div>
   </header>
 
