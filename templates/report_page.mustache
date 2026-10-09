@@ -1,0 +1,137 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_googlemeet/report_page
+
+    Teacher viewing report (ANA-04).
+
+    Example context (json):
+    {
+        "cmid": 3, "formaction": "#", "hasgroups": true,
+        "groups": [{"id": 1, "name": "Mañana", "selected": false}],
+        "allgroupsselected": true, "inactive": false, "inactivedays": 14,
+        "studentcount": 2, "recordingcount": 2, "avgpct": 50, "inactivecount": 1,
+        "hasrecordings": true, "hasrows": true,
+        "identityheaders": [{"name": "Email"}],
+        "headers": [{"index": 1, "name": "Tema 1", "date": "1 oct", "hidden": false, "url": "#", "completedlabel": "1 de 2"}],
+        "rows": [{"fullname": "Ana Pérez", "profileurl": "#", "identity": [{"value": "ana@example.com"}],
+                  "completedlabel": "1/2", "lastaccess": "1/10/26, 10:00", "lastaccessago": "8 días", "inactive": false,
+                  "cells": [{"pct": 100, "iscompleted": true, "title": "100%"}]}],
+        "hasfailed": true,
+        "failedsections": [{"name": "Tema 1", "url": "#", "items": [{"name": "¿Pregunta?", "wrongpct": 75, "detail": "3 de 4"}]}]
+    }
+}}
+<div class="googlemeet-report">
+  <form method="get" action="{{formaction}}" class="googlemeet-report-filters">
+    <input type="hidden" name="id" value="{{cmid}}">
+    {{#hasgroups}}
+      <label class="googlemeet-report-filter">
+        <span>{{# str }} report_filter_group, mod_googlemeet {{/ str }}</span>
+        <select name="group" class="form-select form-select-sm">
+          <option value="0" {{#allgroupsselected}}selected{{/allgroupsselected}}>{{# str }} allparticipants {{/ str }}</option>
+          {{#groups}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/groups}}
+        </select>
+      </label>
+    {{/hasgroups}}
+    <label class="googlemeet-report-filter form-check">
+      <input type="checkbox" class="form-check-input" name="inactive" value="1" {{#inactive}}checked{{/inactive}}>
+      <span class="form-check-label">{{# str }} report_filter_inactive, mod_googlemeet, {{inactivedays}} {{/ str }}</span>
+    </label>
+    <button type="submit" class="btn btn-secondary btn-sm">{{# str }} report_filter_apply, mod_googlemeet {{/ str }}</button>
+  </form>
+
+  <div class="googlemeet-report-summary">
+    <div class="googlemeet-report-stat"><span class="googlemeet-report-stat-value">{{studentcount}}</span><span class="googlemeet-report-stat-label">{{# str }} report_stat_students, mod_googlemeet {{/ str }}</span></div>
+    <div class="googlemeet-report-stat"><span class="googlemeet-report-stat-value">{{recordingcount}}</span><span class="googlemeet-report-stat-label">{{# str }} report_stat_recordings, mod_googlemeet {{/ str }}</span></div>
+    <div class="googlemeet-report-stat"><span class="googlemeet-report-stat-value">{{avgpct}}%</span><span class="googlemeet-report-stat-label">{{# str }} report_stat_avg, mod_googlemeet {{/ str }}</span></div>
+    <div class="googlemeet-report-stat"><span class="googlemeet-report-stat-value">{{inactivecount}}</span><span class="googlemeet-report-stat-label">{{# str }} report_stat_inactive, mod_googlemeet, {{inactivedays}} {{/ str }}</span></div>
+  </div>
+
+  {{^hasrecordings}}
+    <div class="alert alert-info">{{# str }} report_no_recordings, mod_googlemeet {{/ str }}</div>
+  {{/hasrecordings}}
+  {{#hasrecordings}}
+    {{^hasrows}}
+      <div class="alert alert-info">{{# str }} report_no_students, mod_googlemeet {{/ str }}</div>
+    {{/hasrows}}
+    {{#hasrows}}
+      <div class="googlemeet-report-legend" aria-hidden="true">
+        <span class="googlemeet-report-cell googlemeet-report-cell-completed">100</span> {{# str }} recording_progress_completed, mod_googlemeet {{/ str }}
+        <span class="googlemeet-report-cell googlemeet-report-cell-partial">40</span> {{# str }} recording_progress_partial, mod_googlemeet {{/ str }}
+        <span class="googlemeet-report-cell googlemeet-report-cell-unseen">&ndash;</span> {{# str }} recording_progress_unseen, mod_googlemeet {{/ str }}
+      </div>
+      <div class="googlemeet-report-scroll" tabindex="0" role="region" aria-label="{{# str }} report_title, mod_googlemeet {{/ str }}">
+        <table class="table table-sm googlemeet-report-table">
+          <caption class="visually-hidden">{{# str }} report_title, mod_googlemeet {{/ str }}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="googlemeet-report-sticky">{{# str }} fullnameuser {{/ str }}</th>
+              {{#identityheaders}}<th scope="col">{{name}}</th>{{/identityheaders}}
+              <th scope="col">{{# str }} report_col_completed, mod_googlemeet {{/ str }}</th>
+              <th scope="col">{{# str }} report_col_lastaccess, mod_googlemeet {{/ str }}</th>
+              {{#headers}}
+                <th scope="col" class="googlemeet-report-rechead">
+                  <a href="{{url}}" title="{{name}} · {{date}}">{{index}}. {{name}}</a>
+                  {{#hidden}}<span class="badge bg-secondary">{{# str }} hidden {{/ str }}</span>{{/hidden}}
+                  <span class="googlemeet-report-rechead-meta">{{date}} · {{completedlabel}}</span>
+                </th>
+              {{/headers}}
+            </tr>
+          </thead>
+          <tbody>
+            {{#rows}}
+              <tr{{#inactive}} class="googlemeet-report-row-inactive"{{/inactive}}>
+                <th scope="row" class="googlemeet-report-sticky"><a href="{{profileurl}}">{{fullname}}</a></th>
+                {{#identity}}<td>{{value}}</td>{{/identity}}
+                <td>{{completedlabel}}</td>
+                <td>
+                  {{lastaccess}}
+                  {{#inactive}}<span class="badge bg-warning text-dark">{{# str }} report_badge_inactive, mod_googlemeet {{/ str }}</span>{{/inactive}}
+                </td>
+                {{#cells}}
+                  <td class="googlemeet-report-td" title="{{title}}">
+                    <span class="googlemeet-report-cell googlemeet-report-cell-{{state}}">{{#isunseen}}&ndash;{{/isunseen}}{{^isunseen}}{{pct}}{{/isunseen}}</span>
+                    <span class="visually-hidden">{{title}}</span>
+                  </td>
+                {{/cells}}
+              </tr>
+            {{/rows}}
+          </tbody>
+        </table>
+      </div>
+    {{/hasrows}}
+  {{/hasrecordings}}
+
+  <section class="googlemeet-report-failed" aria-labelledby="googlemeet-report-failed-title">
+    <h3 id="googlemeet-report-failed-title" class="h5">{{# str }} report_failed_title, mod_googlemeet {{/ str }}</h3>
+    {{^hasfailed}}<p class="text-muted">{{# str }} report_failed_none, mod_googlemeet {{/ str }}</p>{{/hasfailed}}
+    {{#failedsections}}
+      <div class="googlemeet-report-failed-rec">
+        <h4 class="h6"><a href="{{url}}">{{name}}</a></h4>
+        <ol class="googlemeet-report-failed-list">
+          {{#items}}
+            <li>
+              <span class="googlemeet-report-failed-pct">{{wrongpct}}%</span>
+              <span class="googlemeet-report-failed-name">{{name}}</span>
+              <span class="googlemeet-report-failed-detail">{{detail}}</span>
+            </li>
+          {{/items}}
+        </ol>
+      </div>
+    {{/failedsections}}
+  </section>
+</div>

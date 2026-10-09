@@ -106,4 +106,16 @@ $capabilities = [
             'manager' => CAP_ALLOW
         ]
     ],
+
+    // track: analytics. ANA-04 teacher viewing/practice report.
+    'mod/googlemeet:viewreports' => [
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ]
+    ],
 ];
