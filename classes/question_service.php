@@ -417,6 +417,38 @@ class question_service {
     }
 
     /**
+     * Load the optional local_questions leak-check library (fugaslib) if it is installed.
+     *
+     * The leak check lives in local_questions; this plugin must keep working when that
+     * plugin is missing or its API changes. In that case the check is skipped and a
+     * debugging notice is emitted (once per request) instead of a fatal error.
+     *
+     * @param string[] $functions Functions that must exist after loading the library.
+     * @return bool True if the library is loaded and all required functions exist.
+     */
+    protected static function leak_check_available(array $functions): bool {
+        global $CFG;
+        static $warned = false;
+
+        $path = $CFG->dirroot . '/local/questions/fugaslib.php';
+        if (file_exists($path)) {
+            require_once($path);
+        }
+        $missing = array_filter($functions, static function(string $fn): bool {
+            return !function_exists($fn);
+        });
+        if (!$missing) {
+            return true;
+        }
+        if (!$warned) {
+            $warned = true;
+            debugging('mod_googlemeet: leak check skipped, local/questions/fugaslib.php or functions (' .
+                implode(', ', $missing) . ') not available.', DEBUG_DEVELOPER);
+        }
+        return false;
+    }
+
+    /**
      * Set draft/ready status for questions.
      *
      * @param array $questionrows Rows returned by require_questions_for_recording().
@@ -435,9 +467,10 @@ class question_service {
 
         // Puerta contra fugas internas (04-10-2026): al PUBLICAR (ready) se valida la
         // versión completa de cada pregunta; si una falla, no se publica ninguna.
-        if ($status === question_version_status::QUESTION_STATUS_READY) {
-            global $CFG;
-            require_once($CFG->dirroot . '/local/questions/fugaslib.php');
+        // The check is optional (local_questions may be absent); when the library is
+        // present the all-or-nothing semantics are preserved.
+        if ($status === question_version_status::QUESTION_STATUS_READY
+                && self::leak_check_available(['fugas_campos_pregunta', 'fugas_exigir_limpia'])) {
             foreach ($questionrows as $row) {
                 [$campos, $ctx] = fugas_campos_pregunta((int)$row->id);
                 fugas_exigir_limpia($campos, $ctx, 'googlemeet: publicar pregunta ' . $row->id, true);
@@ -500,13 +533,14 @@ class question_service {
         }
 
         // Puerta contra fugas internas (04-10-2026): edición del docente (modo humano).
-        global $CFG;
-        require_once($CFG->dirroot . '/local/questions/fugaslib.php');
-        $visibles = ['enunciado' => $stem, 'feedback_general' => $this->build_general_feedback($explanation, $citation)];
-        foreach ($options as $i => $o) {
-            $visibles["opcion$i"] = (string)$o;
+        // Optional: skipped (with a debugging notice) if local_questions is not installed.
+        if (self::leak_check_available(['fugas_exigir_limpia'])) {
+            $visibles = ['enunciado' => $stem, 'feedback_general' => $this->build_general_feedback($explanation, $citation)];
+            foreach ($options as $i => $o) {
+                $visibles["opcion$i"] = (string)$o;
+            }
+            fugas_exigir_limpia($visibles, ['baraja' => false], 'googlemeet: editar pregunta', true);
         }
-        fugas_exigir_limpia($visibles, ['baraja' => false], 'googlemeet: editar pregunta', true);
 
         $question = $DB->get_record('question', ['id' => $row->id], '*', MUST_EXIST);
         $question->name = shorten_text(clean_param($stem, PARAM_TEXT), 250);
