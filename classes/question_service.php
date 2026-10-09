@@ -433,6 +433,16 @@ class question_service {
             throw new moodle_exception('invalidrecord', 'error');
         }
 
+        // Puerta contra fugas internas (04-10-2026): al PUBLICAR (ready) se valida la
+        // versión completa de cada pregunta; si una falla, no se publica ninguna.
+        if ($status === question_version_status::QUESTION_STATUS_READY) {
+            global $CFG;
+            require_once($CFG->dirroot . '/local/questions/fugaslib.php');
+            foreach ($questionrows as $row) {
+                [$campos, $ctx] = fugas_campos_pregunta((int)$row->id);
+                fugas_exigir_limpia($campos, $ctx, 'googlemeet: publicar pregunta ' . $row->id, true);
+            }
+        }
         foreach ($questionrows as $row) {
             $DB->set_field('question_versions', 'status', $status, ['id' => $row->versionid]);
             question_bank::notify_question_edited($row->id);
@@ -488,6 +498,15 @@ class question_service {
         if ($stem === '' || count($options) !== 4 || $correctindex < 0 || $correctindex > 3) {
             throw new moodle_exception('invalidrecord', 'error');
         }
+
+        // Puerta contra fugas internas (04-10-2026): edición del docente (modo humano).
+        global $CFG;
+        require_once($CFG->dirroot . '/local/questions/fugaslib.php');
+        $visibles = ['enunciado' => $stem, 'feedback_general' => $this->build_general_feedback($explanation, $citation)];
+        foreach ($options as $i => $o) {
+            $visibles["opcion$i"] = (string)$o;
+        }
+        fugas_exigir_limpia($visibles, ['baraja' => false], 'googlemeet: editar pregunta', true);
 
         $question = $DB->get_record('question', ['id' => $row->id], '*', MUST_EXIST);
         $question->name = shorten_text(clean_param($stem, PARAM_TEXT), 250);
