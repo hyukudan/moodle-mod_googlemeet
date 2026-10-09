@@ -31,6 +31,13 @@ use mod_googlemeet\client;
  * @return true | null True if the feature is supported, null otherwise.
  */
 function googlemeet_supports($feature) {
+    // The AI practice questions live in a private question bank in the module context (like
+    // mod_quiz): FEATURE_USES_QUESTIONS without FEATURE_PUBLISHES_QUESTIONS. Declaring it lets
+    // core treat that bank as belonging to the activity (backup/restore, duplication, bank UI).
+    // Guarded with defined() so the switch never references an unknown constant.
+    if (defined('FEATURE_USES_QUESTIONS') && $feature === FEATURE_USES_QUESTIONS) {
+        return true;
+    }
     switch ($feature) {
         case FEATURE_MOD_ARCHETYPE:
             return MOD_ARCHETYPE_RESOURCE;

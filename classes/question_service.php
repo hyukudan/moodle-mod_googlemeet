@@ -37,6 +37,15 @@ require_once($CFG->dirroot . '/question/engine/bank.php');
  */
 class question_service {
 
+    /** @var string Prefix of the per-recording question tag (followed by the local recording id). */
+    public const TAG_PREFIX = 'googlemeet-rec-';
+
+    /** @var string Prefix used to park tags whose recording was not part of a restore. */
+    public const ORPHAN_TAG_PREFIX = 'googlemeet-orphan-rec-';
+
+    /** @var string Prefix of the activity category idnumber (followed by the course-module id). */
+    public const CATEGORY_IDNUMBER_PREFIX = 'googlemeet_cm_';
+
     /**
      * Build the deterministic tag used to bind questions to one recording.
      *
@@ -44,7 +53,109 @@ class question_service {
      * @return string
      */
     public static function tag_for_recording(int $recordingid): string {
-        return 'googlemeet-rec-' . $recordingid;
+        return self::TAG_PREFIX . $recordingid;
+    }
+
+    /**
+     * Build the deterministic idnumber of the activity question category.
+     *
+     * @param int $cmid Course-module id.
+     * @return string
+     */
+    public static function category_idnumber(int $cmid): string {
+        return self::CATEGORY_IDNUMBER_PREFIX . $cmid;
+    }
+
+    /**
+     * Re-bind the private question bank of a restored/duplicated activity.
+     *
+     * Core restore copies the module-context categories, questions (with their draft/ready
+     * status) and tags verbatim, so after a restore:
+     *  - the category idnumber still carries the ORIGINAL course-module id, and
+     *  - each question is still tagged with the ORIGINAL recording id.
+     * This rewrites both to the new ids. It only touches categories/questions that live in the
+     * given (new) module context, so it can never modify the source activity. It must run exactly
+     * once per restore (from the restore step's after_restore()): the tag rewrite relies on the
+     * restore id mappings and is NOT idempotent.
+     *
+     * Tags whose recording was not part of the restore (e.g. a recording in the trash, which is not
+     * backed up) are renamed to the orphan prefix so they can never collide with a recording id
+     * that exists on the target site.
+     *
+     * @param \context_module $context New module context.
+     * @param int $oldcmid Course-module id of the activity in the backup.
+     * @param callable $recordingmapper fn(int $oldrecordingid): int|false|null new local recording id.
+     * @return array{categories: int, questions: int, orphans: int} Counters, for logging/tests.
+     */
+    public static function remap_restored_questions(\context_module $context, int $oldcmid, callable $recordingmapper): array {
+        global $DB;
+
+        $stats = ['categories' => 0, 'questions' => 0, 'orphans' => 0];
+        $newcmid = (int)$context->instanceid;
+
+        // 1. Category idnumber: googlemeet_cm_<old cmid> -> googlemeet_cm_<new cmid>.
+        $newidnumber = self::category_idnumber($newcmid);
+        if ($oldcmid !== $newcmid
+                && !$DB->record_exists('question_categories', ['contextid' => $context->id, 'idnumber' => $newidnumber])) {
+            $category = $DB->get_record('question_categories',
+                ['contextid' => $context->id, 'idnumber' => self::category_idnumber($oldcmid)], 'id');
+            if ($category) {
+                $DB->set_field('question_categories', 'idnumber', $newidnumber, ['id' => $category->id]);
+                $stats['categories']++;
+            }
+        }
+
+        // 2. Per-recording tags of every question in this module context.
+        $sql = "SELECT ti.id, ti.itemid, t.name
+                  FROM {tag_instance} ti
+                  JOIN {tag} t ON t.id = ti.tagid
+                 WHERE ti.component = :component
+                   AND ti.itemtype = :itemtype
+                   AND " . $DB->sql_like('t.name', ':prefix', false, false) . "
+                   AND ti.itemid IN (
+                        SELECT qv.questionid
+                          FROM {question_versions} qv
+                          JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                          JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
+                         WHERE qc.contextid = :contextid)";
+        $rows = $DB->get_records_sql($sql, [
+            'component' => 'core_question',
+            'itemtype' => 'question',
+            'prefix' => $DB->sql_like_escape(self::TAG_PREFIX) . '%',
+            'contextid' => $context->id,
+        ]);
+
+        $byquestion = [];
+        foreach ($rows as $row) {
+            if (preg_match('/^' . preg_quote(self::TAG_PREFIX, '/') . '(\d+)$/', \core_text::strtolower($row->name), $m)) {
+                $byquestion[(int)$row->itemid][] = (int)$m[1];
+            }
+        }
+
+        foreach ($byquestion as $questionid => $oldrecordingids) {
+            $newnames = [];
+            foreach ($oldrecordingids as $oldrecordingid) {
+                $newrecordingid = (int)$recordingmapper($oldrecordingid);
+                if ($newrecordingid > 0) {
+                    $newnames[] = self::tag_for_recording($newrecordingid);
+                } else {
+                    $newnames[] = self::ORPHAN_TAG_PREFIX . $oldrecordingid;
+                    $stats['orphans']++;
+                }
+            }
+            // Remove every old binding first, then add the new ones: a chain such as 5->9, 9->12
+            // must not drop the freshly added "9" tag.
+            foreach ($oldrecordingids as $oldrecordingid) {
+                \core_tag_tag::remove_item_tag('core_question', 'question', $questionid,
+                    self::tag_for_recording($oldrecordingid));
+            }
+            foreach (array_unique($newnames) as $name) {
+                \core_tag_tag::add_item_tag('core_question', 'question', $questionid, $context, $name);
+            }
+            $stats['questions']++;
+        }
+
+        return $stats;
     }
 
     /**
@@ -59,11 +170,14 @@ class question_service {
     public function get_category(stdClass $googlemeet, stdClass $cm, \context_module $context, bool $create): ?stdClass {
         global $DB;
 
-        $idnumber = 'googlemeet_cm_' . $cm->id;
+        $idnumber = self::category_idnumber((int)$cm->id);
         $category = $DB->get_record('question_categories', [
             'contextid' => $context->id,
             'idnumber' => $idnumber,
         ]);
+        if (!$category) {
+            $category = $this->adopt_stale_category($context, $idnumber);
+        }
         if ($category || !$create) {
             return $category ?: null;
         }
@@ -89,6 +203,37 @@ class question_service {
             'contextid' => $context->id,
         ]);
         $event->trigger();
+
+        return $category;
+    }
+
+    /**
+     * Self-heal: adopt a category of this module context whose idnumber still points at another cmid.
+     *
+     * This happens when the activity was restored/duplicated by a version without the restore
+     * remap, or the remap could not run. Only an unambiguous match (exactly one category of this
+     * very module context with the googlemeet_cm_ prefix) is adopted, so questions of another
+     * activity can never be picked up (categories are always filtered by this context id).
+     *
+     * @param \context_module $context Module context.
+     * @param string $idnumber Expected idnumber for the current cmid.
+     * @return stdClass|null
+     */
+    protected function adopt_stale_category(\context_module $context, string $idnumber): ?stdClass {
+        global $DB;
+
+        $select = 'contextid = :contextid AND parent <> 0 AND ' .
+            $DB->sql_like('idnumber', ':prefix', false, false);
+        $candidates = $DB->get_records_select('question_categories', $select, [
+            'contextid' => $context->id,
+            'prefix' => $DB->sql_like_escape(self::CATEGORY_IDNUMBER_PREFIX) . '%',
+        ]);
+        if (count($candidates) !== 1) {
+            return null;
+        }
+        $category = reset($candidates);
+        $DB->set_field('question_categories', 'idnumber', $idnumber, ['id' => $category->id]);
+        $category->idnumber = $idnumber;
 
         return $category;
     }

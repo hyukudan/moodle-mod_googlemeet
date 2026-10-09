@@ -44,6 +44,13 @@ class backup_googlemeet_activity_task extends backup_activity_task {
      */
     protected function define_my_steps() {
         $this->add_step(new backup_googlemeet_activity_structure_step('googlemeet_structure', 'googlemeet.xml'));
+
+        // The AI practice questions live in this activity's private question bank (module context).
+        // Like mod_quiz, annotate every question category of the module context so the final task
+        // writes them (with their questions, versions/status and tags) to questions.xml. Without
+        // these two steps the questions are silently dropped on backup and duplication.
+        $this->add_step(new backup_calculate_question_categories('activity_question_categories'));
+        $this->add_step(new backup_delete_temp_questions('clean_temp_questions'));
     }
 
     /**

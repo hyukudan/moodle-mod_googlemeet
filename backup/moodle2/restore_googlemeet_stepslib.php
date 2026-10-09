@@ -261,4 +261,21 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $this->add_related_files('mod_googlemeet', 'attachment', null);
         $this->add_related_files('mod_googlemeet', 'recordingmaterial', 'googlemeet_recording');
     }
+
+    /**
+     * Re-bind the restored practice questions to the new activity and recordings (DAT-02).
+     *
+     * Runs after the whole restore plan, i.e. once core has created the question categories and
+     * moved them (with their tag instances) into this activity's new module context.
+     */
+    protected function after_restore() {
+        $context = context_module::instance($this->task->get_moduleid());
+        \mod_googlemeet\question_service::remap_restored_questions(
+            $context,
+            (int)$this->task->get_old_moduleid(),
+            function(int $oldrecordingid) {
+                return $this->get_mappingid('googlemeet_recording', $oldrecordingid);
+            }
+        );
+    }
 }
