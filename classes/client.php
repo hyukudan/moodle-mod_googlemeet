@@ -641,7 +641,7 @@ class client {
 
                         if (!$deferenrichment && !isset($existingids[$recording->id])) {
                             // Only fetch the transcript and run yt-dlp for recordings we are
-                            // about to insert. Existing rows are left untouched by sync_recordings().
+                            // about to insert. Existing rows are left untouched by googlemeet_sync_recordings().
                             $transcriptdata = $this->find_transcript_for_recording($service, $parents, $recording->name);
                             if ($transcriptdata) {
                                 $recordings[$i]->transcriptfileid = $transcriptdata['fileid'];
@@ -684,7 +684,7 @@ class client {
                     }
                 }
 
-                $result = sync_recordings($googlemeet->id, $recordings, $deferenrichment);
+                $result = googlemeet_sync_recordings($googlemeet->id, $recordings, $deferenrichment);
                 $stats = $result['stats'];
             } else {
                 // No recordings found, but still update lastsync time.

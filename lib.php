@@ -50,6 +50,8 @@ function googlemeet_supports($feature) {
             return true;
         case FEATURE_SHOW_DESCRIPTION:
             return true;
+        case FEATURE_MOD_PURPOSE:
+            return MOD_PURPOSE_COMMUNICATION;
         default:
             return null;
     }
@@ -1225,7 +1227,7 @@ function mod_googlemeet_get_fontawesome_icon_map() {
  * @param bool $deferenrichment Queue transcript/notes/permission enrichment instead of doing follow-up queues now.
  * @return array with 'recordings' list and 'stats' (inserted, updated, deleted, trashed, restored counts)
  */
-function sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
+function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment = false) {
     global $DB;
 
     $cm = get_coursemodule_from_instance('googlemeet', $googlemeetid, 0, false, MUST_EXIST);

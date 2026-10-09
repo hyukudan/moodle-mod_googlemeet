@@ -107,7 +107,7 @@ class soft_delete_test extends \advanced_testcase {
     }
 
     /**
-     * Build a processed Drive file object as sync_recordings() expects it.
+     * Build a processed Drive file object as googlemeet_sync_recordings() expects it.
      *
      * @param string $driveid Drive file id.
      * @param string|null $name Recording name.
@@ -134,7 +134,7 @@ class soft_delete_test extends \advanced_testcase {
         $oldid = $this->create_recording($googlemeet->id, 'drive-old');
         $analysisid = $this->create_analysis($oldid);
 
-        $result = sync_recordings($googlemeet->id, [$this->drive_file('drive-new')]);
+        $result = googlemeet_sync_recordings($googlemeet->id, [$this->drive_file('drive-new')]);
 
         $old = $DB->get_record('googlemeet_recordings', ['id' => $oldid], '*', MUST_EXIST);
         $this->assertEquals(1, (int)$old->deleted);
@@ -159,7 +159,7 @@ class soft_delete_test extends \advanced_testcase {
         ]);
         $analysisid = $this->create_analysis($recordingid);
 
-        $result = sync_recordings($googlemeet->id, [$this->drive_file('drive-back', 'Restored name')]);
+        $result = googlemeet_sync_recordings($googlemeet->id, [$this->drive_file('drive-back', 'Restored name')]);
 
         $recording = $DB->get_record('googlemeet_recordings', ['id' => $recordingid], '*', MUST_EXIST);
         $this->assertSame($recordingid, (int)$recording->id);
@@ -444,7 +444,7 @@ class soft_delete_test extends \advanced_testcase {
             'timecreated' => time(),
         ]);
 
-        $result = sync_recordings($googlemeet->id, [$this->drive_file('drive-deferred')], true);
+        $result = googlemeet_sync_recordings($googlemeet->id, [$this->drive_file('drive-deferred')], true);
 
         $this->assertSame(1, (int)$result['stats']['inserted']);
         $this->assertCount(1, $result['newrecordingids']);
