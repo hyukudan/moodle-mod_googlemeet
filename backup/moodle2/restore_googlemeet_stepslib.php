@@ -49,12 +49,11 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $paths[] = new restore_path_element('googlemeet_recording',
             '/activity/googlemeet/recordings/recording');
 
-        // AI analysis carries a transcript (participant-derived personal data): only restore it
-        // when restoring with user information. This gates legacy backups that still contain the
-        // aianalysis subtree (current backups omit it entirely when userinfo is off).
+        // AI analysis (summary, key points, topics, chapters) is course content and is always
+        // restored; its transcript is stripped in process_googlemeet_aianalysis() without user info.
+        $paths[] = new restore_path_element('googlemeet_aianalysis',
+            '/activity/googlemeet/recordings/recording/aianalysis');
         if ($userinfo) {
-            $paths[] = new restore_path_element('googlemeet_aianalysis',
-                '/activity/googlemeet/recordings/recording/aianalysis');
             $paths[] = new restore_path_element('googlemeet_recordingprogress',
                 '/activity/googlemeet/recordings/recording/recordingprogresses/recordingprogress');
             $paths[] = new restore_path_element('googlemeet_recordingsub',
@@ -179,8 +178,23 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         $oldid = $data->id;
 
         $data->recordingid = $this->get_new_parentid('googlemeet_recording');
+        if (empty($data->recordingid)
+                || $DB->record_exists('googlemeet_ai_analysis', ['recordingid' => $data->recordingid])) {
+            return;
+        }
         $data->timecreated = $this->apply_date_offset($data->timecreated);
         $data->timemodified = $this->apply_date_offset($data->timemodified);
+
+        // The transcript is participant-derived personal data: never restore it without user
+        // information (also strips it from backups made with user data). Without user information
+        // only finished analyses are copied: a pending/failed one would make the copy queue its own
+        // (paid) AI run against the same Drive file.
+        if (!$this->userinfo) {
+            if (($data->status ?? '') !== 'completed') {
+                return;
+            }
+            $data->transcript = null;
+        }
 
         $newitemid = $DB->insert_record('googlemeet_ai_analysis', $data);
         $this->set_mapping('googlemeet_aianalysis', $oldid, $newitemid);
