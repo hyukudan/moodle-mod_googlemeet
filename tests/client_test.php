@@ -78,6 +78,59 @@ class client_testable_client extends client {
     public function recording_passes_conflict_resolution_for_test($recording, int $googlemeetid, array $nameconflicts, array $eventslots): bool {
         return $this->recording_passes_conflict_resolution($recording, $googlemeetid, $nameconflicts, $eventslots);
     }
+
+    /**
+     * Expose the recording filter for unit tests.
+     *
+     * @param array $recordings Drive recording objects.
+     * @param string $meetingcode Meeting code.
+     * @param string $activityname Activity name.
+     * @param int $googlemeetid Current activity id.
+     * @param string $customfilter Custom recording filter.
+     * @param int[] $nameconflicts Conflicting activity ids.
+     * @param array $eventslots Event slots per googlemeetid.
+     * @return array With 'recordings' and 'matchedvia' keys.
+     */
+    public function filter_recordings_for_activity_for_test(array $recordings, string $meetingcode, string $activityname,
+            int $googlemeetid, string $customfilter = '', array $nameconflicts = [], array $eventslots = []): array {
+        return $this->filter_recordings_for_activity(
+            $recordings, $meetingcode, $activityname, $googlemeetid, $customfilter, $nameconflicts, $eventslots);
+    }
+
+    /**
+     * Expose the assigned-folder listing for unit tests.
+     *
+     * @param int $googlemeetid Activity id.
+     * @return string[]
+     */
+    public function get_assigned_folder_ids_for_test(int $googlemeetid): array {
+        return $this->get_assigned_folder_ids($googlemeetid);
+    }
+
+    /**
+     * Expose the folder owner map for unit tests.
+     *
+     * @param string[] $folderids Drive folder ids.
+     * @return array
+     */
+    public function get_folder_owner_map_for_test(array $folderids): array {
+        return $this->get_folder_owner_map($folderids);
+    }
+
+    /**
+     * Expose the two-leg Drive fetch for unit tests.
+     *
+     * @param object $service Fake REST service.
+     * @param object $googlemeet Activity instance.
+     * @param string[] $folderids Discovered Meet folders.
+     * @param string $namefilter Name query fragment.
+     * @param string $recordingfields Fields mask.
+     * @return array
+     */
+    public function fetch_recordings_for_activity_for_test($service, $googlemeet, array $folderids,
+            string $namefilter, string $recordingfields): array {
+        return $this->fetch_recordings_for_activity($service, $googlemeet, $folderids, $namefilter, $recordingfields);
+    }
 }
 
 /**

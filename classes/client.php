@@ -313,6 +313,158 @@ class client {
     }
 
     /**
+     * List the Drive folders already assigned to an activity.
+     *
+     * A folder becomes assigned as soon as one recording stored in
+     * googlemeet_recordings (not trashed) has it as drivefolderid. Assigned
+     * folders are the ownership source of truth: files inside them are fetched
+     * on every sync regardless of their name, so renaming the Moodle activity
+     * or the meeting can never orphan previously synced recordings.
+     *
+     * @param int $googlemeetid Activity id.
+     * @return string[] Distinct Drive folder ids (capped like folder discovery).
+     */
+    protected function get_assigned_folder_ids(int $googlemeetid): array {
+        global $DB;
+
+        $folderids = [];
+        $recordset = $DB->get_recordset('googlemeet_recordings',
+            ['googlemeetid' => $googlemeetid, 'deleted' => 0], '', 'drivefolderid');
+        foreach ($recordset as $row) {
+            $folderid = (string)($row->drivefolderid ?? '');
+            if ($folderid === '') {
+                continue;
+            }
+            $folderids[$folderid] = true;
+            if (count($folderids) >= self::DRIVE_MEET_FOLDERS_MAX) {
+                $message = 'mod_googlemeet: assigned folder list stopped after ' .
+                    self::DRIVE_MEET_FOLDERS_MAX . ' folders; recordings beyond the cap are ' .
+                    'only found through the name-based query.';
+                debugging($message, DEBUG_DEVELOPER);
+                if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+                    mtrace($message);
+                }
+                break;
+            }
+        }
+        $recordset->close();
+
+        return array_keys($folderids);
+    }
+
+    /**
+     * Build the folder => owning activity map for a set of Drive folders.
+     *
+     * A folder is owned by the activity when exactly one activity has non-trashed
+     * recordings stored with that drivefolderid (same semantics as
+     * find_folder_assignment()). Folders claimed by several activities are left
+     * unowned so their files fall back to name matching.
+     *
+     * @param string[] $folderids Drive folder ids.
+     * @return array folder id => owning googlemeet id.
+     */
+    protected function get_folder_owner_map(array $folderids): array {
+        global $DB;
+
+        $folderids = array_values(array_unique(array_filter(array_map('strval', $folderids))));
+        if (empty($folderids)) {
+            return [];
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($folderids, SQL_PARAMS_NAMED);
+        $rows = $DB->get_records_select('googlemeet_recordings',
+            "drivefolderid $insql AND deleted = 0", $params, '', 'drivefolderid, googlemeetid');
+
+        $owners = [];
+        $ambiguous = [];
+        foreach ($rows as $row) {
+            $folderid = (string)$row->drivefolderid;
+            $owner = (int)$row->googlemeetid;
+            if (isset($ambiguous[$folderid])) {
+                continue;
+            }
+            if (!array_key_exists($folderid, $owners)) {
+                $owners[$folderid] = $owner;
+            } else if ($owners[$folderid] !== $owner) {
+                // Claimed by several activities: ambiguous, falls back to name matching.
+                unset($owners[$folderid]);
+                $ambiguous[$folderid] = true;
+            }
+        }
+
+        return $owners;
+    }
+
+    /**
+     * Fetch the Drive recordings candidate for syncing into an activity.
+     *
+     * Runs two query legs and merges them (deduplicated by file id):
+     * 1. Name leg (previous behaviour): files matching the activity name, meeting
+     *    code or custom filter, scoped to the discovered Meet folders or all Drive.
+     * 2. Folder leg: every video inside Drive folders already assigned to this
+     *    activity, regardless of filename. This keeps renamed recordings linked.
+     *
+     * @param object $service The REST service.
+     * @param object $googlemeet Activity instance.
+     * @param string[] $folderids Discovered Meet folder ids (empty = all-Drive fallback).
+     * @param string $namefilter Drive query fragment with the name conditions.
+     * @param string $recordingfields Drive files.list fields mask.
+     * @return array Deduplicated Drive file objects.
+     */
+    protected function fetch_recordings_for_activity($service, $googlemeet, array $folderids, string $namefilter, string $recordingfields): array {
+        $videoqrest = 'trashed = false and
+                mimeType = "video/mp4" and
+                "me" in owners';
+
+        // Leg 1: name-based search (unchanged behaviour).
+        if (empty($folderids)) {
+            $recordings = $this->list_all_pages($service, [
+                'q' => $videoqrest . ' and ' . $namefilter,
+                'pageSize' => 100,
+                'fields' => $recordingfields,
+            ]);
+        } else {
+            $recordings = $this->list_files_with_parent_chunks(
+                $service, $folderids, $videoqrest . ' and ' . $namefilter, 1000, $recordingfields);
+        }
+
+        // Leg 2: everything inside folders already assigned to this activity.
+        $assignedfolderids = $this->get_assigned_folder_ids((int)$googlemeet->id);
+        if (empty($assignedfolderids)) {
+            return $recordings;
+        }
+        if (empty($folderids)) {
+            // All-Drive fallback: run the parent chunks without a folder scope.
+            $folderleg = [];
+            foreach ($this->build_parents_query_chunks($assignedfolderids) as $chunk) {
+                $folderleg = array_merge($folderleg, $this->list_all_pages($service, [
+                    'q' => '(' . $chunk . ') and ' . $videoqrest,
+                    'pageSize' => 1000,
+                    'fields' => $recordingfields,
+                ]));
+            }
+        } else {
+            $folderleg = $this->list_files_with_parent_chunks(
+                $service, $assignedfolderids, $videoqrest, 1000, $recordingfields);
+        }
+
+        // Merge, keeping the name-leg copy when a file appears in both legs.
+        $byid = [];
+        foreach (array_merge($recordings, $folderleg) as $file) {
+            $fileid = $file->id ?? null;
+            if ($fileid === null) {
+                $byid[] = $file;
+                continue;
+            }
+            if (!isset($byid[$fileid])) {
+                $byid[$fileid] = $file;
+            }
+        }
+
+        return array_values($byid);
+    }
+
+    /**
      * Print the login in a popup.
      *
      * @param array|null $attr Custom attributes to be applied to popup div.
@@ -594,32 +746,27 @@ class client {
             $namefilter = '(' . implode(' or ', $conditions) . ')';
 
             $recordingfields = 'nextPageToken, files(id,name,permissionIds,createdTime,videoMediaMetadata,webViewLink,parents)';
-            // If no folders found, try searching ALL of Drive (no parent filter).
-            if (empty($folderids)) {
-                $recordings = $this->list_all_pages($service, [
-                    'q' => 'trashed = false and
-                            mimeType = "video/mp4" and
-                            "me" in owners and
-                            ' . $namefilter,
-                    'pageSize' => 100,
-                    'fields' => $recordingfields
-                ]);
-            } else {
-                $recordings = $this->list_files_with_parent_chunks(
-                    $service,
-                    $folderids,
-                    'trashed = false and
-                            mimeType = "video/mp4" and
-                            "me" in owners and
-                            ' . $namefilter,
-                    1000,
-                    $recordingfields
-                );
-            }
+            // The Drive query returns (a) files matching the activity name/code (current
+            // behaviour) and (b) every file inside Drive folders already assigned to this
+            // activity, so recordings whose filename no longer matches (renamed activity,
+            // renamed meeting) are still found and never soft-deleted as orphans.
+            $recordings = $this->fetch_recordings_for_activity(
+                $service, $googlemeet, $folderids, $namefilter, $recordingfields);
 
-            // Additional filtering for duplicate check across activities.
-            $recordings = $this->filter_recordings_for_activity(
+            // Additional filtering for duplicate check across activities. Also reports how
+            // many recordings were matched via the folder fingerprint vs the name filter.
+            ['recordings' => $recordings, 'matchedvia' => $matchedvia] = $this->filter_recordings_for_activity(
                 $recordings, $meetingcode, $name, $googlemeet->id, $customfilter, $nameconflicts, $eventslots);
+            $matchlog = 'mod_googlemeet: activity #' . $googlemeet->id . ' "' . $googlemeet->name . '": ' .
+                count($recordings) . ' recordings matched (' .
+                $matchedvia['folder'] . ' via folder fingerprint, ' .
+                $matchedvia['name'] . ' via name, ' .
+                $matchedvia['existing'] . ' already stored, ' .
+                $matchedvia['skipped_other_activity_folder'] . ' skipped: folder owned by another activity)';
+            debugging($matchlog, DEBUG_DEVELOPER);
+            if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+                mtrace($matchlog);
+            }
 
             // Remove sync param to avoid redirect loop (skipped when running in cron).
             $url = null;
@@ -627,7 +774,10 @@ class client {
                 $url = new moodle_url($PAGE->url);
                 $url->remove_params(['sync']);
             }
-            $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0];
+            $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0,
+                'matched_via_folder' => $matchedvia['folder'], 'matched_via_name' => $matchedvia['name'],
+                'matched_existing' => $matchedvia['existing'],
+                'skipped_other_activity_folder' => $matchedvia['skipped_other_activity_folder']];
 
             $recordingscount = $recordings ? count($recordings) : 0;
             if ($recordingscount > 0) {
@@ -793,16 +943,22 @@ class client {
      * Filter recordings to match only those belonging to this specific activity.
      *
      * The Drive API "contains" filter is broad and may return recordings from
-     * other activities with similar names. This method applies stricter filtering:
-     * 1. If custom filter is set, use it (case-insensitive contains)
-     * 2. Recording name must start with the activity name (case-insensitive)
-     * 3. Or recording name must contain the exact meeting code
-     * 4. Recording must not already exist in another activity (avoid duplicates)
+     * other activities with similar names. This method applies stricter filtering.
      *
-     * When another activity shares the same name ($nameconflicts), name matches
-     * (checks 3 and 4) are ambiguous and must additionally pass
-     * recording_passes_conflict_resolution(): the Drive folder fingerprint first,
-     * then the scheduled event slot with the largest overlap.
+     * Ownership semantics (Drive is the source of truth for existence, the
+     * assigned folder for ownership, the file name decides nothing on its own):
+     * 1. A file whose parent folder is assigned to THIS activity is imported/kept,
+     *    even if its filename does not match the activity name, meeting code or
+     *    custom filter. This keeps recordings linked after renaming the activity
+     *    or the meeting.
+     * 2. A file whose parent folder is assigned to a DIFFERENT activity is never
+     *    imported here.
+     * 3. Files in folders not yet assigned to any activity keep the name-based
+     *    logic: custom filter, meeting code, activity name — and, when another
+     *    activity shares the name, the conflict resolution (folder fingerprint,
+     *    then scheduled event slots).
+     * 4. Files already stored under this activity are kept (their Drive file id
+     *    still exists); files stored under another activity are skipped.
      *
      * @param array $recordings Array of recording objects from Drive API
      * @param string $meetingcode The meeting code (e.g., "abc-defg-hij")
@@ -811,14 +967,17 @@ class client {
      * @param string $customfilter Custom filter pattern set by user
      * @param int[] $nameconflicts IDs of other activities with the same name
      * @param array $eventslots Event slots per googlemeetid: id => [ [start, end], ... ]
-     * @return array Filtered array of recordings
+     * @return array With 'recordings' (filtered array) and 'matchedvia' counts
+     *               (folder / name / existing / skipped_other_activity_folder).
      */
     private function filter_recordings_for_activity($recordings, $meetingcode, $activityname, $googlemeetid,
             $customfilter = '', array $nameconflicts = [], array $eventslots = []) {
         global $DB;
 
         if (empty($recordings)) {
-            return [];
+            return ['recordings' => [], 'matchedvia' => [
+                'folder' => 0, 'name' => 0, 'existing' => 0, 'skipped_other_activity_folder' => 0,
+            ]];
         }
 
         // Batch query: get all existing recordings by their IDs to avoid N+1 queries.
@@ -835,7 +994,19 @@ class client {
             }
         }
 
+        // Folder ownership map for the folders of the returned files.
+        $filefolders = [];
+        foreach ($recordings as $recording) {
+            $parents = $recording->parents ?? [];
+            $folderid = is_array($parents) ? (string)($parents[0] ?? '') : '';
+            if ($folderid !== '') {
+                $filefolders[] = $folderid;
+            }
+        }
+        $folderowners = $this->get_folder_owner_map($filefolders);
+
         $filtered = [];
+        $matchedvia = ['folder' => 0, 'name' => 0, 'existing' => 0, 'skipped_other_activity_folder' => 0];
         $activitynamelower = \core_text::strtolower(trim($activityname));
         $customfilterlower = \core_text::strtolower(trim($customfilter));
 
@@ -855,15 +1026,33 @@ class client {
             // If recording already exists in this activity, include it (for updates).
             if ($existinggooglemeetid !== null && $existinggooglemeetid == $googlemeetid) {
                 $filtered[] = $recording;
+                $matchedvia['existing']++;
                 continue;
             }
 
-            // For new recordings, apply name-based filtering:
+            // For new recordings, the assigned folder decides ownership first.
+            $parents = $recording->parents ?? [];
+            $filefolder = is_array($parents) ? (string)($parents[0] ?? '') : '';
+            $folderowner = $filefolder !== '' ? ($folderowners[$filefolder] ?? null) : null;
+            if ($folderowner !== null) {
+                if ((int)$folderowner === (int)$googlemeetid) {
+                    // Folder assigned to this activity: name does not matter.
+                    $filtered[] = $recording;
+                    $matchedvia['folder']++;
+                } else {
+                    // Folder owned by another activity: never import here.
+                    $matchedvia['skipped_other_activity_folder']++;
+                }
+                continue;
+            }
+
+            // Unassigned folder: name-based filtering.
 
             // Priority 1: If custom filter is set, check it first (case-insensitive contains).
             if (!empty($customfilterlower)) {
                 if (strpos($recordingnamelower, $customfilterlower) !== false) {
                     $filtered[] = $recording;
+                    $matchedvia['name']++;
                     continue;
                 }
                 // Custom filter didn't match — fall through to meetingcode/name checks
@@ -873,6 +1062,7 @@ class client {
             // Check 2: Recording name contains the exact meeting code.
             if (!empty($meetingcode) && strpos($recordingnamelower, \core_text::strtolower($meetingcode)) !== false) {
                 $filtered[] = $recording;
+                $matchedvia['name']++;
                 continue;
             }
 
@@ -881,6 +1071,7 @@ class client {
             if (!empty($activitynamelower) && strpos($recordingnamelower, $activitynamelower) === 0) {
                 if ($this->recording_passes_conflict_resolution($recording, $googlemeetid, $nameconflicts, $eventslots)) {
                     $filtered[] = $recording;
+                    $matchedvia['name']++;
                 }
                 continue;
             }
@@ -891,12 +1082,13 @@ class client {
             if (preg_match('/\b' . $pattern . '\s*[\(\-]/i', $recordingnamelower)) {
                 if ($this->recording_passes_conflict_resolution($recording, $googlemeetid, $nameconflicts, $eventslots)) {
                     $filtered[] = $recording;
+                    $matchedvia['name']++;
                 }
                 continue;
             }
         }
 
-        return $filtered;
+        return ['recordings' => $filtered, 'matchedvia' => $matchedvia];
     }
 
     /**
