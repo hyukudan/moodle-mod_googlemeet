@@ -708,3 +708,20 @@ $string['report_question_deleted'] = '(deleted question)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
+
+// track: w2-completion
+// ANA-01: custom completion rules.
+$string['completionrecordings'] = 'Watch at least this number of classes';
+$string['completionrecordings_help'] = 'The activity is completed when the student has watched at least this number of recorded classes. Only visible classes that are not in the trash count.
+
+Progress is approximate while classes are played with the Google Drive player: a class counts as watched after enough time with the class page open, or when the student marks it as watched.';
+$string['completionwatchpercent'] = 'Watch at least this percentage of the visible classes';
+$string['completionwatchpercent_help'] = 'The activity is completed when the student has watched at least this percentage of the recorded classes that are visible to students. When new classes are added the percentage is recalculated the next time the student makes progress.
+
+Progress is approximate while classes are played with the Google Drive player: a class counts as watched after enough time with the class page open, or when the student marks it as watched.';
+$string['completionpractice'] = 'Answer at least this number of practice questions';
+$string['completionpractice_help'] = 'The activity is completed when the student has answered at least this number of different practice questions of the classes, whether the answers are right or wrong.';
+$string['completiondetail:recordings'] = 'Watch {$a} classes';
+$string['completiondetail:watchpercent'] = 'Watch {$a}% of the classes';
+$string['completiondetail:practice'] = 'Answer {$a} practice questions';
+$string['completionrule_range'] = 'Enter a whole number between 1 and {$a}.';

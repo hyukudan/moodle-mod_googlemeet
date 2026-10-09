@@ -713,3 +713,20 @@ $string['report_question_deleted'] = '(pregunta eliminada)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Práctica: {$a->pct}% de aciertos ({$a->attempts} respuestas de {$a->users} alumnos)';
+
+// track: w2-completion
+// ANA-01: custom completion rules.
+$string['completionrecordings'] = 'Ver al menos este número de clases';
+$string['completionrecordings_help'] = 'La actividad se completa cuando el alumno ha visto al menos este número de clases grabadas. Solo cuentan las clases visibles que no están en la papelera.
+
+Con el reproductor de Google Drive el progreso es aproximado: una clase cuenta como vista tras pasar suficiente tiempo con la página de la clase abierta o cuando el alumno la marca como vista.';
+$string['completionwatchpercent'] = 'Marcar como vistas al menos este % de las grabaciones visibles';
+$string['completionwatchpercent_help'] = 'La actividad se completa cuando el alumno ha visto al menos este porcentaje de las clases grabadas visibles para los alumnos. Si se añaden clases nuevas, el porcentaje se recalcula la próxima vez que el alumno avance.
+
+Con el reproductor de Google Drive el progreso es aproximado: una clase cuenta como vista tras pasar suficiente tiempo con la página de la clase abierta o cuando el alumno la marca como vista.';
+$string['completionpractice'] = 'Responder al menos este número de preguntas de práctica';
+$string['completionpractice_help'] = 'La actividad se completa cuando el alumno ha respondido al menos este número de preguntas de práctica distintas de las clases, acierte o falle.';
+$string['completiondetail:recordings'] = 'Ver {$a} clases';
+$string['completiondetail:watchpercent'] = 'Ver el {$a} % de las clases';
+$string['completiondetail:practice'] = 'Responder {$a} preguntas de práctica';
+$string['completionrule_range'] = 'Introduce un número entero entre 1 y {$a}.';

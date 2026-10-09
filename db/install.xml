@@ -33,6 +33,10 @@
         <FIELD NAME="recordingsorder" TYPE="char" LENGTH="4" NOTNULL="true" DEFAULT="DESC" SEQUENCE="false" COMMENT="Order of recordings: DESC (newest first) or ASC (oldest first)."/>
         <FIELD NAME="recordingfilter" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Custom name pattern to filter recordings from Google Drive."/>
         <FIELD NAME="autosynchours" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Hours after session end to auto-sync recordings from Google Drive. 0 = disabled."/>
+        <FIELD NAME="completionrecordings" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="ANA-01: completion requires at least N watched recordings. 0 = rule off."/>
+        <FIELD NAME="completionwatchpercent" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="ANA-01: completion requires watching at least this percentage of the visible recordings. 0 = rule off."/>
+        <FIELD NAME="completionpractice" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="ANA-01: completion requires answering at least N distinct practice questions. 0 = rule off."/>
+        <FIELD NAME="attendanceenabled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="ANA-03: per-activity opt-in to fetch real attendance from the Google Meet REST API."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -218,6 +222,54 @@
       <INDEXES>
         <INDEX NAME="googlemeetid_userid_questionid" UNIQUE="false" FIELDS="googlemeetid, userid, questionid" COMMENT="Latest attempt per question for one student."/>
       </INDEXES>
+    </TABLE>
+    <TABLE NAME="googlemeet_attendance" COMMENT="ANA-03: participants of a session, read from the Google Meet REST API.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="googlemeetid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="eventid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="FK to googlemeet_events."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Matched Moodle user. 0 = participant not matched to an enrolled user."/>
+        <FIELD NAME="email" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Participant email when Google provides it."/>
+        <FIELD NAME="displayname" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Display name shown in Meet."/>
+        <FIELD NAME="googleuserid" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Meet signed-in user id (users/...), empty for anonymous and phone participants."/>
+        <FIELD NAME="participanttype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="signedin" SEQUENCE="false" COMMENT="signedin, anonymous or phone."/>
+        <FIELD NAME="matchedby" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="email, googleuser, name, manual or empty when unmatched."/>
+        <FIELD NAME="timejoined" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeleft" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="durationseconds" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Sum of the participant sessions."/>
+        <FIELD NAME="sessions" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Number of joins (participant sessions)."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
+        <KEY NAME="eventidfk" TYPE="foreign" FIELDS="eventid" REFTABLE="googlemeet_events" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="googlemeetid_userid" UNIQUE="false" FIELDS="googlemeetid, userid"/>
+        <INDEX NAME="googleuserid" UNIQUE="false" FIELDS="googleuserid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="googlemeet_attendance_sync" COMMENT="ANA-03: per-session state of the Meet attendance fetch.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="googlemeetid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="eventid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="status" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="pending, done, nodata, scope, error."/>
+        <FIELD NAME="attempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="nextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="conferences" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Conference records found for the session."/>
+        <FIELD NAME="participants" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="matched" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="message" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last error, for the teacher view."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="googlemeetidfk" TYPE="foreign" FIELDS="googlemeetid" REFTABLE="googlemeet" REFFIELDS="id"/>
+        <KEY NAME="eventidfk" TYPE="foreign-unique" FIELDS="eventid" REFTABLE="googlemeet_events" REFFIELDS="id"/>
+      </KEYS>
     </TABLE>
   </TABLES>
 </XMLDB>

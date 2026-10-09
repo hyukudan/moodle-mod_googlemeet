@@ -511,5 +511,73 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026101001, 'googlemeet');
     }
 
+    // track: w2-completion.
+    if ($oldversion < 2026101140) {
+        // ANA-01 custom completion rules + ANA-03 per-activity attendance opt-in.
+        $table = new xmldb_table('googlemeet');
+        $fields = [
+            new xmldb_field('completionrecordings', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('completionwatchpercent', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('completionpractice', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('attendanceenabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+
+        upgrade_mod_savepoint(true, 2026101140, 'googlemeet');
+    }
+
+    if ($oldversion < 2026101141) {
+        // ANA-03: attendance read from the Google Meet REST API.
+        $table = new xmldb_table('googlemeet_attendance');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('googlemeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('eventid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('email', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('displayname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('googleuserid', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('participanttype', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'signedin');
+        $table->add_field('matchedby', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('timejoined', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timeleft', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('durationseconds', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('sessions', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('googlemeetidfk', XMLDB_KEY_FOREIGN, ['googlemeetid'], 'googlemeet', ['id']);
+        $table->add_key('eventidfk', XMLDB_KEY_FOREIGN, ['eventid'], 'googlemeet_events', ['id']);
+        $table->add_index('googlemeetid_userid', XMLDB_INDEX_NOTUNIQUE, ['googlemeetid', 'userid']);
+        $table->add_index('googleuserid', XMLDB_INDEX_NOTUNIQUE, ['googleuserid']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        $table = new xmldb_table('googlemeet_attendance_sync');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('googlemeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('eventid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('status', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'pending');
+        $table->add_field('attempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('nextattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('conferences', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('participants', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('matched', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('googlemeetidfk', XMLDB_KEY_FOREIGN, ['googlemeetid'], 'googlemeet', ['id']);
+        $table->add_key('eventidfk', XMLDB_KEY_FOREIGN_UNIQUE, ['eventid'], 'googlemeet_events', ['id']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2026101141, 'googlemeet');
+    }
+
     return true;
 }
