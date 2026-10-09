@@ -589,3 +589,6 @@ $string['hub_cta_practice_text'] = '{$a} exam-style questions about this class.'
 $string['hub_cta_practice_button'] = 'Start practice';
 $string['hub_cta_materials_button'] = 'See the class materials';
 $string['hub_print_summary'] = 'Print summary';
+
+// track: keypoints
+$string['privacy:metadata:preference:keypoints'] = 'The review checklist state of the key points in each recording (one preference per recording): which key points the user marked as reviewed.';

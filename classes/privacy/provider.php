@@ -50,6 +50,9 @@ class provider implements
     /** @var string Prefix of the per-recording "last jump" user preference. */
     const LASTJUMP_PREFIX = 'mod_googlemeet_lastjump_';
 
+    /** @var string Prefix of the per-recording key points checklist preference. */
+    const KEYPOINTS_PREFIX = 'mod_googlemeet_kp_';
+
     /**
      * Return the fields which contain personal data.
      *
@@ -181,6 +184,8 @@ class provider implements
 
         $collection->add_user_preference(self::LASTJUMP_PREFIX . '<recordingid>',
             'privacy:metadata:preference:lastjump');
+        $collection->add_user_preference(self::KEYPOINTS_PREFIX . '<recordingid>',
+            'privacy:metadata:preference:keypoints');
 
         return $collection;
     }
@@ -434,6 +439,13 @@ class provider implements
             list($insql, $inparams) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED);
             $DB->delete_records_select('googlemeet_recording_progress', "recordingid $insql", $inparams);
             $DB->delete_records_select('googlemeet_ai_analysis', "recordingid $insql", $inparams);
+            $names = [];
+            foreach ($recordingids as $recordingid) {
+                $names[] = self::LASTJUMP_PREFIX . $recordingid;
+                $names[] = self::KEYPOINTS_PREFIX . $recordingid;
+            }
+            [$nsql, $nparams] = $DB->get_in_or_equal($names, SQL_PARAMS_NAMED, 'pn');
+            $DB->delete_records_select('user_preferences', "name $nsql", $nparams);
         }
 
         $DB->execute("UPDATE {googlemeet_recordings}
@@ -484,7 +496,31 @@ class provider implements
                     'googlemeetid' => $instanceid,
                 ]
             );
+            self::delete_recording_preferences($instanceid, [$userid]);
         }
+    }
+
+    /**
+     * Delete the per-recording user preferences (last jump, key points checklist) of the given users.
+     *
+     * @param int $googlemeetid Instance id.
+     * @param int[] $userids Users.
+     */
+    protected static function delete_recording_preferences(int $googlemeetid, array $userids): void {
+        global $DB;
+
+        $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$googlemeetid]);
+        if (empty($recordingids) || empty($userids)) {
+            return;
+        }
+        $names = [];
+        foreach ($recordingids as $recordingid) {
+            $names[] = self::LASTJUMP_PREFIX . $recordingid;
+            $names[] = self::KEYPOINTS_PREFIX . $recordingid;
+        }
+        [$usql, $uparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'pu');
+        [$nsql, $nparams] = $DB->get_in_or_equal($names, SQL_PARAMS_NAMED, 'pn');
+        $DB->delete_records_select('user_preferences', "userid $usql AND name $nsql", $uparams + $nparams);
     }
 
     /**
@@ -520,6 +556,8 @@ class provider implements
         $select = "recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)
                    AND userid $usersql";
         $DB->delete_records_select('googlemeet_recording_progress', $select, $params);
+
+        self::delete_recording_preferences((int)$cm->instance, $userlist->get_userids());
     }
 
     /**
@@ -535,6 +573,22 @@ class provider implements
             'userid = :userid AND ' . $DB->sql_like('name', ':prefix'),
             ['userid' => $userid, 'prefix' => $DB->sql_like_escape(self::LASTJUMP_PREFIX) . '%'],
             'name', 'id, name, value');
+        $kppreferences = $DB->get_records_select('user_preferences',
+            'userid = :userid AND ' . $DB->sql_like('name', ':prefix'),
+            ['userid' => $userid, 'prefix' => $DB->sql_like_escape(self::KEYPOINTS_PREFIX) . '%'],
+            'name', 'id, name, value');
+        foreach ($kppreferences as $preference) {
+            $recordingid = (int)substr($preference->name, strlen(self::KEYPOINTS_PREFIX));
+            $recordingname = $DB->get_field('googlemeet_recordings', 'name', ['id' => $recordingid]);
+            $bits = (string)substr((string)strstr((string)$preference->value, ':'), 1);
+            writer::export_user_preference(
+                'mod_googlemeet',
+                $preference->name,
+                $bits === '' ? '' : substr_count($bits, '1') . '/' . strlen($bits),
+                get_string('privacy:metadata:preference:keypoints', 'mod_googlemeet') .
+                    ($recordingname !== false ? ' (' . format_string($recordingname) . ')' : '')
+            );
+        }
         foreach ($preferences as $preference) {
             $recordingid = (int)substr($preference->name, strlen(self::LASTJUMP_PREFIX));
             $recordingname = $DB->get_field('googlemeet_recordings', 'name', ['id' => $recordingid]);

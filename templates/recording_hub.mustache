@@ -181,7 +181,7 @@
           <button type="button" class="btn btn-link btn-sm px-0 googlemeet-readmore d-none" aria-expanded="false" aria-controls="googlemeet-ai-summary-body" data-label-more="{{# str }} hub_read_more, mod_googlemeet {{/ str }}" data-label-less="{{# str }} hub_read_less, mod_googlemeet {{/ str }}">{{# str }} hub_read_more, mod_googlemeet {{/ str }}</button>
         </section>
         {{#keypoints.0}}
-        <section class="googlemeet-ai-section googlemeet-ai-keypoints" aria-labelledby="googlemeet-hub-keypoints-title">
+        <section class="googlemeet-ai-section googlemeet-ai-keypoints" data-kp-hash="{{keypointshash}}" data-kp-state="{{keypointsstate}}" aria-labelledby="googlemeet-hub-keypoints-title">
           <div class="googlemeet-hub-section-head">
             <h4 id="googlemeet-hub-keypoints-title" class="googlemeet-hub-section-title">{{# str }} ai_keypoints, mod_googlemeet {{/ str }} <span class="googlemeet-hub-section-count">{{keypointcount}}</span></h4>
             <span class="googlemeet-keypoints-progress d-none" aria-live="polite" data-template="{{# str }} hub_keypoints_reviewed, mod_googlemeet {{/ str }}"></span>
