@@ -352,6 +352,14 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $minutesbefore->setSelected($config->minutesbefore);
         $mform->addHelpButton('minutesbefore', 'minutesbefore', 'googlemeet');
 
+        // NOT-04: optional second, earlier reminder (0 = off). Default comes from the site setting.
+        $mform->addElement('select', 'notifyhoursbefore', get_string('notifyhoursbefore', 'googlemeet'),
+            \mod_googlemeet\local\reminders::hours_options());
+        $mform->setType('notifyhoursbefore', PARAM_INT);
+        $notifyhoursdefault = get_config('googlemeet', 'notifyhoursbefore');
+        $mform->setDefault('notifyhoursbefore', $notifyhoursdefault === false ? 24 : (int)$notifyhoursdefault);
+        $mform->addHelpButton('notifyhoursbefore', 'notifyhoursbefore', 'googlemeet');
+
         // Attachments for students to download.
         $mform->addElement('header', 'headerattachments', get_string('attachmentsheader', 'googlemeet'));
         $mform->setExpanded('headerattachments', false);

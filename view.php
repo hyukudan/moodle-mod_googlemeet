@@ -145,15 +145,18 @@ if ($recording) {
 $maxevents = $googlemeet->maxupcomingevents ?? 3;
 $upcomingeventscontext = googlemeet_get_upcoming_events($googlemeet->id, $maxevents);
 $scheduleeventscontext = googlemeet_get_upcoming_events($googlemeet->id, 0, true);
-echo $OUTPUT->render_from_template('mod_googlemeet/hero',
-    googlemeet_get_classroom_hero_context(
-        $googlemeet,
-        $cm,
-        $context,
-        $upcomingeventscontext,
-        $hasvalidmeeturl,
-        $scheduleeventscontext
-    ));
+$herocontext = googlemeet_get_classroom_hero_context(
+    $googlemeet,
+    $cm,
+    $context,
+    $upcomingeventscontext,
+    $hasvalidmeeturl,
+    $scheduleeventscontext
+);
+// NOT-04: "Add to my calendar" (.ics export + Google Calendar link) in the live-class block.
+$herocontext = array_merge($herocontext,
+    \mod_googlemeet\local\calendar_export::hero_context($googlemeet, (int)$cm->id, time()));
+echo $OUTPUT->render_from_template('mod_googlemeet/hero', $herocontext);
 
 if (has_capability('mod/googlemeet:editrecording', $context)) {
     if ($googlemeet->eventid != null) {

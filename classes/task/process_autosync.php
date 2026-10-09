@@ -319,6 +319,9 @@ class process_autosync extends \core\task\scheduled_task {
                 if ($newattempts >= $max) {
                     $this->close_event((int) $ev->eventid, $newattempts, $now);
                     mtrace("  event #{$ev->eventid}: max attempts reached ({$newattempts}/{$max}); giving up.");
+                    // NOT-05: tell the activity's teachers in this same run, not only admins.
+                    $alerted = self::notify_no_recording($googlemeet, $ev, $newattempts);
+                    mtrace("  event #{$ev->eventid}: no-recording alert sent to {$alerted} user(s).");
                     continue;
                 }
 
@@ -422,6 +425,85 @@ class process_autosync extends \core\task\scheduled_task {
     }
 
     /**
+     * Alert the activity's teachers that auto-sync gave up on a session without a recording.
+     *
+     * Recipients are the users enrolled (active) in the course who can sync recordings
+     * (mod/googlemeet:syncgoogledrive, i.e. editing teachers); site admins only when nobody
+     * qualifies. Sent once per session: the event is closed right after.
+     *
+     * @param \stdClass $googlemeet Activity record.
+     * @param \stdClass $event Event row (eventid or id, eventdate).
+     * @param int $attempts Attempts made.
+     * @return int Number of recipients.
+     */
+    public static function notify_no_recording(\stdClass $googlemeet, \stdClass $event, int $attempts): int {
+        global $DB;
+
+        $cm = get_coursemodule_from_instance('googlemeet', $googlemeet->id, 0, false, IGNORE_MISSING);
+        if (!$cm) {
+            return 0;
+        }
+        $context = \context_module::instance($cm->id);
+        $recipients = [];
+        foreach (get_enrolled_users($context, 'mod/googlemeet:syncgoogledrive', 0, 'u.*', null, 0, 0, true) as $user) {
+            if (empty($user->suspended) && empty($user->deleted)) {
+                $recipients[$user->id] = $user;
+            }
+        }
+        if (!$recipients) {
+            $recipients = get_admins();
+        }
+
+        $course = $DB->get_record('course', ['id' => $cm->course], 'id, fullname', IGNORE_MISSING);
+        $url = new \moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
+        $sent = 0;
+        foreach ($recipients as $user) {
+            $previouslang = null;
+            if (!empty($user->lang) && get_string_manager()->translation_exists($user->lang, false)) {
+                $previouslang = force_current_language($user->lang);
+            }
+            try {
+                $a = (object)[
+                    'name' => format_string($googlemeet->name, true, ['context' => $context]),
+                    'course' => $course ? format_string($course->fullname, true,
+                        ['context' => \context_course::instance($course->id)]) : '',
+                    'date' => userdate((int)$event->eventdate, get_string('strftimedmyhm', 'googlemeet'),
+                        $user->timezone ?? 99),
+                    'attempts' => $attempts,
+                    'url' => $url->out(false),
+                ];
+                $subject = get_string('autosyncfailed_subject', 'googlemeet', $a);
+                $message = new \core\message\message();
+                $message->component = 'mod_googlemeet';
+                $message->name = 'autosyncfailed';
+                $message->userfrom = \core_user::get_noreply_user();
+                $message->userto = $user;
+                $message->subject = $subject;
+                $message->fullmessage = get_string('autosyncfailed_body', 'googlemeet', $a);
+                $message->fullmessageformat = FORMAT_PLAIN;
+                $message->fullmessagehtml = text_to_html(s($message->fullmessage), false, false, true);
+                $message->smallmessage = $subject;
+                $message->notification = 1;
+                $message->contexturl = $url->out(false);
+                $message->contexturlname = $a->name;
+                $message->courseid = $cm->course;
+                $message->customdata = \mod_googlemeet\local\reminders::app_customdata((int)$cm->id, (int)$cm->course,
+                    $url);
+                if (message_send($message) !== false) {
+                    $sent++;
+                }
+            } catch (\Throwable $e) {
+                mtrace('  no-recording alert failed for user ' . $user->id . ': ' . $e->getMessage());
+            } finally {
+                if ($previouslang !== null) {
+                    force_current_language($previouslang);
+                }
+            }
+        }
+        return $sent;
+    }
+
+    /**
      * Notify support that autosync is blocked by an auth/API infrastructure issue.
      *
      * @param string $creatoremail Google/Moodle account affected.
@@ -434,23 +516,18 @@ class process_autosync extends \core\task\scheduled_task {
             return;
         }
 
-        if ($reason === 'drive_api_disabled') {
-            $action = 'API Drive/Calendar deshabilitada en Google Cloud Console';
-        } else {
-            $action = 'Re-vincula Google en una actividad Meet';
-        }
-
-        $subject = '[googlemeet] Autosync bloqueado: ' . $reason;
-        $body = "Autosync de Google Meet bloqueado.\n\n"
-            . "Motivo: {$reason}\n"
-            . "Cuenta afectada: {$creatoremail}\n"
-            . "Accion requerida: {$action}\n";
+        $a = (object)[
+            'reason' => $reason,
+            'account' => $creatoremail,
+            'action' => get_string($reason === 'drive_api_disabled'
+                ? 'autosync_authalert_action_api' : 'autosync_authalert_action_token', 'googlemeet'),
+        ];
 
         email_to_user(
             \core_user::get_support_user(),
             \core_user::get_noreply_user(),
-            $subject,
-            $body
+            get_string('autosync_authalert_subject', 'googlemeet', $a),
+            get_string('autosync_authalert_body', 'googlemeet', $a)
         );
         set_config('lastauthalert', $now, 'googlemeet');
     }

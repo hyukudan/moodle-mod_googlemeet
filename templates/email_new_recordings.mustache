@@ -1,0 +1,75 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_googlemeet/email_new_recordings
+
+    HTML body of the "new recordings" notice (NOT-05, QA-03). Inline styles only (email clients).
+    All texts are passed in already localised in the recipient's language.
+
+    Context variables required for this template:
+    * greeting - "Hi Ana,"
+    * intro - sentence announcing the new recordings
+    * haslessons - whether lessons are listed
+    * lessons - [{title, date, url, hassummary, summary, haschapters, chapters: [{start, title}]}]
+    * chapterslabel - "Chapters"
+    * buttonurl - activity URL
+    * buttonlabel - button text
+    * closing - closing sentence
+
+    Example context (json):
+    {
+        "greeting": "Hi Ana,",
+        "intro": "A new recording is now available in \"Constitution\".",
+        "haslessons": true,
+        "lessons": [{
+            "title": "Title VIII: territorial organisation",
+            "date": "Thursday, 8 October 2026",
+            "url": "https://example.com/mod/googlemeet/view.php?id=1&recording=2",
+            "hassummary": true,
+            "summary": "Autonomous communities, provinces and municipalities.",
+            "haschapters": true,
+            "chapters": [{"start": "0:00", "title": "Introduction"}, {"start": "12:30", "title": "Article 137"}]
+        }],
+        "chapterslabel": "Chapters",
+        "buttonurl": "https://example.com/mod/googlemeet/view.php?id=1",
+        "buttonlabel": "Watch the recording",
+        "closing": "Time to review!"
+    }
+}}
+<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.5; color: #1f2937;">
+  <p style="margin: 0 0 12px 0;">{{greeting}}</p>
+  <p style="margin: 0 0 16px 0;">{{intro}}</p>
+  {{#haslessons}}
+  {{#lessons}}
+  <div style="margin: 0 0 16px 0; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 6px;">
+    <p style="margin: 0 0 4px 0; font-weight: bold;"><a href="{{url}}" style="color: #1d4ed8; text-decoration: none;">{{title}}</a></p>
+    <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">{{date}}</p>
+    {{#hassummary}}<p style="margin: 0 0 8px 0;">{{summary}}</p>{{/hassummary}}
+    {{#haschapters}}
+    <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: bold;">{{chapterslabel}}</p>
+    <ul style="margin: 0; padding-left: 18px; font-size: 13px;">
+      {{#chapters}}<li><span style="color: #6b7280;">{{start}}</span> {{title}}</li>{{/chapters}}
+    </ul>
+    {{/haschapters}}
+  </div>
+  {{/lessons}}
+  {{/haslessons}}
+  <p style="margin: 20px 0; text-align: center;">
+    <a href="{{buttonurl}}" style="display: inline-block; padding: 10px 20px; background: #2563eb; color: #ffffff; border-radius: 6px; text-decoration: none; font-weight: bold;">{{buttonlabel}}</a>
+  </p>
+  <p style="margin: 0; text-align: center; color: #4b5563;">{{closing}}</p>
+</div>

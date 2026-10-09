@@ -83,6 +83,15 @@ if ($ADMIN->fulltree) {
         $minutes
     ));
 
+    // NOT-04 (track: w2-notify): default for the second, earlier reminder (0 = off).
+    $settings->add(new admin_setting_configselect(
+        'googlemeet/notifyhoursbefore',
+        get_string('notifyhoursbefore', 'googlemeet'),
+        get_string('notifyhoursbefore_desc', 'googlemeet'),
+        24,
+        \mod_googlemeet\local\reminders::hours_options()
+    ));
+
     $settings->add(new admin_setting_confightmleditor(
         'googlemeet/emailcontent',
         get_string('emailcontent', 'googlemeet'),

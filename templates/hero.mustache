@@ -47,6 +47,15 @@
     {{#hasscheduleevents}}
       <a href="#googlemeet-schedule" class="googlemeet-hero-schedule-link">{{# str }} hero_full_schedule_link, mod_googlemeet {{/ str }}</a>
     {{/hasscheduleevents}}
+    {{#hascalendarlinks}}
+      <div class="googlemeet-hero-addcalendar">
+        <span class="googlemeet-hero-addcalendar-label">{{# str }} addtocalendar, mod_googlemeet {{/ str }}</span>
+        <a href="{{calendaricsurl}}" class="googlemeet-hero-addcalendar-link" download>{{# str }} addtocalendar_ics, mod_googlemeet {{/ str }}</a>
+        {{#hascalendargoogle}}
+          <a href="{{calendargoogleurl}}" class="googlemeet-hero-addcalendar-link" target="_blank" rel="noopener noreferrer">{{# str }} addtocalendar_google, mod_googlemeet {{/ str }}</a>
+        {{/hascalendargoogle}}
+      </div>
+    {{/hascalendarlinks}}
 
     {{^hasnextevent}}
       <div class="googlemeet-hero-empty">{{# str }} event_no_upcoming, mod_googlemeet {{/ str }}{{#hasrecordedcount}} <span aria-hidden="true">&middot;</span> {{recordedcountlabel}}{{/hasrecordedcount}}</div>

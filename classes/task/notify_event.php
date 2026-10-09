@@ -63,24 +63,12 @@ class notify_event extends \core\task\scheduled_task {
         }
 
         try {
-            $events = googlemeet_get_future_events();
-
-            if ($events) {
-                foreach ($events as $event) {
-                    $users = googlemeet_get_users_to_notify($event->id);
-
-                    foreach ($users as $user) {
-                        // get_users_to_notify() already excludes users with a notify_done row, and
-                        // the lock prevents a concurrent run from selecting the same user, so the
-                        // unique (eventid, userid) index is never violated here. Send first, then
-                        // record: a crash between the two re-sends next run (a rare duplicate),
-                        // which is preferable to recording first and losing the reminder if the
-                        // send fails.
-                        googlemeet_send_notification($user, $event);
-
-                        googlemeet_notify_done($user->id, $event->id);
-                    }
-                }
+            // Due reminders (minutes-before and hours-before, each deduplicated by kind in
+            // googlemeet_notify_done). The lock prevents a concurrent run from selecting the same
+            // user before this one records notify_done, so the unique index is never violated.
+            $sent = \mod_googlemeet\local\reminders::run(time());
+            if ($sent) {
+                mtrace("mod_googlemeet notify: {$sent} reminder(s) sent.");
             }
 
             googlemeet_remove_notify_done_from_old_events();

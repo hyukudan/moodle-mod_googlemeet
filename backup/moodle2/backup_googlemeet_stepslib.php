@@ -62,7 +62,8 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'maxrecordings',
             'recordingsorder',
             'recordingfilter',
-            'autosynchours'
+            'autosynchours',
+            'notifyhoursbefore'
         ]);
 
         $events = new backup_nested_element('events');

@@ -526,7 +526,6 @@ function xmldb_googlemeet_upgrade($oldversion) {
         }
 
         global $CFG;
-        global $CFG;
         require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
         $rs = $DB->get_recordset_select('googlemeet_recordings', 'durationseconds IS NULL', null, '', 'id, duration');
         $unparsed = 0;
@@ -566,6 +565,40 @@ function xmldb_googlemeet_upgrade($oldversion) {
         }
 
         upgrade_mod_savepoint(true, 2026101101, 'googlemeet');
+    }
+
+    // track: w2-notify (savepoints 2026101110-2026101119).
+    if ($oldversion < 2026101110) {
+        // NOT-04: optional second reminder N hours before each session (0 = off).
+        $table = new xmldb_table('googlemeet');
+        $field = new xmldb_field('notifyhoursbefore', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0', 'stalealerttime');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2026101110, 'googlemeet');
+    }
+
+    if ($oldversion < 2026101111) {
+        // NOT-04: dedupe each reminder kind separately (minutes-before = 0, hours-before = 1).
+        $table = new xmldb_table('googlemeet_notify_done');
+
+        $oldindex = new xmldb_index('eventid_userid', XMLDB_INDEX_UNIQUE, ['eventid', 'userid']);
+        if ($dbman->index_exists($table, $oldindex)) {
+            $dbman->drop_index($table, $oldindex);
+        }
+
+        $field = new xmldb_field('kind', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'userid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $newindex = new xmldb_index('eventid_userid_kind', XMLDB_INDEX_UNIQUE, ['eventid', 'userid', 'kind']);
+        if (!$dbman->index_exists($table, $newindex)) {
+            $dbman->add_index($table, $newindex);
+        }
+
+        upgrade_mod_savepoint(true, 2026101111, 'googlemeet');
     }
 
     return true;
