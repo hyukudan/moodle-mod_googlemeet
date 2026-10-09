@@ -45,6 +45,11 @@ class client {
     private $issuer = null;
 
     /**
+     * @var bool|null Memoised result of check_login() for this instance (null = not checked yet).
+     */
+    private $loggedin = null;
+
+    /**
      * Cached Google Docs listing for notes during a sync.
      * @var array|null
      */
@@ -263,12 +268,14 @@ class client {
             return '';
         }
 
-        $userauth = $this->get_user_oauth_client();
-        $userinfo = $userauth->get_userinfo();
+        $userinfo = $this->get_cached_userinfo();
+        if ($userinfo === null) {
+            return '';
+        }
 
         $username = $userinfo['username'];
-        $name = $userinfo['firstname'].' '.$userinfo['lastname'];
-        $userpicture = base64_encode($userinfo['picture']);
+        $name = $userinfo['name'];
+        $userpicture = $userinfo['picture'];
 
         $userurl = '#';
         if ($scope == 'calendar') {
@@ -308,8 +315,70 @@ class client {
      * @return bool true when logged in.
      */
     public function check_login() {
-        $client = $this->get_user_oauth_client();
-        return $client->is_logged_in();
+        if ($this->loggedin === null) {
+            $client = $this->get_user_oauth_client();
+            $this->loggedin = (bool)$client->is_logged_in();
+            if (!$this->loggedin) {
+                self::purge_userinfo_cache();
+            }
+        }
+        return $this->loggedin;
+    }
+
+    /**
+     * Cache key for the current Moodle user + OAuth issuer.
+     *
+     * The key includes the Moodle user id because cron tasks switch users (set_user) within a
+     * single session; the issuer id keeps entries apart if the configured issuer changes.
+     *
+     * @return string
+     */
+    private static function userinfo_cache_key(): string {
+        global $USER;
+        return 'u' . (int)($USER->id ?? 0) . '_i' . (int)get_config('googlemeet', 'issuerid');
+    }
+
+    /**
+     * Drop the cached Google userinfo for the current user (logout, new link, expired token).
+     *
+     * @return void
+     */
+    public static function purge_userinfo_cache(): void {
+        \cache::make('mod_googlemeet', 'userinfo')->delete(self::userinfo_cache_key());
+    }
+
+    /**
+     * Linked Google account info, cached in the session (PERF-01).
+     *
+     * Avoids the userinfo + avatar HTTP requests on every page load of a linked teacher.
+     * Entries live for an hour (cache TTL) and are purged on logout/relink.
+     *
+     * @return array|null ['username' => email, 'name' => full name, 'picture' => base64 jpeg] or null.
+     */
+    public function get_cached_userinfo(): ?array {
+        if (!$this->check_login()) {
+            return null;
+        }
+
+        $cache = \cache::make('mod_googlemeet', 'userinfo');
+        $key = self::userinfo_cache_key();
+        $cached = $cache->get($key);
+        if (is_array($cached) && isset($cached['username'])) {
+            return $cached;
+        }
+
+        $userinfo = $this->get_user_oauth_client()->get_userinfo();
+        if (empty($userinfo) || !is_array($userinfo)) {
+            return null;
+        }
+
+        $data = [
+            'username' => (string)($userinfo['username'] ?? ''),
+            'name' => trim(($userinfo['firstname'] ?? '') . ' ' . ($userinfo['lastname'] ?? '')),
+            'picture' => !empty($userinfo['picture']) ? base64_encode($userinfo['picture']) : '',
+        ];
+        $cache->set($key, $data);
+        return $data;
     }
 
     /**
@@ -324,6 +393,8 @@ class client {
             $url = new moodle_url($PAGE->url);
             $client = $this->get_user_oauth_client();
             $client->log_out();
+            $this->loggedin = null;
+            self::purge_userinfo_cache();
 
             // SECURITY: redirect the browser back to the activity after logout. The URL is a
             // moodle_url built from $PAGE->url, and out(false) returns it without HTML entity
@@ -346,6 +417,9 @@ class client {
      */
     public function callback() {
         $client = $this->get_user_oauth_client();
+        // A (possibly different) Google account is being linked: forget any cached userinfo.
+        self::purge_userinfo_cache();
+        $this->loggedin = null;
         // This will upgrade to an access token if we have an authorization code and save the access token in the session.
         $client->is_logged_in();
     }
@@ -1261,12 +1335,8 @@ class client {
      * @return string The email
      */
     public function get_email() {
-        if (!$this->check_login()) {
-            return '';
-        }
-
-        $userauth = $this->get_user_oauth_client()->get_userinfo();
-        return $userauth['username'];
+        $userinfo = $this->get_cached_userinfo();
+        return $userinfo['username'] ?? '';
     }
 
 }

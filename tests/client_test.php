@@ -66,6 +66,44 @@ class client_test_fake_drive_service {
 }
 
 /**
+ * Fake core\oauth2\client counting userinfo requests (PERF-01 cache tests).
+ */
+class client_test_fake_oauth_client {
+    /** @var int Number of get_userinfo() calls (each one is an HTTP round-trip in real life). */
+    public static int $userinfocalls = 0;
+
+    /** @var bool Whether the fake user is logged in. */
+    public static bool $loggedin = true;
+
+    /**
+     * @return bool
+     */
+    public function is_logged_in(): bool {
+        return self::$loggedin;
+    }
+
+    /**
+     * @return array
+     */
+    public function get_userinfo(): array {
+        self::$userinfocalls++;
+        return ['username' => 'teacher@example.com', 'firstname' => 'Ana', 'lastname' => 'Docente', 'picture' => 'JPEGDATA'];
+    }
+}
+
+/**
+ * Client whose OAuth client is the counting fake.
+ */
+class client_userinfo_testable_client extends client {
+    /**
+     * @return client_test_fake_oauth_client
+     */
+    protected function get_user_oauth_client() {
+        return new client_test_fake_oauth_client();
+    }
+}
+
+/**
  * Unit tests for mod_googlemeet\client helpers.
  *
  * @package     mod_googlemeet
@@ -200,5 +238,40 @@ class client_test extends \advanced_testcase {
         ];
 
         $this->assertNull(client::select_notes_candidate_for_recording($docs, 'Class.mp4', $recordingtime));
+    }
+
+    /**
+     * Userinfo is fetched once per session and served from the session cache afterwards.
+     */
+    public function test_userinfo_is_cached_per_session(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        client_test_fake_oauth_client::$userinfocalls = 0;
+        client_test_fake_oauth_client::$loggedin = true;
+        client::purge_userinfo_cache();
+
+        $reflection = new \ReflectionClass(client_userinfo_testable_client::class);
+        $first = $reflection->newInstanceWithoutConstructor();
+        $this->assertSame('teacher@example.com', $first->get_email());
+        $this->assertSame('teacher@example.com', $first->get_email());
+
+        // A new client instance (next page load) reuses the cached data: no extra request.
+        $second = $reflection->newInstanceWithoutConstructor();
+        $info = $second->get_cached_userinfo();
+        $this->assertSame('Ana Docente', $info['name']);
+        $this->assertSame(base64_encode('JPEGDATA'), $info['picture']);
+        $this->assertSame(1, client_test_fake_oauth_client::$userinfocalls);
+
+        // Purging (logout / relink) forces a refetch.
+        client::purge_userinfo_cache();
+        $third = $reflection->newInstanceWithoutConstructor();
+        $third->get_email();
+        $this->assertSame(2, client_test_fake_oauth_client::$userinfocalls);
+
+        // Not logged in: no request, empty email, cache purged.
+        client_test_fake_oauth_client::$loggedin = false;
+        $fourth = $reflection->newInstanceWithoutConstructor();
+        $this->assertSame('', $fourth->get_email());
+        $this->assertSame(2, client_test_fake_oauth_client::$userinfocalls);
     }
 }

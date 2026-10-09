@@ -55,24 +55,27 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             $client->logout();
         }
 
+        // Check the Google login once and reuse the result (PERF-01).
+        $isgooglelogged = $client->enabled && $client->check_login();
+
         if (empty($this->current->instance)) {
             $clientislogged = optional_param('client_islogged', false, PARAM_BOOL);
 
             // Was logged in before submitting the form and the google session expired after submitting the form.
-            if ($clientislogged && !$client->check_login()) {
+            if ($clientislogged && !$isgooglelogged) {
                 $mform->addElement('html', html_writer::div(get_string('sessionexpired', 'googlemeet') .
                     $client->print_login_popup(), 'mdl-align alert alert-danger googlemeet_loginbutton'
                 ));
 
                 // Whether the customer is enabled and if not logged in to the Google account.
-            } else if ($client->enabled && !$client->check_login()) {
+            } else if ($client->enabled && !$isgooglelogged) {
                 $mform->addElement('html', html_writer::div(get_string('logintoyourgoogleaccount', 'googlemeet') .
                     $client->print_login_popup(), 'mdl-align alert alert-info googlemeet_loginbutton'
                 ));
             }
 
             // If is logged in, shows Google account information.
-            if ($client->check_login()) {
+            if ($isgooglelogged) {
                 $mform->addElement('html', $client->print_user_info('calendar'));
                 $mform->addElement('hidden', 'client_islogged', true);
             }
@@ -311,7 +314,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             );
         }
 
-        if ($client->check_login() && empty($this->current->instance)) {
+        if ($isgooglelogged && empty($this->current->instance)) {
             $mform->addElement('static', 'url_desc', '', $OUTPUT->notification(get_string('roomurl_desc', 'googlemeet'), 'info'));
             $mform->addElement('text', 'url', get_string('roomurl', 'googlemeet'), ['size' => '50', 'readonly' => true]);
             $mform->setType('url', PARAM_RAW);
@@ -489,10 +492,11 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         $client = new client();
         $clientislogged = optional_param('client_islogged', false, PARAM_BOOL);
+        $isgooglelogged = $client->enabled && $client->check_login();
 
         if (empty($this->current->instance)) {
             // Validates the url field only if not logged into Google account.
-            if (!$client->check_login() && !$clientislogged) {
+            if (!$isgooglelogged && !$clientislogged) {
                 $errors = $this->validate_url($data['url'], $errors);
                 if (!validate_email($data['creatoremail'])) {
                     $errors['creatoremail'] = get_string('creatoremail_error', 'googlemeet');
@@ -500,7 +504,7 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             }
 
             // Forces an error if the Google session expired after submitting the form.
-            if (!$client->check_login() && $clientislogged) {
+            if (!$isgooglelogged && $clientislogged) {
                 $errors['client_islogged'] = '';
             }
         } else {
