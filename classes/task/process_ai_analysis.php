@@ -40,18 +40,6 @@ class process_ai_analysis extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
-        // Check if AI features are enabled.
-        if (!get_config('googlemeet', 'enableai')) {
-            return;
-        }
-
-        $aiservice = new ai_service();
-
-        if (!$aiservice->is_available()) {
-            mtrace('Google Meet AI: API not configured, skipping task.');
-            return;
-        }
-
         // Acquire a cron lock so that two overlapping runs of this scheduled task
         // (or a run that outlives the 10-minute interval) cannot both drain the
         // same pending rows and enqueue duplicate adhoc tasks (C2 - race condition).
@@ -66,15 +54,25 @@ class process_ai_analysis extends \core\task\scheduled_task {
         }
 
         try {
-            // Recover rows that got stuck in 'processing' (e.g. a previous run or its
-            // adhoc task died mid-flight). Anything still 'processing' after 1 hour is
-            // considered stale and is reverted to 'pending' so it can be retried on the
-            // next run. 1 hour comfortably exceeds the worst-case tier-3 video pipeline
-            // (15 min file-processing wait + download/upload), so this will not clobber
-            // a healthy in-flight analysis.
-            $reset = $aiservice->reset_stale_processing(3600);
-            if ($reset > 0) {
-                mtrace("Google Meet AI: Reset {$reset} stale 'processing' analyses back to 'pending'.");
+            $aiservice = new ai_service();
+
+            // F-8: rows stuck in 'processing' (a previous run or its adhoc task died mid-flight) are
+            // marked failed with a clear message once they exceed the stuck threshold (setting
+            // googlemeet/aistuckminutes, default 60 min, which comfortably exceeds the worst-case tier-3
+            // video pipeline). The transient-retry bookkeeping retries them automatically while the
+            // retry budget lasts. This runs even when AI is disabled so nothing stays "processing" forever.
+            $failed = $aiservice->fail_stale_processing();
+            if ($failed > 0) {
+                mtrace("Google Meet AI: Marked {$failed} stuck 'processing' analyses as failed.");
+            }
+
+            // Check if AI features are enabled.
+            if (!get_config('googlemeet', 'enableai')) {
+                return;
+            }
+            if (!$aiservice->is_available()) {
+                mtrace('Google Meet AI: API not configured, skipping task.');
+                return;
             }
 
             mtrace('Google Meet AI: Processing pending analyses...');
