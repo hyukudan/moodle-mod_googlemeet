@@ -185,6 +185,12 @@
   {{/showfilterbar}}
 
   {{#hasrecordings}}
+  {{#recordingquery}}
+  <div class="googlemeet-recordings-queryinfo small mb-1" role="status">
+    {{#hascapability}}{{# str }} recordings_query_results, mod_googlemeet, {"query": {{# quote }}{{recordingquery}}{{/ quote }}, "total": "{{totalrecordings}}"} {{/ str }}{{/hascapability}}
+    {{^hascapability}}{{# str }} recordings_query_results_student, mod_googlemeet, {"query": {{# quote }}{{recordingquery}}{{/ quote }}, "total": "{{totalrecordings}}"} {{/ str }}{{/hascapability}}
+  </div>
+  {{/recordingquery}}
   {{#haspagination}}
   <div class="googlemeet-recordings-info small text-muted mb-2">
     {{# str }} recordings_pagination_info, mod_googlemeet, {"start": "{{start}}", "end": "{{end}}", "total": "{{totalrecordings}}"} {{/ str }}
@@ -225,12 +231,12 @@
             <p class="googlemeet-card-summary">{{aisummarypreview}}</p>
             {{#aitopicsvisible.0}}<div class="googlemeet-card-topics">{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}</div>{{/aitopicsvisible.0}}
             {{/hasai}}
-            {{#hascapability}}{{#matchsource}}
+            {{#matchsource}}
             <div class="googlemeet-search-match">
               <span class="googlemeet-search-match-source">{{matchsource}}</span>
               {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
             </div>
-            {{/matchsource}}{{/hascapability}}
+            {{/matchsource}}
             {{#hascapability}}
             <div class="googlemeet-card-progress googlemeet-teacher-stats">{{> mod_googlemeet/local/recording_teacher_stats }}</div>
             {{/hascapability}}
@@ -347,12 +353,12 @@
               {{#aitopicsvisible.0}}{{#aitopicsvisible}}<span class="googlemeet-ai-topic-tag">{{.}}</span>{{/aitopicsvisible}}{{#aitopicsoverflow}}<span class="googlemeet-ai-topic-tag googlemeet-topic-overflow" title="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}" aria-label="{{# str }} recordings_topics_overflow_aria, mod_googlemeet, {{aitopicsoverflow}} {{/ str }}">+{{aitopicsoverflow}}</span>{{/aitopicsoverflow}}{{/aitopicsvisible.0}}
             </div>
             {{#hasai}}{{#aisummarypreview}}<p class="googlemeet-listitem-summary">{{aisummarypreview}}</p>{{/aisummarypreview}}{{/hasai}}
-            {{#hascapability}}{{#matchsource}}
+            {{#matchsource}}
             <div class="googlemeet-search-match">
               <span class="googlemeet-search-match-source">{{matchsource}}</span>
               {{#matchsnippet}}<span class="googlemeet-search-match-snippet">{{matchsnippet}}</span>{{/matchsnippet}}
             </div>
-            {{/matchsource}}{{/hascapability}}
+            {{/matchsource}}
             {{! Materials row (same rules as the card view). }}
             {{#hascapability}}
             {{#hasmaterials}}

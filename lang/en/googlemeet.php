@@ -514,6 +514,8 @@ $string['recordings_no_filter_results'] = 'No classes match the current filters.
 $string['recordings_topics_overflow_aria'] = '{$a} more topics';
 $string['search_match_notes'] = 'Match in notes';
 $string['search_match_transcript'] = 'Match in transcript';
+$string['search_match_summary'] = 'Match in summary';
+$string['search_match_topics'] = 'Match in topics';
 $string['recordings_trash_count'] = 'Trash ({$a})';
 $string['recordings_trash_created_at'] = 'Recorded';
 $string['recordings_trash_deleted_at'] = 'Deleted';
@@ -652,6 +654,8 @@ $string['list_teacherstats_opened_one'] = '{$a} student has opened it';
 $string['recordings_filters'] = 'Filters';
 $string['recordings_filters_active'] = 'Active filters: {$a}';
 $string['recordings_no_query_results'] = 'No classes match "{$a}".';
+$string['recordings_query_results'] = 'Classes containing "{$a->query}": {$a->total} (in the title, summary, topics, notes or transcript)';
+$string['recordings_query_results_student'] = 'Classes containing "{$a->query}": {$a->total} (in the title, summary or topics)';
 
 // track: analytics.
 $string['googlemeet:viewreports'] = 'View the viewing and practice report';

@@ -1584,6 +1584,9 @@
     font-size: 0.85rem; color: #3c4043; margin: 0;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.googlemeet-recordings-queryinfo {
+    font-weight: 600;
+}
 .googlemeet-search-match {
     display: flex;
     flex-wrap: wrap;

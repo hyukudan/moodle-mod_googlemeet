@@ -139,6 +139,22 @@ class search_test extends \advanced_testcase {
         $this->assertStringContainsString('cardiología', $out[0]->matchsnippet);
     }
 
+    public function test_filter_by_query_reports_summary_and_topic_matches(): void {
+        $summary = $this->rec('Clase 7', true, ['Derecho sanitario'], 'Repaso de la Ley General de Sanidad y sus competencias.');
+        $topic = $this->rec('Clase 8', true, ['Ley de Transparencia'], 'Sin el termino.');
+        $title = $this->rec('Clase 9');
+        $title->displayname = 'Ley 39/2015';
+
+        $out = googlemeet_filter_recordings_by_query([$summary, $topic, $title, $this->rec('Otra')], 'ley', false);
+
+        $this->assertCount(3, $out);
+        $this->assertSame(get_string('search_match_summary', 'googlemeet'), $out[0]->matchsource);
+        $this->assertStringContainsString('Ley General', $out[0]->matchsnippet);
+        $this->assertSame(get_string('search_match_topics', 'googlemeet'), $out[1]->matchsource);
+        $this->assertSame('Ley de Transparencia', $out[1]->matchsnippet);
+        $this->assertSame('', $out[2]->matchsource, 'A display-title match needs no hint');
+    }
+
     public function test_filter_by_query_matches_notes_only_with_source_and_plain_snippet(): void {
         $recording = $this->rec('Clase sin pista');
         $recording->notestext = '<p>Resumen docente: la arritmía ventricular aparece en las notas.</p>';

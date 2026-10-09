@@ -1066,7 +1066,9 @@ function googlemeet_recording_date_group(int $timestamp): string {
 }
 
 /**
- * Filter recordings by a free-text query against name (and AI summary/topics when completed).
+ * Filter recordings by a free-text query against the title, AI topics/summary and (teachers) notes/transcript.
+ *
+ * Non-title matches set matchsource/matchsnippet so the list can say where the term was found.
  *
  * @param array $recordings Recording stdClass list (post AI-enrichment).
  * @param string $query Raw search query.
@@ -1084,18 +1086,30 @@ function googlemeet_filter_recordings_by_query(array $recordings, string $query,
         $r->matchsource = '';
         $r->matchsnippet = '';
 
-        $primaryhaystacks = [(string)($r->name ?? '')];
-        if (!empty($r->hasai)) {
-            $primaryhaystacks[] = (string)($r->aisummary ?? '');
-            foreach (($r->aitopics ?? []) as $t) {
-                $primaryhaystacks[] = (string)$t;
+        // Title: the stored name and the generated display title. A title match needs no hint.
+        foreach ([(string)($r->name ?? ''), (string)($r->displayname ?? '')] as $h) {
+            if ($h !== '' && core_text::strpos(googlemeet_fold($h), $needle) !== false) {
+                $filtered[] = $r;
+                continue 2;
             }
         }
 
-        foreach ($primaryhaystacks as $h) {
-            if (core_text::strpos(googlemeet_fold($h), $needle) !== false) {
+        // AI summary and topics: say where it matched, the list only shows a cropped preview.
+        if (!empty($r->hasai)) {
+            foreach (($r->aitopics ?? []) as $t) {
+                if (core_text::strpos(googlemeet_fold((string)$t), $needle) !== false) {
+                    $r->matchsource = get_string('search_match_topics', 'googlemeet');
+                    $r->matchsnippet = (string)$t;
+                    $filtered[] = $r;
+                    continue 2;
+                }
+            }
+            $summary = (string)($r->aisummary ?? '');
+            if (core_text::strpos(googlemeet_fold($summary), $needle) !== false) {
+                $r->matchsource = get_string('search_match_summary', 'googlemeet');
+                $r->matchsnippet = googlemeet_search_match_snippet($summary, $needle);
                 $filtered[] = $r;
-                continue 2;
+                continue;
             }
         }
 

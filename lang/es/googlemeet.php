@@ -517,6 +517,8 @@ $string['recordings_no_filter_results'] = 'No hay clases que coincidan con los f
 $string['recordings_topics_overflow_aria'] = '{$a} temas más';
 $string['search_match_notes'] = 'Coincidencia en las notas';
 $string['search_match_transcript'] = 'Coincidencia en la transcripción';
+$string['search_match_summary'] = 'Coincidencia en el resumen';
+$string['search_match_topics'] = 'Coincidencia en los temas';
 $string['recordings_trash_count'] = 'Papelera ({$a})';
 $string['recordings_trash_created_at'] = 'Grabada';
 $string['recordings_trash_deleted_at'] = 'Eliminada';
@@ -657,6 +659,8 @@ $string['list_teacherstats_opened_one'] = '{$a} alumno la ha abierto';
 $string['recordings_filters'] = 'Filtros';
 $string['recordings_filters_active'] = 'Filtros activos: {$a}';
 $string['recordings_no_query_results'] = 'No hay clases que coincidan con «{$a}».';
+$string['recordings_query_results'] = 'Clases que contienen «{$a->query}»: {$a->total} (en el título, el resumen, los temas, las notas o la transcripción)';
+$string['recordings_query_results_student'] = 'Clases que contienen «{$a->query}»: {$a->total} (en el título, el resumen o los temas)';
 
 // track: analytics.
 $string['googlemeet:viewreports'] = 'Ver el informe de visionado y práctica';
