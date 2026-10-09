@@ -34,6 +34,7 @@ $string['calendareventname'] = 'Live class: {$a}';
 $string['checkweekdays'] = 'Select the days of the week that fall within the selected date range.';
 $string['creatoremail'] = 'Organizer email';
 $string['creatoremail_error'] = 'Enter a valid email address';
+$string['creatoremail_changedenied'] = 'Only a site administrator, or the owner of that Google account while signed in to it, can change the organizer email.';
 $string['creatoremail_help'] = 'Event organizer email';
 $string['date'] = 'Date';
 $string['duration'] = 'Duration';

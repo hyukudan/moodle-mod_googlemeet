@@ -512,10 +512,46 @@ class mod_googlemeet_mod_form extends moodleform_mod {
             $errors = $this->validate_url($data['url'], $errors);
             if (!validate_email($data['creatoremail'])) {
                 $errors['creatoremail'] = get_string('creatoremail_error', 'googlemeet');
+            } else if (!$this->can_change_creatoremail($data['creatoremail'], $client, $isgooglelogged)) {
+                $errors['creatoremail'] = get_string('creatoremail_changedenied', 'googlemeet');
             }
         }
 
         return $errors;
+    }
+
+    /**
+     * Whether the current user may set the organizer email of an existing instance (PRIV-05 mitigation).
+     *
+     * Background tasks act on the organizer's Google Drive by looking up the Moodle user with that
+     * email, so an editor must not be able to point an activity at someone else's linked account.
+     * A change is allowed only for site administrators (moodle/site:config) or when the new email
+     * is the Google account the editor has linked right now.
+     *
+     * @param string $newemail Submitted organizer email.
+     * @param client $client Google client for the current user.
+     * @param bool $isgooglelogged Whether the current user has a linked Google session.
+     * @return bool
+     */
+    protected function can_change_creatoremail(string $newemail, client $client, bool $isgooglelogged): bool {
+        global $DB;
+
+        $current = (string)$DB->get_field('googlemeet', 'creatoremail', ['id' => $this->current->instance]);
+        $normalise = static function(string $email): string {
+            return \core_text::strtolower(trim($email));
+        };
+        if ($normalise($newemail) === $normalise($current)) {
+            return true;
+        }
+        if (has_capability('moodle/site:config', context_system::instance())) {
+            return true;
+        }
+        if ($isgooglelogged) {
+            // Served from the session userinfo cache (PERF-01), normally no HTTP request.
+            $linked = $client->get_email();
+            return $linked !== '' && $normalise($linked) === $normalise($newemail);
+        }
+        return false;
     }
 
     /**

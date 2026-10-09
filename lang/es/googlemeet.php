@@ -35,6 +35,7 @@ $string['calendareventname'] = 'Clase en directo: {$a}';
 $string['checkweekdays'] = 'Selecciona los días de la semana que estén dentro del rango de fechas seleccionado.';
 $string['creatoremail'] = 'Correo del organizador';
 $string['creatoremail_error'] = 'Introduce una dirección de correo válida';
+$string['creatoremail_changedenied'] = 'Solo un administrador del sitio, o el propietario de esa cuenta de Google con la sesión iniciada en ella, puede cambiar el correo del organizador.';
 $string['creatoremail_help'] = 'Correo del organizador de la sesión';
 $string['date'] = 'Fecha';
 $string['duration'] = 'Duración';
