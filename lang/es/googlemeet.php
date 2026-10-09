@@ -619,3 +619,4 @@ $string['question_publish_activity_none'] = 'No hay preguntas en borrador en est
 $string['question_publish_recording_failed'] = '{$a} preguntas sin publicar en';
 $string['question_reload'] = 'Actualizar la página';
 $string['question_answer_correct'] = 'Correcta';
+$string['ai_queued_since'] = 'En cola desde las {$a}';

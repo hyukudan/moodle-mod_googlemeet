@@ -54,7 +54,7 @@ const stringRequests = [
     {key: 'ai_edit_saving', component: COMPONENT},
     {key: 'ai_edit_save', component: COMPONENT},
     {key: 'ai_edit_saved', component: COMPONENT},
-    {key: 'ai_timeout_hint', component: COMPONENT},
+    {key: 'ai_queued_since', component: COMPONENT},
     {key: 'ai_replace_confirm_title', component: COMPONENT},
     {key: 'ai_replace_confirm_button', component: COMPONENT},
     {key: 'ai_analyze_replace_confirm', component: COMPONENT},
@@ -437,7 +437,7 @@ const generateAiAnalysis = (recordingid, regenerate, forcedownload) => {
         coursemoduleid: settings.cmid,
         regenerate: regenerate,
         forcedownload: forcedownload,
-    }, 180000).then(response => {
+    }).then(response => {
         clearInterval(progressInterval);
         content.find('.googlemeet-ai-loading').hide();
         generateButton.prop('disabled', false).text(strings.ai_regenerate);
@@ -447,13 +447,12 @@ const generateAiAnalysis = (recordingid, regenerate, forcedownload) => {
         } else if (response.status === 'failed') {
             showAiError(recordingid, response.error || strings.ai_error_unknown);
         } else if (response.status === 'processing') {
-            showProcessingStatus(recordingid, content, generateButton);
+            showProcessingStatus(recordingid, content, generateButton, response.timemodified);
         } else {
             showAiError(recordingid, strings.ai_status_pending);
         }
     }).fail(ex => {
         clearInterval(progressInterval);
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
         content.find('.googlemeet-ai-loading').hide();
         generateButton.prop('disabled', false).text(strings.ai_generate);
 
@@ -466,10 +465,6 @@ const generateAiAnalysis = (recordingid, regenerate, forcedownload) => {
             errorMessage = strings.error + ': ' + ex.errorcode;
         } else {
             errorMessage = strings.ai_error_unknown;
-        }
-
-        if (elapsed >= 170) {
-            errorMessage += ' (' + strings.ai_timeout_hint + ')';
         }
 
         showAiError(recordingid, errorMessage);
@@ -514,9 +509,10 @@ const showAiError = (recordingid, message) => {
  * @param {number|string} recordingid Recording ID.
  * @param {JQuery} content Panel content.
  * @param {JQuery} generateButton Generate button.
+ * @param {number} [queuedat] Unix time the analysis was queued (shown as "queued since hh:mm").
  * @returns {void}
  */
-const showProcessingStatus = (recordingid, content, generateButton) => {
+const showProcessingStatus = (recordingid, content, generateButton, queuedat) => {
     content.find('.googlemeet-ai-nodata').hide();
     content.find('.googlemeet-ai-loading').hide();
     content.find('.googlemeet-ai-result').hide();
@@ -534,6 +530,16 @@ const showProcessingStatus = (recordingid, content, generateButton) => {
             recordingid + '">' + escapeHtml(strings.ai_check_status) + '</button>' +
             '</div>');
         content.append(processingElement);
+    }
+    const since = parseInt(queuedat, 10);
+    let sinceElement = processingElement.find('.googlemeet-ai-queued-since');
+    if (since > 0) {
+        if (!sinceElement.length) {
+            sinceElement = $('<div class="googlemeet-ai-queued-since small mt-1"></div>');
+            processingElement.find('.d-flex').first().after(sinceElement);
+        }
+        const time = new Date(since * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        sinceElement.text(strings.ai_queued_since.split('{$a}').join(time));
     }
     processingElement.show();
 

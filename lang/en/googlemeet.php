@@ -614,3 +614,4 @@ $string['question_publish_activity_none'] = 'There are no draft questions in thi
 $string['question_publish_recording_failed'] = '{$a} questions not published in';
 $string['question_reload'] = 'Refresh the page';
 $string['question_answer_correct'] = 'Correct';
+$string['ai_queued_since'] = 'Queued since {$a}';
