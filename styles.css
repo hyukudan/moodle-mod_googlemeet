@@ -4424,3 +4424,27 @@ mark.googlemeet-transcript-match-current {
     color: var(--bs-danger-text-emphasis, #842029);
     font-weight: 600;
 }
+
+/* === track: w2-notify === */
+.googlemeet-hero-addcalendar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.85rem;
+    margin-top: 0.55rem;
+    font-size: 0.84rem;
+}
+.googlemeet-hero-addcalendar-label {
+    color: var(--gm-muted, #5f6368);
+    font-weight: 600;
+}
+.googlemeet-hero-addcalendar-link {
+    color: #174ea6;
+    font-weight: 700;
+    text-decoration: none;
+}
+.googlemeet-hero-addcalendar-link:hover,
+.googlemeet-hero-addcalendar-link:focus {
+    color: #174ea6;
+    text-decoration: underline;
+}
