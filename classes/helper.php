@@ -232,6 +232,8 @@ class helper {
             'priority' => null,
         ];
 
-        calendar_event::create($calendarevent);
+        // No capability check: like core modules (assign, quiz, lesson), module events are
+        // created by the system on add/update/restore, also from CLI/cron with no user set.
+        calendar_event::create($calendarevent, false);
     }
 }

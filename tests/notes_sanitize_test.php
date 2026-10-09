@@ -3,12 +3,14 @@ namespace mod_googlemeet;
 
 defined('MOODLE_INTERNAL') || die();
 
+use PHPUnit\Framework\Attributes\CoversClass;
+
 /**
  * Tests for notes HTML sanitization.
  *
  * @package   mod_googlemeet
- * @covers    \mod_googlemeet\client
  */
+#[CoversClass(\mod_googlemeet\client::class)]
 final class notes_sanitize_test extends \advanced_testcase {
 
     /**
@@ -17,7 +19,6 @@ final class notes_sanitize_test extends \advanced_testcase {
     private function sanitize(string $html): string {
         $client = new \ReflectionClass(client::class);
         $method = $client->getMethod('sanitize_notes_html');
-        $method->setAccessible(true);
         // sanitize_notes_html is static-safe: no instance state used.
         $instance = $client->newInstanceWithoutConstructor();
         return $method->invoke($instance, $html);
