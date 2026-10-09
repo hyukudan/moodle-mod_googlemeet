@@ -713,3 +713,19 @@ $string['report_question_deleted'] = '(pregunta eliminada)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Práctica: {$a->pct}% de aciertos ({$a->attempts} respuestas de {$a->users} alumnos)';
+
+// track: w2-data
+$string['recordings_trash_purgeon'] = 'Se eliminará el {$a}';
+$string['recordings_trash_purgesoon'] = 'Se eliminará en breve';
+$string['trash_purge_dateformat'] = '%d/%m';
+$string['trashretentiondays'] = 'Días en la papelera';
+$string['trashretentiondays_desc'] = 'Las grabaciones que permanezcan en la papelera del profesor más de este número de días se eliminan definitivamente, junto con su análisis IA, progreso de visionado, intentos de práctica, materiales y preguntas de práctica (las preguntas usadas en otro sitio, p. ej. en un cuestionario, se ocultan en lugar de borrarse). 0 = no eliminar nunca automáticamente.';
+$string['task_purge_trash'] = 'Vaciar las grabaciones caducadas de la papelera';
+$string['reset_userdata'] = 'Eliminar progreso de visionado, intentos de práctica y suscripciones';
+$string['reset_userdata_help'] = 'Elimina el progreso de visionado de los alumnos, sus respuestas de práctica, el estado de "Continuar en" y de la lista de puntos clave, y las suscripciones a nuevas grabaciones de todas las actividades Google Meet del curso. Las grabaciones, los resúmenes IA y las preguntas de práctica se conservan.';
+$string['index_nextsession'] = 'Próxima sesión';
+$string['index_nextsession_none'] = 'Sin sesiones programadas';
+$string['index_nextsession_live'] = 'En directo ahora';
+$string['index_recordings'] = 'Grabaciones';
+$string['index_myprogress'] = 'Mi progreso';
+$string['index_myprogress_value'] = '{$a->watched} de {$a->total} vistas ({$a->pct} %)';

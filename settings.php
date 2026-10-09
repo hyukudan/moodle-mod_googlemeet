@@ -220,4 +220,13 @@ if ($ADMIN->fulltree) {
         28,
         PARAM_INT
     ));
+
+    // Track w2-data (OPS-03): automatic purge of the recordings trash.
+    $settings->add(new admin_setting_configtext(
+        'googlemeet/trashretentiondays',
+        get_string('trashretentiondays', 'googlemeet'),
+        get_string('trashretentiondays_desc', 'googlemeet'),
+        30,
+        PARAM_INT
+    ));
 }

@@ -708,3 +708,19 @@ $string['report_question_deleted'] = '(deleted question)';
 
 // Hub teacher questions panel: practice stats per question.
 $string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
+
+// track: w2-data
+$string['recordings_trash_purgeon'] = 'Will be deleted on {$a}';
+$string['recordings_trash_purgesoon'] = 'Will be deleted shortly';
+$string['trash_purge_dateformat'] = '%d/%m';
+$string['trashretentiondays'] = 'Trash retention (days)';
+$string['trashretentiondays_desc'] = 'Recordings that stay in the teacher trash longer than this number of days are deleted permanently, together with their AI analysis, viewing progress, practice attempts, materials and practice questions (questions used elsewhere, e.g. in a quiz, are hidden instead). 0 = never delete automatically.';
+$string['task_purge_trash'] = 'Purge expired recordings from the trash';
+$string['reset_userdata'] = 'Delete viewing progress, practice attempts and subscriptions';
+$string['reset_userdata_help'] = 'Deletes the students\' viewing progress, practice answers, "Continue at" and key point checklist state, and new recording subscriptions of every Google Meet activity in the course. Recordings, AI summaries and practice questions are kept.';
+$string['index_nextsession'] = 'Next session';
+$string['index_nextsession_none'] = 'No sessions scheduled';
+$string['index_nextsession_live'] = 'Live now';
+$string['index_recordings'] = 'Recordings';
+$string['index_myprogress'] = 'My progress';
+$string['index_myprogress_value'] = '{$a->watched} of {$a->total} watched ({$a->pct}%)';

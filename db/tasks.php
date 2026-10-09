@@ -60,5 +60,15 @@ $tasks = [
         'day' => '*',
         'dayofweek' => '1',
         'month' => '*'
+    ],
+    [
+        // OPS-03: purge recordings that stayed in the trash longer than googlemeet/trashretentiondays.
+        'classname' => 'mod_googlemeet\task\purge_trash',
+        'blocking' => 0,
+        'minute' => 'R',
+        'hour' => '3',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
     ]
 ];

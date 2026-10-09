@@ -86,7 +86,7 @@
             <tr data-trash-recordingid="{{id}}">
               <td>{{name}}</td>
               <td>{{createdtimeformatted}}</td>
-              <td>{{timedeletedformatted}}</td>
+              <td>{{timedeletedformatted}}{{#purgenotice}}<div class="small text-muted googlemeet-trash-purgenotice">{{purgenotice}}</div>{{/purgenotice}}</td>
               <td class="text-end">
                 <button type="button" class="btn btn-sm btn-outline-primary googlemeet-restore-recording" data-id="{{id}}">
                   {{# str }} recording_restore, mod_googlemeet {{/ str }}
