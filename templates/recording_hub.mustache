@@ -2,15 +2,9 @@
   @template mod_googlemeet/recording_hub
 }}
 <div id="googlemeet-recording-hub" class="googlemeet-recording-hub" data-cmid="{{cmid}}" data-recordingid="{{recordingid}}" data-duration-seconds="{{durationseconds}}" data-hub-url="{{huburl}}" data-start-seconds="{{starttime}}">
-  <nav class="googlemeet-hub-nav mb-3" aria-label="{{# str }} hub_lesson_nav_aria, mod_googlemeet {{/ str }}">
+  <div class="googlemeet-hub-nav mb-3">
     <a href="{{backurl}}" class="googlemeet-hub-back"><span aria-hidden="true">&lsaquo;</span> {{# str }} hub_back_to_recordings, mod_googlemeet {{/ str }}</a>
-    {{#hasrecordingnav}}
-      <div class="googlemeet-hub-nav-links">
-        {{#haspreviousrecording}}<a href="{{previousrecordingurl}}" class="btn btn-outline-secondary btn-sm" title="{{previousrecordingtitle}} · {{previousrecordingdate}}" aria-label="{{# str }} hub_previous_lesson, mod_googlemeet {{/ str }}: {{previousrecordingtitle}}, {{previousrecordingdate}}"><span aria-hidden="true">&lsaquo;</span> {{# str }} hub_previous_lesson, mod_googlemeet {{/ str }}</a>{{/haspreviousrecording}}
-        {{#hasnextrecording}}<a href="{{nextrecordingurl}}" class="btn btn-outline-secondary btn-sm" title="{{nextrecordingtitle}} · {{nextrecordingdate}}" aria-label="{{# str }} hub_next_lesson, mod_googlemeet {{/ str }}: {{nextrecordingtitle}}, {{nextrecordingdate}}">{{# str }} hub_next_lesson, mod_googlemeet {{/ str }} <span aria-hidden="true">&rsaquo;</span></a>{{/hasnextrecording}}
-      </div>
-    {{/hasrecordingnav}}
-  </nav>
+  </div>
 
   <header class="googlemeet-hub-heading googlemeet-hub-titlebar">
     <h3 class="googlemeet-hub-title">
