@@ -288,6 +288,7 @@
                       <li class="googlemeet-question-answer{{#correct}} googlemeet-question-answer-correct{{/correct}}">{{{text}}}{{#correct}} <span class="googlemeet-question-correct-tag"><span aria-hidden="true">&#10003;</span> {{# str }} question_answer_correct, mod_googlemeet {{/ str }}</span>{{/correct}}</li>
                     {{/answers}}
                   </ol>
+                  {{#haspracticestats}}<p class="googlemeet-question-practicestats small mb-2{{#practicestatslow}} googlemeet-question-practicestats-low{{/practicestatslow}}">{{practicestatslabel}}</p>{{/haspracticestats}}
                   <div class="border-top pt-2 small">{{{generalfeedback}}}</div>
                   <div class="d-flex gap-2 flex-wrap mt-3">
                     {{#isdraft}}<button type="button" class="btn btn-success btn-sm googlemeet-question-publish">{{# str }} question_publish, mod_googlemeet {{/ str }}</button>{{/isdraft}}

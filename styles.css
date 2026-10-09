@@ -4395,3 +4395,12 @@ mark.googlemeet-transcript-match-current {
     color: var(--bs-secondary-color, #5f6368);
     font-size: 0.85rem;
 }
+
+/* Hub teacher questions panel: practice stats per question. */
+.path-mod-googlemeet .googlemeet-question-practicestats {
+    color: var(--bs-secondary-color, #5f6368);
+}
+.path-mod-googlemeet .googlemeet-question-practicestats-low {
+    color: var(--bs-danger-text-emphasis, #842029);
+    font-weight: 600;
+}

@@ -75,7 +75,7 @@ Settings (Site administration → Plugins → Activity modules → Google Meet):
 
 ## Requirements
 
-- Moodle 4.5 or higher (tested on 4.5 and 5.1)
+- Moodle 5.0 or higher (tested on 5.1). Since 2.29.0 the templates use Bootstrap 5 `data-bs-*` markup (teacher "Acciones" menu), so Moodle 4.5 is no longer supported; stay on 2.28.x there.
 - PHP 8.1 or higher
 
 ## Installation
@@ -170,6 +170,24 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.29.0 (2026-10-09) — Recording hub, activity list, AI review flow and practice analytics
+
+- **Key points checklist (keypoints)** - the "reviewed" ticks of a recording's key points persist per user in the user preference `mod_googlemeet_kp_<recordingid>` (`<hash>:<bits>`, reset automatically when the key points change). Declared and exported by the privacy provider.
+- **Recording hub (hub)** - lesson title above the player; full-width player on phones; visible "Video not loading? Open in Google Drive" link under the player (the duplicate "Open in Drive" in the status bar is gone); chapters toggle only on phones, 2-line chapter titles; a single prev/next system (bottom cards); the Questions tab is hidden from students when there are no published questions; "Meet notes" tab with an explanation; edge fades on the tab row; "Continue with chapter …" resume label (`googlemeet_hub_resume_label()`); dark-mode contrast fixes. Lesson pages (`view.php?recording=`) no longer repeat the activity description and get the `googlemeet-hub-page` body class.
+- **AI review flow (ai)** - "Analizar con Gemini" is the primary action and replacing an existing (or hand-edited) analysis asks for confirmation; analysis generation is shown as queued. Teacher question panel: select all, "Publish selected (N)", "Publish all for this class (N)" and "Publish all drafts in the activity (N)" (new WS `mod_googlemeet_publish_activity_drafts`; each class is published as a whole or not at all); correct answers are marked with an icon and the word "Correct", not only colour. New AMD module `question_review`.
+- **Activity page list (list)** - the hero does not repeat the activity title; 12 lessons per page by default (instances still on the old default 5 are migrated to 12); hero progress "N vistas · M empezadas de T clases"; "Parcial" renamed "Empezada"; teacher rows show "Abrir clase" plus a labelled "Acciones" dropdown and the students' activity on each lesson; search as you type (server side, debounced) and a "Filtros" panel on phones; one vocabulary ("Clase en directo" / "Clases grabadas"); dark mode.
+- **Practice analytics (analytics)** - every practice answer is stored in the new table `googlemeet_practice_attempts` (privacy export/delete, backup/restore with user data, removed with the recording/activity). New `practice.php` (review failed questions / practise by topic across the activity, WS `mod_googlemeet_get_practice_session`, AMD `practice_session`) and a hero call-to-action. New teacher report `report.php` (viewing and practice per student, CSV/XLSX export) behind the new capability `mod/googlemeet:viewreports`, linked from the activity settings navigation. The hub teacher questions panel shows "% correct" per question from those attempts.
+- `mod_googlemeet_check_practice_answer` is now a `write` web service (it stores the attempt).
+- New tests: `keypoints_checklist_test`, `hub_ui_test`, `question_publish_test`, `practice_attempts_test`, `report_builder_test`, `privacy_practice_attempts_test`, `backup_practice_attempts_test`.
+
+#### Deployment notes (2.29.0)
+- **Requires Moodle 5.0+** (`requires = 2025041400`, `supported = [500, 501]`).
+- Run `upgrade.php`: step `2026100903` changes the `maxrecordings` default to 12 and moves instances with 5 to 12; step `2026101001` creates `googlemeet_practice_attempts`. Version `2026101002`.
+- New capability `mod/googlemeet:viewreports` (teacher, editingteacher, manager by default): review overrides in custom roles.
+- New web services `mod_googlemeet_publish_activity_drafts` and `mod_googlemeet_get_practice_session`; `check_practice_answer` changed from read to write (the upgrade re-registers them).
+- Purge all caches (new strings, templates, AMD modules) and reset opcache when `opcache.validate_timestamps=0`.
+- Practice attempts are only recorded from this version on: reports and "% correct" start empty.
 
 ### Version 2.28.1 (2026-10-09) — Friendly message for stale recording links
 

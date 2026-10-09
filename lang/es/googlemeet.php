@@ -705,3 +705,6 @@ $string['report_failed_title'] = 'Preguntas más falladas';
 $string['report_failed_none'] = 'Todavía no hay respuestas incorrectas registradas.';
 $string['report_failed_detail'] = '{$a->wrong} fallos de {$a->attempts} respuestas · {$a->users} alumnos';
 $string['report_question_deleted'] = '(pregunta eliminada)';
+
+// Hub teacher questions panel: practice stats per question.
+$string['question_practice_stats'] = 'Práctica: {$a->pct}% de aciertos ({$a->attempts} respuestas de {$a->users} alumnos)';

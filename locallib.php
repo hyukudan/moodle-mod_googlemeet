@@ -1328,6 +1328,21 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
             $draftcount++;
         }
     }
+    if ($canmanagequestions && $questions) {
+        // Teacher view: how students did on each question in the practice (ANA-05 attempts).
+        $practicestats = \mod_googlemeet\local\practice_attempts::get_question_stats((int)$googlemeet->id,
+            (int)$recording->id);
+        foreach ($questions as &$question) {
+            $stat = $practicestats[(int)$question['id']] ?? null;
+            $question['haspracticestats'] = !empty($stat['attempts']);
+            $question['practicestatslabel'] = $question['haspracticestats']
+                ? get_string('question_practice_stats', 'googlemeet', (object)[
+                    'pct' => $stat['correctpct'], 'attempts' => $stat['attempts'], 'users' => $stat['users']])
+                : '';
+            $question['practicestatslow'] = $question['haspracticestats'] && $stat['correctpct'] < 50;
+        }
+        unset($question);
+    }
 
     $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id]);
     $analysiscompleted = $analysis && $analysis->status === 'completed';

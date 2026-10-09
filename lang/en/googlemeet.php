@@ -700,3 +700,6 @@ $string['report_failed_title'] = 'Most failed questions';
 $string['report_failed_none'] = 'No wrong answers recorded yet.';
 $string['report_failed_detail'] = '{$a->wrong} wrong of {$a->attempts} answers · {$a->users} students';
 $string['report_question_deleted'] = '(deleted question)';
+
+// Hub teacher questions panel: practice stats per question.
+$string['question_practice_stats'] = 'Practice: {$a->pct}% correct ({$a->attempts} answers from {$a->users} students)';
