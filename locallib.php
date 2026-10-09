@@ -1011,7 +1011,11 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
     $teacherstats = ($hascapability && !empty($recordings))
         ? googlemeet_get_recordings_student_stats($context, $recordingids) : [];
 
-    $questionservice = new question_service();
+    // PERF-03: page-level aggregates instead of one question/file query per recording.
+    $pagerecordingids = array_map(static fn($r) => (int)$r->id, $recordings);
+    $questioncounts = \mod_googlemeet\local\list_aggregates::published_question_counts($googlemeet, $cm, $context,
+        $pagerecordingids);
+    $materialsbyrecording = \mod_googlemeet\local\list_aggregates::materials_by_recording($context, $pagerecordingids);
     foreach ($recordings as $recording) {
         foreach (googlemeet_recording_progress_state($recording, $progressbyrecording[$recording->id] ?? null) as $key => $value) {
             $recording->$key = $value;
@@ -1027,9 +1031,8 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             $recording->teacherstatscompletedlabel = $completedcount > 0
                 ? get_string('list_teacherstats_completed', 'googlemeet', $completedcount) : '';
         }
-        $publishedquestions = $questionservice->get_questions($googlemeet, $cm, $context, (int)$recording->id, true);
-        $recording->haspublishedquestions = !empty($publishedquestions);
-        $recording->publishedquestioncount = count($publishedquestions);
+        $recording->publishedquestioncount = $questioncounts[(int)$recording->id] ?? 0;
+        $recording->haspublishedquestions = $recording->publishedquestioncount > 0;
         $urlparams = ['id' => $cm->id, 'recording' => $recording->id];
         if ($page > 0) {
             $urlparams['rpage'] = $page;
@@ -1041,7 +1044,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         $recording->materialshuburl = (new moodle_url('/mod/googlemeet/view.php', $materialsurlparams))->out(false);
         // Surface attached materials directly in the recordings list so teachers can
         // upload/manage from here and students can download without entering the hub.
-        $materials = googlemeet_get_recording_materials($context, $recording->id);
+        $materials = $materialsbyrecording[(int)$recording->id] ?? [];
         $recording->materials = $materials;
         $recording->hasmaterials = !empty($materials);
         $recording->materialcount = count($materials);
@@ -1347,8 +1350,6 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
 
     $rpage = optional_param('rpage', 0, PARAM_INT);
     $rorder = optional_param('rorder', null, PARAM_ALPHA);
-    $recordingsorder = strtoupper($rorder ?: ($googlemeet->recordingsorder ?? 'DESC'));
-    $recordingsorder = $recordingsorder === 'ASC' ? 'ASC' : 'DESC';
     $backparams = ['id' => $cm->id];
     if ($rpage > 0) {
         $backparams['rpage'] = $rpage;
@@ -1356,29 +1357,10 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     if ($rorder) {
         $backparams['rorder'] = $rorder;
     }
-    $recordingnavparams = ['googlemeetid' => $googlemeet->id];
-    if (!$caneditrecording) {
-        $recordingnavparams['visible'] = true;
-    }
-    $recordingnavitems = array_values(googlemeet_list_recordings($recordingnavparams, false, $recordingsorder, 0, 0));
-    $previousrecording = null;
-    $nextrecording = null;
-    foreach ($recordingnavitems as $index => $navrecording) {
-        if ((int)$navrecording->id !== (int)$recording->id) {
-            continue;
-        }
-        if ($index > 0) {
-            $previousrecording = $recordingnavitems[$index - 1];
-        }
-        if ($index < count($recordingnavitems) - 1) {
-            $nextrecording = $recordingnavitems[$index + 1];
-        }
-        break;
-    }
-    // Students think of "previous/next class" chronologically, whatever the list order is.
-    if ($recordingsorder === 'DESC') {
-        [$previousrecording, $nextrecording] = [$nextrecording, $previousrecording];
-    }
+    // PERF-03: two LIMIT 1 queries instead of loading every recording of the activity.
+    // Previous/next are chronological whatever the list order (students think in class dates).
+    [$previousrecording, $nextrecording] = \mod_googlemeet\local\list_aggregates::hub_neighbours($recording,
+        !$caneditrecording);
     $previousparams = $backparams;
     $nextparams = $backparams;
     if ($previousrecording) {
@@ -1589,37 +1571,7 @@ function googlemeet_summary_paragraphs(string $summary): array {
  * @return array
  */
 function googlemeet_get_recording_materials(context_module $context, int $recordingid): array {
-    global $OUTPUT;
-
-    $fs = get_file_storage();
-    $files = $fs->get_area_files($context->id, 'mod_googlemeet', 'recordingmaterial', $recordingid, 'filename', false);
-    $materials = [];
-
-    foreach ($files as $file) {
-        if ($file->is_directory()) {
-            continue;
-        }
-
-        $filepath = $file->get_filepath();
-        $materials[] = [
-            'name' => $file->get_filename(),
-            'icon' => $OUTPUT->image_url(file_file_icon($file), 'moodle')->out(false),
-            'size' => display_size($file->get_filesize()),
-            'modified' => userdate($file->get_timemodified(), get_string('strftimedatetimeshort')),
-            'filepath' => ($filepath !== '/' && $filepath !== '') ? trim($filepath, '/') : '',
-            'url' => moodle_url::make_pluginfile_url(
-                $context->id,
-                'mod_googlemeet',
-                'recordingmaterial',
-                $recordingid,
-                $filepath,
-                $file->get_filename(),
-                true
-            )->out(false),
-        ];
-    }
-
-    return $materials;
+    return \mod_googlemeet\local\list_aggregates::materials_by_recording($context, [$recordingid])[$recordingid];
 }
 
 /**
