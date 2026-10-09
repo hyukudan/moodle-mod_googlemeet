@@ -76,7 +76,8 @@ class subtitle_extractor {
      */
     public function extract(string $driveurl): ?string {
         if (!$this->is_available()) {
-            mtrace('subtitle_extractor: yt-dlp no encontrado; se omite la extracción de subtítulos; configure la ruta en Ajustes > googlemeet > ytdlppath o instale yt-dlp en PATH');
+            mtrace('subtitle_extractor: yt-dlp not found; skipping subtitle extraction. '
+                . 'Set its path in the googlemeet setting "ytdlppath" or install yt-dlp in PATH.');
             debugging('subtitle_extractor: yt-dlp not available (googlemeet/ytdlppath not executable and not found in PATH); ' .
                 'skipping the auto-subtitle tier', DEBUG_DEVELOPER);
             return null;
@@ -175,7 +176,8 @@ class subtitle_extractor {
      */
     public function get_timedtext_url(string $driveurl): ?string {
         if (empty($this->ytdlppath)) {
-            mtrace('subtitle_extractor: yt-dlp no encontrado; se omite la extracción de subtítulos; configure la ruta en Ajustes > googlemeet > ytdlppath o instale yt-dlp en PATH');
+            mtrace('subtitle_extractor: yt-dlp not found; skipping subtitle extraction. '
+                . 'Set its path in the googlemeet setting "ytdlppath" or install yt-dlp in PATH.');
             return null;
         }
 

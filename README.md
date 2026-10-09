@@ -73,6 +73,33 @@ Settings (Site administration → Plugins → Activity modules → Google Meet):
 - **Weeks without recording** (`stalerecurrence_weeks`, default 3)
 - **Re-notify after (days)** (`stalerecurrence_renotifydays`, default 28)
 
+### Reminders, push and "Add to my calendar"
+
+- **Two reminders per session**: the existing one *Minutes before* the start and an optional
+  *Early reminder* N hours before (per-activity `notifyhoursbefore`, default from the site setting
+  `googlemeet/notifyhoursbefore` = 24 h, "Off" = 0). Each reminder is sent once per student and
+  session (`googlemeet_notify_done.kind`). The send window tolerates cron gaps: a reminder is still
+  sent when the task comes back late, as long as the session has not started; a late run never sends
+  both reminders at once. Cancelled sessions get no reminder.
+- **Push notifications in the Moodle app**: the reminder and the new-recording notice allow the
+  `airnotifier` processor (enabled by default) and carry `customdata` (`cmid`, `courseid`, `appurl`)
+  so tapping the notification opens the activity. **Requires the site to have the Moodle app
+  notifications (airnotifier) configured** (Site administration → Messaging → Mobile); without it
+  nothing changes.
+- **New-recording notice with content**: each new lesson is announced with its readable title and,
+  when the AI analysis is ready, a short summary and its chapters (the notice waits up to 3 hours
+  for a queued analysis). When the site setting `googlemeet/requireaireview` is on, only reviewed
+  analyses are quoted. The HTML body is the `mod_googlemeet/email_new_recordings` template, wrapped
+  by `local_achievements` only if that plugin is installed. All texts come from the language pack in
+  the recipient's language.
+- **Teacher alert**: when auto-sync exhausts `maxsyncattempts` without finding a recording, the
+  activity's teachers (`mod/googlemeet:syncgoogledrive`) are told in the same run (message
+  provider `autosyncfailed`); site admins only when no teacher qualifies.
+- **Add to my calendar**: the live-class block links to `calendar.php?id=<cmid>`, an iCalendar
+  (.ics) file with every upcoming, non-cancelled session as its own event (UTC times, stable UIDs
+  so a re-import updates instead of duplicating), and to a Google Calendar template for the next
+  session.
+
 ## Requirements
 
 - Moodle 5.0 or higher (tested on 5.1). Since 2.29.0 the templates use Bootstrap 5 `data-bs-*` markup (teacher "Acciones" menu), so Moodle 4.5 is no longer supported; stay on 2.28.x there.
