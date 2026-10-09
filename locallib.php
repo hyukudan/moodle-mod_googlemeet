@@ -1335,6 +1335,13 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $lessontitle = $lessontitles[$recording->id] ?? [
         'title' => googlemeet_display_name((string)$recording->name), 'subtitle' => '', 'hassubtitle' => false,
     ];
+    // The page header already shows the activity name: do not repeat it as the lesson subtitle.
+    if (!empty($lessontitle['hassubtitle'])
+            && core_text::strtolower(trim(format_string($lessontitle['subtitle'])))
+                === core_text::strtolower(trim(format_string($googlemeet->name)))) {
+        $lessontitle['subtitle'] = '';
+        $lessontitle['hassubtitle'] = false;
+    }
     $navtitle = static function(?stdClass $navrecording) use ($lessontitles): string {
         if (!$navrecording) {
             return '';
@@ -1364,9 +1371,7 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'playerurl' => $playerurl,
         'hasresume' => $lastjump > 0,
         'resumeseconds' => $lastjump,
-        'resumelabel' => $lastjump > 0
-            ? get_string('recording_resume_button', 'googlemeet', googlemeet_format_seconds_timestamp($lastjump))
-            : '',
+        'resumelabel' => $lastjump > 0 ? googlemeet_hub_resume_label($lastjump, $chapters) : '',
         'huburl' => (new moodle_url('/mod/googlemeet/view.php',
             ['id' => $cm->id, 'recording' => $recording->id]))->out(false),
         'webviewlink' => $recording->webviewlink,
@@ -1425,6 +1430,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
             : '',
         'questions' => $questions,
         'hasquestions' => !empty($questions),
+        // Students only get the Questions tab when there is something to practise (published questions).
+        'showquestionstab' => $canmanagequestions || !empty($questions),
         'draftcount' => $draftcount,
         'publishedcount' => $publishedcount,
         'questioncount' => count($questions),
@@ -1444,6 +1451,28 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
 
     $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/mod/googlemeet/assets/js/build/jstable.min.js'));
     echo $OUTPUT->render_from_template('mod_googlemeet/recording_hub', $templatecontext);
+}
+
+/**
+ * Student-facing label for the hub "continue" button.
+ *
+ * "Continue with chapter «X» (14:02)" when the remembered second is a chapter start, else "Continue at 14:02".
+ *
+ * @param int $seconds Remembered offset (last jump), > 0.
+ * @param array $chapters Normalised chapters (googlemeet_normalise_chapters()).
+ * @return string
+ */
+function googlemeet_hub_resume_label(int $seconds, array $chapters): string {
+    $time = googlemeet_format_seconds_timestamp($seconds);
+    foreach ($chapters as $chapter) {
+        if (abs((int)$chapter['startseconds'] - $seconds) <= 2) {
+            return get_string('hub_resume_chapter', 'googlemeet', (object)[
+                'title' => format_string($chapter['title']),
+                'time' => $time,
+            ]);
+        }
+    }
+    return get_string('hub_resume_time', 'googlemeet', $time);
 }
 
 /**

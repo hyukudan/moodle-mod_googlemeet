@@ -576,24 +576,41 @@ const scrollChapterIntoPanel = button => {
 /**
  * Bind the mobile collapse toggle of the chapters panel.
  *
- * On small screens (<= 576px) the list starts collapsed under the player; elsewhere it is always shown.
+ * On small screens (<= 576px) the list starts collapsed under the player and the toggle
+ * shows/hides it (aria-expanded + the hidden attribute on the list). On larger screens the
+ * toggle is hidden by CSS and the list is always expanded.
  *
  * @returns {void}
  */
 const bindChaptersToggle = () => {
     const panel = document.querySelector('#googlemeet-recording-hub .googlemeet-chapters-panel');
     const toggle = panel ? panel.querySelector('.googlemeet-chapters-toggle') : null;
-    if (!toggle) {
+    const body = panel ? panel.querySelector('#googlemeet-chapters-body') : null;
+    if (!toggle || !body) {
         return;
     }
     const setExpanded = expanded => {
         panel.classList.toggle('googlemeet-chapters-collapsed', !expanded);
+        body.hidden = !expanded;
         toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         toggle.textContent = toggle.getAttribute(expanded ? 'data-label-hide' : 'data-label-show');
     };
     const small = window.matchMedia ? window.matchMedia('(max-width: 575.98px)') : null;
     if (small && small.matches) {
         setExpanded(false);
+    }
+    if (small) {
+        const onChange = event => {
+            // Leaving the phone layout: the toggle disappears, so never leave the list hidden.
+            if (!event.matches) {
+                setExpanded(true);
+            }
+        };
+        if (small.addEventListener) {
+            small.addEventListener('change', onChange);
+        } else if (small.addListener) {
+            small.addListener(onChange);
+        }
     }
     toggle.addEventListener('click', () => {
         setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
@@ -1673,6 +1690,30 @@ const bindTabHash = () => {
 };
 
 /**
+ * Show an edge fade on the tab row only while there are more tabs to scroll to in that direction.
+ *
+ * @returns {void}
+ */
+const bindTabsOverflow = () => {
+    const wrap = document.querySelector('#googlemeet-recording-hub .googlemeet-hub-tabs-wrap');
+    const strip = wrap ? wrap.querySelector('.googlemeet-hub-tabs') : null;
+    if (!strip) {
+        return;
+    }
+    const update = () => {
+        const max = strip.scrollWidth - strip.clientWidth;
+        wrap.classList.toggle('googlemeet-tabs-more-start', max > 1 && strip.scrollLeft > 1);
+        wrap.classList.toggle('googlemeet-tabs-more-end', max > 1 && strip.scrollLeft < max - 1);
+    };
+    strip.addEventListener('scroll', update, {passive: true});
+    window.addEventListener('resize', update);
+    if (window.ResizeObserver) {
+        new window.ResizeObserver(update).observe(strip);
+    }
+    update();
+};
+
+/**
  * Stable storage key for a key point, independent of its position (text prefix, whitespace-normalised).
  *
  * @param {string} text Key point text.
@@ -1895,6 +1936,7 @@ export const init = config => {
         $(document).ready(() => {
             restoreHubState();
             bindTabHash();
+            bindTabsOverflow();
             bindQuestionManagement();
             if (settings.caneditrecording) {
                 bindRecordingManagement();

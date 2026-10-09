@@ -592,3 +592,16 @@ $string['hub_print_summary'] = 'Print summary';
 
 // track: keypoints
 $string['privacy:metadata:preference:keypoints'] = 'The review checklist state of the key points in each recording (one preference per recording): which key points the user marked as reviewed.';
+
+// track: hub
+$string['hub_chapters_heading'] = 'Chapters';
+$string['hub_chapters_hint_seek'] = 'Select one to jump to that time.';
+$string['hub_player_fallback_text'] = 'Video not loading?';
+$string['hub_player_fallback_link'] = 'Open in Google Drive';
+$string['hub_player_help_why'] = 'Why does this happen?';
+$string['hub_opens_new_tab'] = 'opens in a new tab';
+$string['hub_tab_notes_meet'] = 'Meet notes';
+$string['hub_notes_origin'] = 'Notes that Google Meet took automatically during this class. They only exist for classes where “Take notes” was turned on, which is why this tab is not shown for every class.';
+$string['hub_resume_chapter'] = 'Continue with chapter “{$a->title}” ({$a->time})';
+$string['hub_resume_time'] = 'Continue at {$a}';
+$string['hub_resume_note'] = 'The last point you opened from here.';

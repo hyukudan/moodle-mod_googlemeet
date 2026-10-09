@@ -3738,3 +3738,171 @@ mark.googlemeet-transcript-match-current {
         padding: 0.55rem 0.8rem;
     }
 }
+/* === track: hub === */
+/* Chapters panel: the toggle only exists on phones. Theme .btn rules (RemUI) load after this
+   file with the same specificity, so the selectors below carry an extra class. */
+.googlemeet-chapters-header .btn.googlemeet-chapters-toggle {
+    display: none;
+}
+.googlemeet-chapters-header h4 {
+    white-space: nowrap;
+}
+.googlemeet-recording-hub .googlemeet-chapter-title {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.3;
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-chapters-header .btn.googlemeet-chapters-toggle {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+    }
+    .googlemeet-chapters-header {
+        flex-wrap: nowrap;
+    }
+}
+@media print {
+    .googlemeet-recording-hub .googlemeet-chapter-title {
+        display: inline;
+        -webkit-line-clamp: unset;
+        line-clamp: none;
+    }
+}
+/* Visible "video not loading?" fallback right under the player. */
+.googlemeet-player-fallback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.6rem;
+    font-size: 0.875rem;
+    color: var(--gm-muted, #5f6368);
+}
+.googlemeet-player-fallback-link {
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.googlemeet-player-fallback-link::after {
+    content: " \2197";
+}
+.googlemeet-player-fallback .googlemeet-player-help {
+    font-size: 0.8rem;
+}
+.googlemeet-player-fallback .googlemeet-player-help summary {
+    min-height: 24px;
+    font-weight: 400;
+}
+.googlemeet-player-fallback .googlemeet-player-help[open] {
+    flex-basis: 100%;
+}
+/* Lesson title sits right above the player; the status bar stays under it. */
+.googlemeet-recording-hub .googlemeet-hub-titlebar {
+    margin: 0 0 0.75rem;
+}
+.googlemeet-recording-hub .googlemeet-hub-header {
+    justify-content: flex-start;
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-recording-hub .googlemeet-hub-nav {
+        margin-bottom: 0.5rem !important;
+    }
+    .googlemeet-recording-hub .googlemeet-hub-titlebar .googlemeet-hub-title {
+        font-size: 1.2rem;
+    }
+    .googlemeet-recording-hub .googlemeet-hub-meta {
+        font-size: 0.8rem;
+    }
+    /* Full-bleed player: ignore the nested page/region/card side padding on phones. */
+    .googlemeet-recording-hub .googlemeet-recording-player {
+        width: 100vw;
+        max-width: none;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+        margin-bottom: 0.5rem !important;
+    }
+    .googlemeet-recording-hub .googlemeet-recording-player iframe {
+        border-radius: 0;
+    }
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-chapters-collapsed .googlemeet-chapter-feedback:empty {
+        display: none;
+    }
+    .googlemeet-chapters-collapsed .googlemeet-chapters-header {
+        align-items: center;
+    }
+}
+/* Tab row: snap scrolling and an edge fade only while more tabs are hidden in that direction. */
+.googlemeet-recording-hub .googlemeet-hub-tabs {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 1.5rem;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs .nav-item {
+    scroll-snap-align: start;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before,
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 1px;
+    width: 2.25rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before {
+    left: 0;
+    background: linear-gradient(to left, transparent, var(--bs-body-bg, #fff));
+}
+.googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+    right: 0;
+    background: linear-gradient(to right, transparent, var(--bs-body-bg, #fff) 85%);
+}
+.googlemeet-recording-hub .googlemeet-tabs-more-start::before,
+.googlemeet-recording-hub .googlemeet-tabs-more-end::after {
+    opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    .googlemeet-recording-hub .googlemeet-hub-tabs-wrap::before,
+    .googlemeet-recording-hub .googlemeet-hub-tabs-wrap::after {
+        transition: none;
+    }
+}
+.googlemeet-notes-origin {
+    margin: 0 0 0.75rem;
+    color: var(--bs-secondary-color, #5f6368);
+    font-size: 0.85rem;
+}
+/* Continue button: may carry a chapter title, so let it wrap. */
+.googlemeet-recording-hub .googlemeet-resume-button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+}
+/* Dark mode fixes from the UI review (K-1, K-2, K-3). Theme primaries are often dark navy,
+   so links/times on dark surfaces use a light accent with >= 4.5:1 contrast. */
+[data-bs-theme="dark"] .path-mod-googlemeet {
+    --gm-accent-on-dark: #8ab4f8;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .activity-description a,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-fallback-link,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-help summary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hub-back,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hub-pager-label,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-time,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link {
+    color: var(--gm-accent-on-dark);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-partial {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffd666;
+}

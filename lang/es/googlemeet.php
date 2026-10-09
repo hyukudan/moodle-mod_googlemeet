@@ -597,3 +597,16 @@ $string['hub_print_summary'] = 'Imprimir resumen';
 
 // track: keypoints
 $string['privacy:metadata:preference:keypoints'] = 'El estado de la lista de repaso de los puntos clave de cada grabación (una preferencia por grabación): qué puntos clave ha marcado el usuario como repasados.';
+
+// track: hub
+$string['hub_chapters_heading'] = 'Capítulos';
+$string['hub_chapters_hint_seek'] = 'Pulsa uno para saltar a ese minuto.';
+$string['hub_player_fallback_text'] = '¿No carga el vídeo?';
+$string['hub_player_fallback_link'] = 'Abrir en Google Drive';
+$string['hub_player_help_why'] = '¿Por qué pasa?';
+$string['hub_opens_new_tab'] = 'se abre en una pestaña nueva';
+$string['hub_tab_notes_meet'] = 'Notas de Meet';
+$string['hub_notes_origin'] = 'Notas que Google Meet tomó automáticamente durante esta clase. Solo existen en las clases en las que se activó «Tomar notas», por eso esta pestaña no aparece en todas.';
+$string['hub_resume_chapter'] = 'Seguir por el capítulo «{$a->title}» ({$a->time})';
+$string['hub_resume_time'] = 'Seguir en {$a}';
+$string['hub_resume_note'] = 'Es el último punto que abriste desde aquí.';
