@@ -244,6 +244,10 @@
             {{#draftcount}}<span class="badge bg-warning text-dark ms-1">{{draftcount}} {{# str }} question_status_draft, mod_googlemeet {{/ str }}</span>{{/draftcount}}
             {{#publishedcount}}<span class="badge bg-success ms-1">{{publishedcount}} {{# str }} question_status_published, mod_googlemeet {{/ str }}</span>{{/publishedcount}}
           </div>
+          <div class="d-flex gap-2 flex-wrap">
+          {{#activitydraftcount}}
+          <button type="button" class="btn btn-outline-secondary btn-sm googlemeet-question-publish-activity" data-count="{{activitydraftcount}}">{{# str }} question_publish_activity_count, mod_googlemeet, {{activitydraftcount}} {{/ str }}</button>
+          {{/activitydraftcount}}
           {{#aienabled}}
           <button type="button" class="btn btn-primary btn-sm googlemeet-question-generate" data-count="10" {{#generationqueued}}disabled{{/generationqueued}}>
             {{#generationqueued}}{{# str }} question_generating, mod_googlemeet {{/ str }}{{/generationqueued}}
@@ -253,6 +257,7 @@
             {{/generationqueued}}
           </button>
           {{/aienabled}}
+          </div>
         </div>
         {{#generationqueued}}
           <div class="alert alert-info googlemeet-question-generating">{{# str }} question_generating, mod_googlemeet {{/ str }}</div>
@@ -261,17 +266,23 @@
           <div class="alert alert-secondary">{{# str }} question_empty_teacher, mod_googlemeet {{/ str }}</div>
         {{/hasquestions}}
         {{#hasquestions}}
-          <div class="mb-3 d-flex gap-2 flex-wrap">
-            <button type="button" class="btn btn-outline-success btn-sm googlemeet-question-bulk-publish" disabled>{{# str }} question_bulk_publish, mod_googlemeet {{/ str }}</button>
+          <div class="googlemeet-question-bulkbar mb-3" role="group" aria-label="{{# str }} question_bulk_actions, mod_googlemeet {{/ str }}">
+            <div class="form-check mb-0 googlemeet-question-selectall-wrap">
+              <input class="form-check-input googlemeet-question-select-all" type="checkbox" id="googlemeet-question-select-all">
+              <label class="form-check-label" for="googlemeet-question-select-all">{{# str }} question_select_all, mod_googlemeet {{/ str }}</label>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm googlemeet-question-bulk-publish" disabled>{{# str }} question_bulk_publish_count, mod_googlemeet, 0 {{/ str }}</button>
             <button type="button" class="btn btn-outline-danger btn-sm googlemeet-question-bulk-discard" disabled>{{# str }} question_bulk_discard, mod_googlemeet {{/ str }}</button>
+            {{#hasdrafts}}<button type="button" class="btn btn-outline-primary btn-sm googlemeet-question-publish-recording">{{# str }} question_publish_recording_count, mod_googlemeet, {{draftcount}} {{/ str }}</button>{{/hasdrafts}}
           </div>
+          <div class="googlemeet-question-bulk-status" role="status" aria-live="polite"></div>
           <div class="googlemeet-question-list">
             {{#questions}}
               <div class="card mb-3 googlemeet-question-card" data-questionid="{{id}}">
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-start gap-2">
                     <div class="d-flex align-items-start gap-2" style="min-width:0;">
-                      <input class="form-check-input mt-1 flex-shrink-0 googlemeet-question-select" type="checkbox" value="{{id}}" id="googlemeet-question-select-{{id}}" aria-label="{{# str }} select {{/ str }}">
+                      <input class="form-check-input mt-1 flex-shrink-0 googlemeet-question-select" type="checkbox" value="{{id}}" id="googlemeet-question-select-{{id}}" data-isdraft="{{#isdraft}}1{{/isdraft}}{{^isdraft}}0{{/isdraft}}">
                       <label class="fw-bold mb-0 text-break" for="googlemeet-question-select-{{id}}">{{{stem}}}</label>
                     </div>
                     <span class="badge flex-shrink-0 {{#isready}}bg-success{{/isready}}{{#isdraft}}bg-warning text-dark{{/isdraft}}">{{statuslabel}}</span>
@@ -482,4 +493,9 @@ require(['mod_googlemeet/recording_hub'], function(m) {
     progressthresholdseconds: {{progressthresholdseconds}}
   });
 });
+{{#canmanagequestions}}
+require(['mod_googlemeet/question_review'], function(q) {
+  q.init({cmid: {{cmid}}, recordingid: {{recordingid}}, sesskey: {{# quote }}{{sesskey}}{{/ quote }}});
+});
+{{/canmanagequestions}}
 {{/js}}

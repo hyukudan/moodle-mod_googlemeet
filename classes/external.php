@@ -1151,6 +1151,69 @@ class mod_googlemeet_external extends external_api {
     }
 
     /**
+     * Parameters for publish_activity_drafts.
+     *
+     * @return external_function_parameters
+     */
+    public static function publish_activity_drafts_parameters() {
+        return new external_function_parameters([
+            'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
+            'sesskey' => new external_value(PARAM_RAW, 'Session key'),
+        ]);
+    }
+
+    /**
+     * Publish every draft question of the activity (one all-or-nothing batch per recording).
+     *
+     * @param int $coursemoduleid Course module ID.
+     * @param string $sesskey Session key.
+     * @return array
+     */
+    public static function publish_activity_drafts($coursemoduleid, $sesskey) {
+        global $DB;
+
+        $params = self::validate_parameters(self::publish_activity_drafts_parameters(), [
+            'coursemoduleid' => $coursemoduleid,
+            'sesskey' => $sesskey,
+        ]);
+        if (!confirm_sesskey($params['sesskey'])) {
+            throw new \moodle_exception('invalidsesskey');
+        }
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:managequestions', $context);
+        $googlemeet = $DB->get_record('googlemeet', ['id' => $cm->instance], '*', MUST_EXIST);
+
+        $service = new \mod_googlemeet\question_service();
+        $outcome = $service->publish_activity_drafts($googlemeet, $cm, $context);
+        $outcome['success'] = $outcome['failed'] === 0;
+        return $outcome;
+    }
+
+    /**
+     * Describes the publish_activity_drafts return value.
+     *
+     * @return external_single_structure
+     */
+    public static function publish_activity_drafts_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether every batch was published'),
+            'published' => new external_value(PARAM_INT, 'Number of questions published'),
+            'failed' => new external_value(PARAM_INT, 'Number of draft questions left unpublished'),
+            'results' => new external_multiple_structure(new external_single_structure([
+                'recordingid' => new external_value(PARAM_INT, 'Recording ID'),
+                'name' => new external_value(PARAM_TEXT, 'Recording name'),
+                'count' => new external_value(PARAM_INT, 'Draft questions in this recording'),
+                'published' => new external_value(PARAM_INT, 'Questions published for this recording'),
+                'success' => new external_value(PARAM_BOOL, 'Whether this recording batch was published'),
+                'error' => new external_value(PARAM_TEXT, 'Reason the batch was not published'),
+            ]), 'Per-recording results'),
+        ]);
+    }
+
+    /**
      * Parameters for update_question.
      *
      * @return external_function_parameters

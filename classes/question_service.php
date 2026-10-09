@@ -600,6 +600,159 @@ class question_service {
     }
 
     /**
+     * Leak gate before publishing: every question of the batch must be clean, otherwise
+     * an exception is thrown and nothing is published (all-or-nothing per batch).
+     *
+     * The check is optional (local_questions may be absent). Kept as an instance method so
+     * tests can substitute the gate.
+     *
+     * @param array $questionrows Rows returned by require_questions_for_recording().
+     * @return void
+     * @throws moodle_exception When a question contains internal notes.
+     */
+    protected function assert_publishable(array $questionrows): void {
+        if (!self::leak_check_available(['fugas_campos_pregunta', 'fugas_exigir_limpia'])) {
+            return;
+        }
+        foreach ($questionrows as $row) {
+            [$campos, $ctx] = fugas_campos_pregunta((int)$row->id);
+            fugas_exigir_limpia($campos, $ctx, 'googlemeet: publicar pregunta ' . $row->id, true);
+        }
+    }
+
+    /**
+     * Draft questions of the whole activity, grouped by recording.
+     *
+     * Only questions in this activity's own category, tagged with one of its
+     * non-deleted recordings, and in draft status are returned.
+     *
+     * @param stdClass $googlemeet Activity record.
+     * @param stdClass $cm Course-module record.
+     * @param \context_module $context Module context.
+     * @return array recordingid => ['recording' => stdClass(id, name), 'rows' => array of question rows]
+     */
+    public function get_activity_drafts(stdClass $googlemeet, stdClass $cm, \context_module $context): array {
+        global $DB;
+
+        $category = $this->get_category($googlemeet, $cm, $context, false);
+        if (!$category) {
+            return [];
+        }
+        $recordings = $DB->get_records('googlemeet_recordings',
+            ['googlemeetid' => $googlemeet->id, 'deleted' => 0], 'createdtime ASC, id ASC', 'id, name');
+        if (!$recordings) {
+            return [];
+        }
+        $tagmap = [];
+        foreach ($recordings as $recording) {
+            $tagmap[\core_text::strtolower(self::tag_for_recording((int)$recording->id))] = (int)$recording->id;
+        }
+
+        [$tagsql, $tagparams] = $DB->get_in_or_equal(array_keys($tagmap), SQL_PARAMS_NAMED, 'tag');
+        $params = $tagparams + [
+            'categoryid' => $category->id,
+            'component' => 'core_question',
+            'itemtype' => 'question',
+            'draftstatus' => question_version_status::QUESTION_STATUS_DRAFT,
+        ];
+        $sql = "SELECT ti.id AS tiid, q.id, q.qtype, qv.id AS versionid, qv.status, t.name AS tagname
+                  FROM {question} q
+                  JOIN {question_versions} qv ON qv.questionid = q.id
+                  JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                  JOIN {tag_instance} ti ON ti.itemid = q.id
+                  JOIN {tag} t ON t.id = ti.tagid
+                 WHERE qbe.questioncategoryid = :categoryid
+                   AND ti.component = :component
+                   AND ti.itemtype = :itemtype
+                   AND qv.status = :draftstatus
+                   AND t.name {$tagsql}
+              ORDER BY q.id ASC";
+
+        $grouped = [];
+        $seen = [];
+        foreach ($DB->get_records_sql($sql, $params) as $record) {
+            if (isset($seen[$record->id])) {
+                continue;
+            }
+            $seen[$record->id] = true;
+            $recordingid = $tagmap[$record->tagname];
+            if (!isset($grouped[$recordingid])) {
+                $grouped[$recordingid] = ['recording' => $recordings[$recordingid], 'rows' => []];
+            }
+            unset($record->tiid, $record->tagname);
+            $grouped[$recordingid]['rows'][$record->id] = $record;
+        }
+
+        // Keep the list order of recordings (oldest first).
+        $ordered = [];
+        foreach ($recordings as $recording) {
+            if (isset($grouped[$recording->id])) {
+                $ordered[$recording->id] = $grouped[$recording->id];
+            }
+        }
+        return $ordered;
+    }
+
+    /**
+     * Number of draft questions in the whole activity.
+     *
+     * @param stdClass $googlemeet Activity record.
+     * @param stdClass $cm Course-module record.
+     * @param \context_module $context Module context.
+     * @return int
+     */
+    public function count_activity_drafts(stdClass $googlemeet, stdClass $cm, \context_module $context): int {
+        $count = 0;
+        foreach ($this->get_activity_drafts($googlemeet, $cm, $context) as $group) {
+            $count += count($group['rows']);
+        }
+        return $count;
+    }
+
+    /**
+     * Publish every draft question of the activity, one batch per recording.
+     *
+     * Each recording is an independent all-or-nothing batch (same publish path and leak
+     * gate as set_status()): if any question of a recording fails the leak check, none of
+     * that recording's drafts are published, and the other recordings are still processed.
+     *
+     * @param stdClass $googlemeet Activity record.
+     * @param stdClass $cm Course-module record.
+     * @param \context_module $context Module context.
+     * @return array ['published' => int, 'failed' => int, 'results' => array of per-recording results]
+     */
+    public function publish_activity_drafts(stdClass $googlemeet, stdClass $cm, \context_module $context): array {
+        $published = 0;
+        $failed = 0;
+        $results = [];
+        foreach ($this->get_activity_drafts($googlemeet, $cm, $context) as $recordingid => $group) {
+            $rows = $group['rows'];
+            $result = [
+                'recordingid' => (int)$recordingid,
+                'name' => format_string($group['recording']->name, true, ['context' => $context]),
+                'count' => count($rows),
+                'published' => 0,
+                'success' => true,
+                'error' => '',
+            ];
+            try {
+                // set_status() runs the leak gate on the whole batch before writing anything.
+                $result['published'] = $this->set_status($rows, question_version_status::QUESTION_STATUS_READY);
+                $published += $result['published'];
+            } catch (\Exception $e) {
+                $failed += count($rows);
+                $result['success'] = false;
+                $result['error'] = $e instanceof moodle_exception
+                    ? $e->getMessage()
+                    : get_string('question_publish_error', 'googlemeet');
+            }
+            $results[] = $result;
+        }
+
+        return ['published' => $published, 'failed' => $failed, 'results' => $results];
+    }
+
+    /**
      * Set draft/ready status for questions.
      *
      * @param array $questionrows Rows returned by require_questions_for_recording().
@@ -620,12 +773,8 @@ class question_service {
         // versión completa de cada pregunta; si una falla, no se publica ninguna.
         // The check is optional (local_questions may be absent); when the library is
         // present the all-or-nothing semantics are preserved.
-        if ($status === question_version_status::QUESTION_STATUS_READY
-                && self::leak_check_available(['fugas_campos_pregunta', 'fugas_exigir_limpia'])) {
-            foreach ($questionrows as $row) {
-                [$campos, $ctx] = fugas_campos_pregunta((int)$row->id);
-                fugas_exigir_limpia($campos, $ctx, 'googlemeet: publicar pregunta ' . $row->id, true);
-            }
+        if ($status === question_version_status::QUESTION_STATUS_READY) {
+            $this->assert_publishable($questionrows);
         }
         foreach ($questionrows as $row) {
             $DB->set_field('question_versions', 'status', $status, ['id' => $row->versionid]);

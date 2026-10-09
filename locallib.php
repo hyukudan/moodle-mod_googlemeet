@@ -1423,6 +1423,8 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
         'publishedcount' => $publishedcount,
         'questioncount' => count($questions),
         'hasdrafts' => $draftcount > 0,
+        'activitydraftcount' => $canmanagequestions
+            ? $questionservice->count_activity_drafts($googlemeet, $cm, $context) : 0,
         'generationqueued' => $questionservice->is_generation_queued($recording->id),
         'summaryactive' => $summaryactive,
         // Preguntas is never the initially-active tab (default is Resumen, or Materiales); always false.

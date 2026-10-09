@@ -3738,3 +3738,21 @@ mark.googlemeet-transcript-match-current {
         padding: 0.55rem 0.8rem;
     }
 }
+
+/* === track: ai === */
+.path-mod-googlemeet .googlemeet-question-bulkbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.5rem;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+}
+.path-mod-googlemeet .googlemeet-question-selectall-wrap {
+    margin-right: auto;
+}
+.path-mod-googlemeet .googlemeet-question-bulk-status:empty {
+    display: none;
+}
