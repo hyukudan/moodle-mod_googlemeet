@@ -1,0 +1,90 @@
+{{!
+  This file is part of Moodle - http://moodle.org/
+
+  Moodle is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Moodle is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+  @template mod_googlemeet/local/recording_row_actions
+
+  Teacher-only "Acciones" menu of a recording row (list and card views). Every action has a
+  visible text label; the destructive one is last, separated and in danger style.
+  The item classes keep the hooks used by the inline list JS and by mod_googlemeet/ai_panel
+  (.recordingeditname, .recordinghowhide, .googlemeet-ai-toggle-btn, .googlemeet-ai-edit-btn,
+  .googlemeet-trash-recording).
+
+  Example context (json):
+  {
+    "id": 1,
+    "visible": 1,
+    "displayname": "Ley General Sanidad",
+    "originalname": "Clases - 2026/06/25 16:41 CEST - Recording",
+    "webviewlink": "https://drive.google.com/file/d/xxx/view",
+    "managematerialsurl": "https://example.com/mod/googlemeet/material.php?id=1&recording=1",
+    "materialcount": 2,
+    "hasai": true,
+    "aienabled": true
+  }
+}}
+<div class="dropdown googlemeet-row-actions">
+  <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle googlemeet-row-actions-toggle"
+          id="googlemeet-row-actions-{{id}}" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+          data-bs-popper-config='{"strategy":"fixed"}'
+          aria-label="{{# str }} list_actions_aria, mod_googlemeet, {{displayname}} {{/ str }}">
+    {{# str }} list_actions, mod_googlemeet {{/ str }}
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end googlemeet-row-actions-menu" aria-labelledby="googlemeet-row-actions-{{id}}">
+    <li>
+      <button type="button" class="dropdown-item recordingeditname" data-id="{{id}}">
+        {{# str }} list_action_rename, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    <li>
+      <button type="button" class="dropdown-item recordinghowhide" data-id="{{id}}"
+              data-label-hide="{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}"
+              data-label-show="{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}">
+        <span class="googlemeet-action-label">{{#visible}}{{# str }} recording_hide_from_students_button, mod_googlemeet {{/ str }}{{/visible}}{{^visible}}{{# str }} recording_show_to_students_button, mod_googlemeet {{/ str }}{{/visible}}</span>
+      </button>
+    </li>
+    {{#aienabled}}
+    <li>
+      <button type="button" class="dropdown-item googlemeet-ai-toggle-btn {{#hasai}}googlemeet-ai-toggle-active{{/hasai}}" data-id="{{id}}"
+              data-hasai="{{#hasai}}1{{/hasai}}{{^hasai}}0{{/hasai}}" aria-expanded="false" aria-controls="googlemeet-ai-panel-{{id}}">
+        {{# str }} list_action_aipanel, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    {{/aienabled}}
+    <li>
+      <button type="button" class="dropdown-item googlemeet-ai-edit-btn" data-id="{{id}}" data-recordingname="{{originalname}}">
+        {{# str }} list_action_editai, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+    <li>
+      <a class="dropdown-item" href="{{managematerialsurl}}">
+        {{# str }} materials_manage, mod_googlemeet {{/ str }}{{#materialcount}} ({{materialcount}}){{/materialcount}}
+      </a>
+    </li>
+    <li>
+      <a class="dropdown-item" href="{{webviewlink}}" target="_blank" rel="noopener">
+        {{# str }} openindrive, mod_googlemeet {{/ str }}
+      </a>
+    </li>
+    <li><hr class="dropdown-divider"></li>
+    <li>
+      <button type="button" class="dropdown-item text-danger googlemeet-trash-recording" data-id="{{id}}"
+              aria-label="{{# str }} recording_trash_aria, mod_googlemeet {{/ str }}: {{displayname}}">
+        {{# str }} list_action_trash, mod_googlemeet {{/ str }}
+      </button>
+    </li>
+  </ul>
+</div>

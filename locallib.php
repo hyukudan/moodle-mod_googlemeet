@@ -878,6 +878,37 @@ function googlemeet_progress_summary_context(array $summary): array {
 }
 
 /**
+ * Per-recording count of students who opened / completed each recording (teacher list view).
+ *
+ * "Opened" means a googlemeet_recording_progress row exists (some viewing time was recorded). Users who can
+ * edit recordings (teachers) are left out so the numbers describe students only. One grouped query per page.
+ *
+ * @param context_module $context Module context.
+ * @param int[] $recordingids Recordings on the current page.
+ * @return stdClass[] Keyed by recording id: {recordingid, opened, completedcount}.
+ */
+function googlemeet_get_recordings_student_stats(context_module $context, array $recordingids): array {
+    global $DB;
+
+    if (empty($recordingids)) {
+        return [];
+    }
+    list($insql, $params) = $DB->get_in_or_equal($recordingids, SQL_PARAMS_NAMED, 'statsrid');
+    $where = "p.recordingid {$insql}";
+    $editorids = array_keys(get_users_by_capability($context, 'mod/googlemeet:editrecording', 'u.id'));
+    if ($editorids) {
+        list($notinsql, $notinparams) = $DB->get_in_or_equal($editorids, SQL_PARAMS_NAMED, 'statsuid', false);
+        $where .= " AND p.userid {$notinsql}";
+        $params += $notinparams;
+    }
+    return $DB->get_records_sql(
+        "SELECT p.recordingid, COUNT(1) AS opened, SUM(p.completed) AS completedcount
+           FROM {googlemeet_recording_progress} p
+          WHERE {$where}
+       GROUP BY p.recordingid", $params);
+}
+
+/**
  * This creates new events given as timeopen and timeclose by googlemeet.
  *
  * @param object $googlemeet
@@ -991,10 +1022,25 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
         );
     }
 
+    // Teachers see their students' activity per lesson instead of their own viewing progress.
+    $teacherstats = ($hascapability && !empty($recordings))
+        ? googlemeet_get_recordings_student_stats($context, $recordingids) : [];
+
     $questionservice = new question_service();
     foreach ($recordings as $recording) {
         foreach (googlemeet_recording_progress_state($recording, $progressbyrecording[$recording->id] ?? null) as $key => $value) {
             $recording->$key = $value;
+        }
+        if ($hascapability) {
+            $stats = $teacherstats[$recording->id] ?? null;
+            $opened = $stats ? (int)$stats->opened : 0;
+            $completedcount = $stats ? (int)$stats->completedcount : 0;
+            $recording->teacherstatsopened = $opened;
+            $recording->teacherstatslabel = $opened === 0 ? get_string('list_teacherstats_none', 'googlemeet')
+                : get_string($opened === 1 ? 'list_teacherstats_opened_one' : 'list_teacherstats_opened', 'googlemeet', $opened);
+            $recording->teacherstatshascompleted = $completedcount > 0;
+            $recording->teacherstatscompletedlabel = $completedcount > 0
+                ? get_string('list_teacherstats_completed', 'googlemeet', $completedcount) : '';
         }
         $publishedquestions = $questionservice->get_questions($googlemeet, $cm, $context, (int)$recording->id, true);
         $recording->haspublishedquestions = !empty($publishedquestions);
