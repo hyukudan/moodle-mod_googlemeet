@@ -86,30 +86,12 @@ function googlemeet_handle_view_actions($googlemeet, $cm, $course) {
     // Sync performs DB writes and remote Google calls: only run it for a POST
     // request (in addition to the sesskey check). Ignore plain GETs.
     if ($sync && confirm_sesskey() && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        // PERF-02: no-JS fallback of the async button. Only queue the background sync (the page
+        // polls its status when JS is on); never run Google calls inside the request.
         $redirecturl = new moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
-        $lockfactory = \core\lock\lock_config::get_lock_factory('mod_googlemeet');
-        $lock = $lockfactory->get_lock('sync_' . $googlemeet->id, 0);
-        if (!$lock) {
-            \core\notification::warning(get_string('sync_already_running', 'googlemeet'));
-            redirect($redirecturl);
-        }
-
-        $stats = ['inserted' => 0, 'updated' => 0, 'deleted' => 0, 'trashed' => 0, 'restored' => 0, 'found' => 0];
-        try {
-            googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id);
-            $stats = $client->syncrecordings($googlemeet, true, true) ?: $stats;
-        } finally {
-            $lock->release();
-        }
-
-        $message = $client->build_sync_message($stats, (int)($stats['found'] ?? 0));
-        if ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0) {
-            $message .= ' ' . get_string('sync_enrichment_queued', 'googlemeet');
-        }
-        $messagetype = ((int)($stats['inserted'] ?? 0) > 0 || (int)($stats['restored'] ?? 0) > 0)
-            ? \core\output\notification::NOTIFY_SUCCESS
-            : \core\output\notification::NOTIFY_INFO;
-        redirect($redirecturl, $message, null, $messagetype);
+        $queued = \mod_googlemeet\local\sync_manager::request($googlemeet, (int)$GLOBALS['USER']->id);
+        redirect($redirecturl, get_string($queued ? 'sync_status_queued' : 'sync_already_running', 'googlemeet'),
+            null, \core\output\notification::NOTIFY_INFO);
     }
 }
 
@@ -1241,7 +1223,12 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             $syncbutton = $OUTPUT->render($syncbutton);
         }
 
+        $syncstatus = \mod_googlemeet\local\sync_manager::get_status($googlemeet);
         $html .= $OUTPUT->render_from_template('mod_googlemeet/syncbutton', [
+            // Track w2-calsync (PERF-02): async sync panel state.
+            'cmid' => $cm->id,
+            'syncactive' => $syncstatus['active'],
+            'syncstatusmessage' => $syncstatus['active'] ? $syncstatus['message'] : '',
             'lastsync' => $lastsync,
             'creatoremail' => $googlemeet->creatoremail,
             'redordingname' => $redordingname,
