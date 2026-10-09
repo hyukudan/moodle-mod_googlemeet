@@ -3916,3 +3916,8 @@ mark.googlemeet-transcript-match-current {
         max-width: none;
     }
 }
+/* Sort / view buttons now live inside the filter form: keep their label vertically centred. */
+#googlemeet_recordings .googlemeet-filters-body .btn {
+    display: inline-flex;
+    align-items: center;
+}
