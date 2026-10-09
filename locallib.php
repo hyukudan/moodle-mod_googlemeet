@@ -1597,44 +1597,65 @@ function googlemeet_has_recording($googlemeetid) {
 }
 
 /**
- * Generates a list of users who have not yet been notified.
+ * Generates the list of users who should receive the reminder for an event and have not yet been notified.
+ *
+ * Recipients are users with an active enrolment in the activity's course who can view the activity
+ * (mod/googlemeet:view in the module context), are not suspended, satisfy the activity's access
+ * restrictions and do not manage activities in the course (teachers/managers are not reminded,
+ * preserving the historical "students only" behaviour). Users already recorded in
+ * googlemeet_notify_done for the event are excluded.
  *
  * @param int $eventid the event ID
- * @return stdClass list of users
+ * @return stdClass[] users keyed by id (full user records)
  */
 function googlemeet_get_users_to_notify($eventid) {
     global $DB;
 
-    // Cache student role ID to avoid repeated DB queries when called in a loop.
-    static $studentroleid = null;
-    if ($studentroleid === null) {
-        $studentrole = $DB->get_record('role', ['shortname' => 'student'], 'id');
-        $studentroleid = $studentrole ? $studentrole->id : 5;
+    $event = $DB->get_record('googlemeet_events', ['id' => $eventid], 'id, googlemeetid');
+    if (!$event) {
+        return [];
     }
 
-    $sql = "SELECT DISTINCT
-                   u.*
-              FROM {googlemeet_events} me
-        INNER JOIN {googlemeet} m
-                ON m.id = me.googlemeetid
-        INNER JOIN {course_modules} cm
-                ON (cm.instance = m.id AND cm.visible = 1 AND cm.deletioninprogress = 0)
-        INNER JOIN {course} c
-                ON (c.id = cm.course AND c.visible = 1)
-        INNER JOIN {modules} md
-                ON (md.id = cm.module AND md.name = 'googlemeet')
-        INNER JOIN {context} ctx
-                ON ctx.instanceid = c.id
-        INNER JOIN {role_assignments} ra
-                ON (ra.contextid = ctx.id AND ra.roleid = :roleid)
-        INNER JOIN {user} u
-                ON u.id = ra.userid
-             WHERE me.id = :eventid
-               AND (SELECT count(*) = 0
-                      FROM {googlemeet_notify_done} nd
-                     WHERE nd.eventid = me.id AND nd.userid = u.id)";
+    $cm = get_coursemodule_from_instance('googlemeet', $event->googlemeetid, 0, false, IGNORE_MISSING);
+    if (!$cm || empty($cm->visible) || !empty($cm->deletioninprogress)) {
+        return [];
+    }
 
-    return $DB->get_records_sql($sql, ['eventid' => $eventid, 'roleid' => $studentroleid]);
+    $course = $DB->get_record('course', ['id' => $cm->course], 'id, visible');
+    if (!$course || empty($course->visible)) {
+        return [];
+    }
+
+    $context = context_module::instance($cm->id, IGNORE_MISSING);
+    if (!$context) {
+        return [];
+    }
+
+    // Active enrolments only (enrolment status, enrol instance status and time window).
+    $candidates = get_enrolled_users($context, 'mod/googlemeet:view', 0, 'u.*', null, 0, 0, true);
+    if (!$candidates) {
+        return [];
+    }
+
+    $notified = array_flip($DB->get_fieldset_select('googlemeet_notify_done', 'userid', 'eventid = ?', [$eventid]));
+
+    $users = [];
+    foreach ($candidates as $user) {
+        if (isset($notified[$user->id]) || !empty($user->suspended) || !empty($user->deleted)) {
+            continue;
+        }
+        // Keep reminders student-facing: skip anyone who manages activities in this course.
+        if (has_capability('moodle/course:manageactivities', $context, $user)) {
+            continue;
+        }
+        // Respect visibility and access restrictions (availability conditions) for this user.
+        if (!\core_availability\info_module::is_user_visible($cm, $user->id, false)) {
+            continue;
+        }
+        $users[$user->id] = $user;
+    }
+
+    return $users;
 }
 
 /**
