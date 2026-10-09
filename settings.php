@@ -25,7 +25,24 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+// Track w2-calsync (OPS-04): admin page with autosync failures, stuck AI analyses and last syncs.
+if ($hassiteconfig) {
+    $ADMIN->add('modsettings', new admin_externalpage(
+        'mod_googlemeet_status',
+        get_string('adminstatus', 'googlemeet'),
+        new moodle_url('/mod/googlemeet/admin_status.php'),
+        'moodle/site:config'
+    ));
+}
+
 if ($ADMIN->fulltree) {
+    // Track w2-calsync (OPS-04): link to the status page from the plugin settings.
+    $settings->add(new admin_setting_heading(
+        'googlemeet/adminstatus_heading',
+        '',
+        html_writer::link(new moodle_url('/mod/googlemeet/admin_status.php'), get_string('adminstatus_link', 'googlemeet'))
+    ));
+
 
     $options = [''];
     $issuers = \core\oauth2\api::get_all_issuers();

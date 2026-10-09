@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 use mod_googlemeet\client;
 use mod_googlemeet\helper;
+use mod_googlemeet\local\sync_log;
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/googlemeet/lib.php');
@@ -284,6 +285,8 @@ class process_autosync extends \core\task\scheduled_task {
             }
 
             // Resolve outcome for each due event of this activity.
+            // OPS-04: per-activity counters for the structured summary line and the sync log.
+            $counts = ['success' => 0, 'permanent' => 0, 'infra_failure' => 0, 'retry' => 0, 'exhausted' => 0];
             foreach ($events as $ev) {
                 $newattempts = (int) $ev->syncattempts + 1;
                 $outcome = $this->classify_outcome(
@@ -297,12 +300,14 @@ class process_autosync extends \core\task\scheduled_task {
                 );
 
                 if ($outcome === 'success' || $outcome === 'permanent') {
+                    $counts[$outcome]++;
                     $this->close_event((int) $ev->eventid, $newattempts, $now);
                     mtrace("  event #{$ev->eventid}: closed (outcome={$outcome}, attempts={$newattempts}).");
                     continue;
                 }
 
                 if ($outcome === 'infra_failure') {
+                    $counts['infra_failure']++;
                     $next = $now + max($interval, 6 * 3600);
                     $DB->execute(
                         "UPDATE {googlemeet_events}
@@ -317,11 +322,13 @@ class process_autosync extends \core\task\scheduled_task {
 
                 // outcome === 'retry'
                 if ($newattempts >= $max) {
+                    $counts['exhausted']++;
                     $this->close_event((int) $ev->eventid, $newattempts, $now);
                     mtrace("  event #{$ev->eventid}: max attempts reached ({$newattempts}/{$max}); giving up.");
                     continue;
                 }
 
+                $counts['retry']++;
                 $next = $now + $interval;
                 $DB->execute(
                     "UPDATE {googlemeet_events}
@@ -333,6 +340,8 @@ class process_autosync extends \core\task\scheduled_task {
                 mtrace("  event #{$ev->eventid}: scheduled retry #{$newattempts} at "
                     . userdate($next) . ".");
             }
+
+            self::log_activity_outcome($googlemeetid, $counts, $stats, $exception, $identitymissing, $authfailure, $loggedin);
         } finally {
             $lock->release();
         }
@@ -419,6 +428,67 @@ class process_autosync extends \core\task\scheduled_task {
               WHERE id = :id",
             ['now' => $now, 'attempts' => $newattempts, 'id' => $eventid]
         );
+    }
+
+    /**
+     * OPS-04: structured summary line + sync log row for one activity of this tick.
+     *
+     * Status precedence: exhausted (gave up on a session) > error (permanent/infra/exception)
+     * > retry (nothing in Drive yet) > success.
+     *
+     * @param int $googlemeetid
+     * @param array $counts Outcome => number of events.
+     * @param array|null $stats Sync counters when the sync ran.
+     * @param \Throwable|null $exception
+     * @param bool $identitymissing
+     * @param bool $authfailure
+     * @param bool $loggedin
+     * @return void
+     */
+    private static function log_activity_outcome(int $googlemeetid, array $counts, ?array $stats, ?\Throwable $exception,
+            bool $identitymissing, bool $authfailure, bool $loggedin): void {
+        if ($counts['exhausted'] > 0) {
+            $status = sync_log::STATUS_EXHAUSTED;
+        } else if ($counts['permanent'] > 0 || $counts['infra_failure'] > 0) {
+            $status = sync_log::STATUS_ERROR;
+        } else if ($counts['retry'] > 0) {
+            $status = sync_log::STATUS_RETRY;
+        } else {
+            $status = sync_log::STATUS_SUCCESS;
+        }
+
+        if ($exception !== null) {
+            $reason = $exception->getMessage();
+        } else if ($identitymissing) {
+            $reason = 'creator account missing';
+        } else if ($authfailure || !$loggedin) {
+            $reason = 'creator not linked to Google (token missing/revoked)';
+        } else if ($status !== sync_log::STATUS_SUCCESS) {
+            $reason = 'no recordings found in Drive yet';
+        } else {
+            $reason = '';
+        }
+
+        $parts = [];
+        foreach ($counts as $outcome => $n) {
+            $parts[] = "{$outcome}={$n}";
+        }
+        $line = "mod_googlemeet autosync: activity={$googlemeetid} result={$status} " . implode(' ', $parts);
+        if (is_array($stats)) {
+            $line .= " found=" . (int)($stats['found'] ?? 0) . " inserted=" . (int)($stats['inserted'] ?? 0);
+        }
+        if ($reason !== '') {
+            $line .= ' detail="' . str_replace('"', "'", $reason) . '"';
+        }
+        mtrace($line);
+
+        try {
+            $logid = sync_log::start($googlemeetid, sync_log::KIND_AUTO, sync_log::STATUS_RUNNING);
+            sync_log::finish($logid, $status, ($stats ?? []) + ['events' => $counts], $reason);
+        } catch (\Throwable $e) {
+            // Logging must never break the autosync itself.
+            mtrace("mod_googlemeet autosync: could not write the sync log: " . $e->getMessage());
+        }
     }
 
     /**
