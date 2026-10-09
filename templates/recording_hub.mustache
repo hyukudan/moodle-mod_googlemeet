@@ -43,14 +43,12 @@
     {{#haschapters}}
     <aside class="googlemeet-chapters-panel mb-3" aria-labelledby="googlemeet-chapters-title">
       <div class="googlemeet-chapters-header">
-        <h4 id="googlemeet-chapters-title">{{# str }} chapters_title, mod_googlemeet {{/ str }} <span class="googlemeet-chapters-count">({{chaptercount}})</span></h4>
-        {{#canembed}}<span class="googlemeet-chapters-mode googlemeet-chapters-mode-seek">{{# str }} chapters_mode_seek, mod_googlemeet {{/ str }}</span>{{/canembed}}
-        {{^canembed}}<span class="googlemeet-chapters-mode">{{# str }} chapters_mode_reference, mod_googlemeet {{/ str }}</span>{{/canembed}}
+        <h4 id="googlemeet-chapters-title">{{# str }} hub_chapters_heading, mod_googlemeet {{/ str }} <span class="googlemeet-chapters-count">({{chaptercount}})</span></h4>
         <button type="button" class="btn btn-outline-secondary btn-sm googlemeet-chapters-toggle" aria-expanded="true" aria-controls="googlemeet-chapters-body" data-label-show="{{# str }} chapters_show, mod_googlemeet {{/ str }}" data-label-hide="{{# str }} chapters_hide, mod_googlemeet {{/ str }}">{{# str }} chapters_hide, mod_googlemeet {{/ str }}</button>
       </div>
       <div id="googlemeet-chapters-body" class="googlemeet-chapters-body">
       <p class="googlemeet-chapters-help">
-        {{#canembed}}{{# str }} chapters_seek_hint, mod_googlemeet {{/ str }}{{/canembed}}
+        {{#canembed}}{{# str }} hub_chapters_hint_seek, mod_googlemeet {{/ str }}{{/canembed}}
         {{^canembed}}
           {{#caneditrecording}}{{# str }} chapters_teacher_hint, mod_googlemeet {{/ str }}{{/caneditrecording}}
           {{^caneditrecording}}{{# str }} chapters_student_hint, mod_googlemeet {{/ str }}{{/caneditrecording}}
@@ -61,7 +59,7 @@
         <li class="googlemeet-chapter-item">
           <button type="button" class="googlemeet-chapter-button" data-start-seconds="{{startseconds}}" data-chapter-timestamp="{{start}}" aria-label="{{chapterarialabel}}">
             <span class="googlemeet-chapter-time">{{start}}</span>
-            <span class="googlemeet-chapter-title">{{title}}</span>
+            <span class="googlemeet-chapter-title" title="{{title}}">{{title}}</span>
           </button>
           {{#canembed}}
           <button type="button" class="googlemeet-chapter-copylink googlemeet-button-reset" data-start-seconds="{{startseconds}}" data-chapter-timestamp="{{start}}" aria-label="{{# str }} chapter_copy_link_aria, mod_googlemeet, {{start}} {{/ str }}" title="{{# str }} chapter_copy_link, mod_googlemeet {{/ str }}">
