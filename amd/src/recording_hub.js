@@ -1783,7 +1783,8 @@ const bindPrintSummary = () => {
 };
 
 /**
- * Key points as a personal review checklist, remembered per recording in this browser.
+ * Key points as a personal review checklist, stored server-side per user and recording (user preference
+ * "<hash>:<bits>") so it syncs between devices. Any legacy localStorage state is merged in once.
  *
  * @returns {void}
  */
@@ -1795,8 +1796,24 @@ const bindKeypointChecklist = () => {
     const items = Array.from(section.querySelectorAll('.googlemeet-keypoint'));
     const counter = section.querySelector('.googlemeet-keypoints-progress');
     const storageKey = 'mod_googlemeet_keypoints_' + settings.recordingid;
-    const done = new Set(readLocal(storageKey, []));
+    const hash = section.getAttribute('data-kp-hash') || '';
+    const serverState = section.getAttribute('data-kp-state') || '';
     const keyOf = item => keypointKey(item.querySelector('.googlemeet-keypoint-text').textContent);
+    const legacy = new Set(readLocal(storageKey, []));
+
+    const save = () => {
+        if (!settings.recordingid || !hash) {
+            return Promise.resolve();
+        }
+        const bits = items.map(item => item.querySelector('.googlemeet-keypoint-check').checked ? '1' : '0').join('');
+        return Ajax.call([{
+            methodname: 'core_user_set_user_preferences',
+            args: {preferences: [{name: 'mod_googlemeet_kp_' + settings.recordingid, value: hash + ':' + bits}]},
+        }])[0].catch(() => {
+            // Guests or restricted sessions cannot store preferences; the checklist is best effort.
+            return;
+        });
+    };
 
     const refresh = () => {
         let count = 0;
@@ -1810,20 +1827,31 @@ const bindKeypointChecklist = () => {
         counter.classList.toggle('googlemeet-keypoints-complete', count === items.length);
     };
 
-    items.forEach(item => {
+    let migrate = false;
+    items.forEach((item, index) => {
         const box = item.querySelector('.googlemeet-keypoint-check');
-        box.checked = done.has(keyOf(item));
+        const fromServer = serverState.charAt(index) === '1';
+        const fromLegacy = legacy.has(keyOf(item));
+        box.checked = fromServer || fromLegacy;
+        migrate = migrate || (fromLegacy && !fromServer);
         box.classList.remove('d-none');
         box.addEventListener('change', () => {
-            if (box.checked) {
-                done.add(keyOf(item));
-            } else {
-                done.delete(keyOf(item));
-            }
-            writeLocal(storageKey, Array.from(done));
+            save();
             refresh();
         });
     });
+    if (legacy.size > 0) {
+        // One-time migration: merge into the server state, then drop the local copy once saved.
+        const done = migrate ? save() : Promise.resolve();
+        done.then(() => {
+            try {
+                window.localStorage.removeItem(storageKey);
+            } catch {
+                return;
+            }
+            return;
+        });
+    }
     section.classList.add('googlemeet-keypoints-interactive');
     counter.classList.remove('d-none');
     section.querySelector('.googlemeet-keypoints-hint').classList.remove('d-none');

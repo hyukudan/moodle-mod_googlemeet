@@ -1402,6 +1402,12 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
             return ['text' => (string)$point, 'number' => $index + 1];
         }, array_values($keypoints), array_keys(array_values($keypoints))),
         'keypointcount' => count($keypoints),
+        'keypointshash' => googlemeet_keypoints_hash($keypoints),
+        'keypointsstate' => (isloggedin() && !isguestuser())
+            ? googlemeet_keypoints_state(
+                (string)get_user_preferences(googlemeet_keypoints_preference_name((int)$recording->id), ''),
+                googlemeet_keypoints_hash($keypoints), count($keypoints))
+            : '',
         'topics' => array_map(static function($topic) use ($cm) {
             return [
                 'text' => (string)$topic,

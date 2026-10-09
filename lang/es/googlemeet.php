@@ -594,3 +594,6 @@ $string['hub_cta_practice_text'] = '{$a} preguntas tipo examen sobre esta clase.
 $string['hub_cta_practice_button'] = 'Empezar a practicar';
 $string['hub_cta_materials_button'] = 'Ver materiales de la clase';
 $string['hub_print_summary'] = 'Imprimir resumen';
+
+// track: keypoints
+$string['privacy:metadata:preference:keypoints'] = 'El estado de la lista de repaso de los puntos clave de cada grabación (una preferencia por grabación): qué puntos clave ha marcado el usuario como repasados.';

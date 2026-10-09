@@ -606,6 +606,46 @@ function googlemeet_lastjump_preference_name(int $recordingid): string {
 }
 
 /**
+ * User preference that stores the key points review checklist state of a recording.
+ *
+ * @param int $recordingid Recording ID.
+ * @return string
+ */
+function googlemeet_keypoints_preference_name(int $recordingid): string {
+    return 'mod_googlemeet_kp_' . $recordingid;
+}
+
+/**
+ * Short hash identifying the current key point list (so state of a regenerated list is ignored).
+ *
+ * @param array $keypoints Key point texts.
+ * @return string 8 hex characters.
+ */
+function googlemeet_keypoints_hash(array $keypoints): string {
+    $normalised = array_map(static function($point): string {
+        return trim(preg_replace('/\s+/u', ' ', (string)$point));
+    }, array_values($keypoints));
+    return sprintf('%08x', crc32(implode("\n", $normalised)));
+}
+
+/**
+ * Checked state ("0"/"1" per key point) stored for a user, or '' when absent or stale.
+ *
+ * The stored value is "<hash>:<bits>", e.g. "1a2b3c4d:10110".
+ *
+ * @param string $stored Stored preference value.
+ * @param string $hash Hash of the current key point list.
+ * @param int $count Number of key points.
+ * @return string Bit string of length $count, or '' when it does not apply.
+ */
+function googlemeet_keypoints_state(string $stored, string $hash, int $count): string {
+    if (!preg_match('/^([0-9a-f]{8}):([01]{1,200})$/', $stored, $m) || $m[1] !== $hash || strlen($m[2]) !== $count) {
+        return '';
+    }
+    return $m[2];
+}
+
+/**
  * User preferences that the current user may update through core_user_set_user_preferences.
  *
  * @return array
@@ -620,6 +660,20 @@ function googlemeet_user_preferences(): array {
             'permissioncallback' => [core_user::class, 'is_current_user'],
             'cleancallback' => static function($value) {
                 return max(0, (int)$value);
+            },
+        ],
+        '/^mod_googlemeet_kp_\\d+$/' => [
+            'isregex' => true,
+            'type' => PARAM_RAW_TRIMMED,
+            'null' => NULL_NOT_ALLOWED,
+            'default' => '',
+            'permissioncallback' => [core_user::class, 'is_current_user'],
+            'cleancallback' => static function($value) {
+                $value = (string)$value;
+                if ($value !== '' && !preg_match('/^[0-9a-f]{8}:[01]{1,200}$/', $value)) {
+                    throw new invalid_parameter_exception('Invalid key points state');
+                }
+                return $value;
             },
         ],
     ];
