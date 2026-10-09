@@ -65,19 +65,13 @@ if (empty($options['googlemeetid'])) {
 $dryrun = $options['dry-run'];
 $skipgemini = $options['skip-gemini'];
 // Resolve yt-dlp the same way subtitle_extractor does: configured path first,
-// then PATH, then the legacy /tmp location. This is only a fast-fail with a
-// helpful hint; the extractor performs its own resolution. Do NOT hard-code
-// /tmp/yt-dlp — systemd-tmpfiles wipes /tmp, which silently broke this cron.
+// then PATH. This is only a fast-fail with a helpful hint; the extractor performs
+// its own resolution. There is deliberately no /tmp fallback: /tmp is world-writable
+// (a planted binary would run as the web user) and systemd-tmpfiles wipes it.
 $ytdlp = trim((string)get_config('googlemeet', 'ytdlppath'));
 if ($ytdlp === '' || !is_executable($ytdlp)) {
     $which = trim((string)(shell_exec('command -v yt-dlp 2>/dev/null') ?: ''));
-    if ($which !== '' && is_executable($which)) {
-        $ytdlp = $which;
-    } else if (is_executable('/tmp/yt-dlp')) {
-        $ytdlp = '/tmp/yt-dlp';
-    } else {
-        $ytdlp = '';
-    }
+    $ytdlp = ($which !== '' && is_executable($which)) ? $which : '';
 }
 
 // Check yt-dlp is available (kept here for a fast-fail with a helpful install hint).

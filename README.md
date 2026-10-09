@@ -146,7 +146,8 @@ Open a recording (click its name or play button in the recordings list) to enter
 Extract subtitles and run AI analysis for all recordings in one command:
 
 ```bash
-# Requires yt-dlp: curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /tmp/yt-dlp && chmod +x /tmp/yt-dlp
+# Requires yt-dlp in PATH or at the googlemeet/ytdlppath setting (a persistent, admin-only path, never /tmp):
+# curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /path/to/bin/yt-dlp && chmod +x /path/to/bin/yt-dlp
 
 # Process all recordings for a Google Meet activity
 php admin/cli/process_transcripts.php --googlemeetid=1

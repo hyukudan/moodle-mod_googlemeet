@@ -77,7 +77,8 @@ class subtitle_extractor {
     public function extract(string $driveurl): ?string {
         if (!$this->is_available()) {
             mtrace('subtitle_extractor: yt-dlp no encontrado; se omite la extracción de subtítulos; configure la ruta en Ajustes > googlemeet > ytdlppath o instale yt-dlp en PATH');
-            debugging('subtitle_extractor: yt-dlp not available', DEBUG_DEVELOPER);
+            debugging('subtitle_extractor: yt-dlp not available (googlemeet/ytdlppath not executable and not found in PATH); ' .
+                'skipping the auto-subtitle tier', DEBUG_DEVELOPER);
             return null;
         }
 
@@ -140,10 +141,8 @@ class subtitle_extractor {
             return $which;
         }
 
-        if (is_executable('/tmp/yt-dlp')) {
-            return '/tmp/yt-dlp';
-        }
-
+        // No world-writable fallback location (e.g. /tmp) on purpose: a binary planted there
+        // would be executed by cron. Without yt-dlp the subtitle tier is skipped (see extract()).
         return null;
     }
 

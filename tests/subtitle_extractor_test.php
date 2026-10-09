@@ -303,4 +303,39 @@ class subtitle_extractor_test extends \advanced_testcase {
         $this->assertStringContainsString('日本語テスト', $result);
         $this->assertStringContainsString('Ärger über Straße', $result);
     }
+
+    /**
+     * Set a private static property of subtitle_extractor.
+     *
+     * @param string $name Property name.
+     * @param mixed $value Value.
+     */
+    private function set_extractor_static(string $name, $value): void {
+        $prop = new \ReflectionProperty(\mod_googlemeet\subtitle_extractor::class, $name);
+        $prop->setValue(null, $value);
+    }
+
+    /**
+     * Without a usable yt-dlp (bad configured path, nothing in PATH) the subtitle tier is skipped.
+     */
+    public function test_extract_returns_null_without_ytdlp(): void {
+        $this->resetAfterTest();
+        set_config('ytdlppath', '/nonexistent/yt-dlp', 'googlemeet');
+
+        // Pretend the PATH lookup already ran and found nothing.
+        $this->set_extractor_static('whichlookedup', true);
+        $this->set_extractor_static('cachedwhich', null);
+
+        try {
+            $extractor = new \mod_googlemeet\subtitle_extractor('es');
+            $this->assertFalse($extractor->is_available());
+            $this->expectOutputRegex('/yt-dlp/');
+            $this->assertNull($extractor->extract('https://drive.google.com/file/d/abc/view'));
+            // Constructor (bad configured path) + extract() (tier skipped).
+            $this->assertDebuggingCalledCount(2);
+        } finally {
+            $this->set_extractor_static('whichlookedup', false);
+            $this->set_extractor_static('cachedwhich', null);
+        }
+    }
 }
