@@ -118,6 +118,12 @@ if ($recordingid > 0) {
 // Completion and trigger events.
 googlemeet_view($googlemeet, $course, $cm, $context);
 
+if ($recording) {
+    // Recording pages: the activity description (often a raw Meet link) belongs to the
+    // activity landing page, not to every lesson. The lesson hub shows its own title.
+    $PAGE->activityheader->set_description('');
+    $PAGE->add_body_class('googlemeet-hub-page');
+}
 googlemeet_print_header($googlemeet, $cm, $course);
 
 if ($hasinvalidmeeturl && has_capability('moodle/course:manageactivities', $context)) {

@@ -1335,6 +1335,13 @@ function googlemeet_print_recording_hub($googlemeet, $cm, $context, $recording) 
     $lessontitle = $lessontitles[$recording->id] ?? [
         'title' => googlemeet_display_name((string)$recording->name), 'subtitle' => '', 'hassubtitle' => false,
     ];
+    // The page header already shows the activity name: do not repeat it as the lesson subtitle.
+    if (!empty($lessontitle['hassubtitle'])
+            && core_text::strtolower(trim(format_string($lessontitle['subtitle'])))
+                === core_text::strtolower(trim(format_string($googlemeet->name)))) {
+        $lessontitle['subtitle'] = '';
+        $lessontitle['hassubtitle'] = false;
+    }
     $navtitle = static function(?stdClass $navrecording) use ($lessontitles): string {
         if (!$navrecording) {
             return '';

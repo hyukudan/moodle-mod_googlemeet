@@ -12,6 +12,23 @@
     {{/hasrecordingnav}}
   </nav>
 
+  <header class="googlemeet-hub-heading googlemeet-hub-titlebar">
+    <h3 class="googlemeet-hub-title">
+      <span class="recording-name-text" title="{{originalname}}" data-originalname="{{originalname}}">{{name}}</span>
+      {{#caneditrecording}}
+        <button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
+          {{# pix }} i/edit, core {{/ pix }}
+        </button>
+      {{/caneditrecording}}
+    </h3>
+    {{#hassubtitle}}<div class="googlemeet-hub-subtitle">{{subtitle}}</div>{{/hassubtitle}}
+    <div class="googlemeet-hub-meta">
+      {{#datelabel}}<time datetime="{{datetimeiso}}">{{datelabel}}</time>{{/datelabel}}
+      <span><span class="visually-hidden">{{# str }} hub_duration_label, mod_googlemeet {{/ str }}: </span>{{duration}}</span>
+      {{#haschapters}}<span>{{# str }} hub_meta_chapters, mod_googlemeet, {{chaptercount}} {{/ str }}</span>{{/haschapters}}
+    </div>
+  </header>
+
   <div class="googlemeet-hub-media-layout {{#haschapters}}googlemeet-hub-media-with-chapters{{/haschapters}}">
     {{#canembed}}
       <div class="googlemeet-player-column">
@@ -78,23 +95,7 @@
     {{/haschapters}}
   </div>
 
-  <header class="googlemeet-hub-header">
-    <div class="googlemeet-hub-heading">
-      <h3 class="googlemeet-hub-title">
-        <span class="recording-name-text" title="{{originalname}}" data-originalname="{{originalname}}">{{name}}</span>
-        {{#caneditrecording}}
-          <button type="button" class="recordingeditname googlemeet-edit-btn googlemeet-button-reset ms-1" data-id="{{recordingid}}" title="{{# str }} edit {{/ str }}" aria-label="{{# str }} edit {{/ str }}">
-            {{# pix }} i/edit, core {{/ pix }}
-          </button>
-        {{/caneditrecording}}
-      </h3>
-      {{#hassubtitle}}<div class="googlemeet-hub-subtitle">{{subtitle}}</div>{{/hassubtitle}}
-      <div class="googlemeet-hub-meta">
-        {{#datelabel}}<time datetime="{{datetimeiso}}">{{datelabel}}</time>{{/datelabel}}
-        <span><span class="visually-hidden">{{# str }} hub_duration_label, mod_googlemeet {{/ str }}: </span>{{duration}}</span>
-        {{#haschapters}}<span>{{# str }} hub_meta_chapters, mod_googlemeet, {{chaptercount}} {{/ str }}</span>{{/haschapters}}
-      </div>
-    </div>
+  <div class="googlemeet-hub-header">
     <div class="googlemeet-hub-statusbar">
       <div class="googlemeet-hub-progress" data-region="recording-progress" data-completed="{{#progresscompleted}}1{{/progresscompleted}}{{^progresscompleted}}0{{/progresscompleted}}" data-watchedseconds="{{progresswatchedseconds}}">
         <span class="googlemeet-progress-badge {{#progresscompleted}}googlemeet-progress-badge-completed{{/progresscompleted}}{{#progresspartial}}googlemeet-progress-badge-partial{{/progresspartial}}{{#progressunseen}}googlemeet-progress-badge-unseen{{/progressunseen}}" aria-live="polite" aria-label="{{progressarialabel}}">
@@ -123,7 +124,7 @@
       </div>
       {{/caneditrecording}}
     </div>
-  </header>
+  </div>
 
   <div class="googlemeet-hub-tabs-wrap">
   <ul class="nav nav-tabs googlemeet-hub-tabs" role="tablist" aria-label="{{# str }} hub_tabs_aria, mod_googlemeet {{/ str }}">

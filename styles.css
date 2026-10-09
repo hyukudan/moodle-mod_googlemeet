@@ -3801,3 +3801,40 @@ mark.googlemeet-transcript-match-current {
 .googlemeet-player-fallback .googlemeet-player-help[open] {
     flex-basis: 100%;
 }
+/* Lesson title sits right above the player; the status bar stays under it. */
+.googlemeet-recording-hub .googlemeet-hub-titlebar {
+    margin: 0 0 0.75rem;
+}
+.googlemeet-recording-hub .googlemeet-hub-header {
+    justify-content: flex-start;
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-recording-hub .googlemeet-hub-nav {
+        margin-bottom: 0.5rem !important;
+    }
+    .googlemeet-recording-hub .googlemeet-hub-titlebar .googlemeet-hub-title {
+        font-size: 1.2rem;
+    }
+    .googlemeet-recording-hub .googlemeet-hub-meta {
+        font-size: 0.8rem;
+    }
+    /* Full-bleed player: ignore the nested page/region/card side padding on phones. */
+    .googlemeet-recording-hub .googlemeet-recording-player {
+        width: 100vw;
+        max-width: none;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+        margin-bottom: 0.5rem !important;
+    }
+    .googlemeet-recording-hub .googlemeet-recording-player iframe {
+        border-radius: 0;
+    }
+}
+@media only screen and (max-width: 575.98px) {
+    .googlemeet-chapters-collapsed .googlemeet-chapter-feedback:empty {
+        display: none;
+    }
+    .googlemeet-chapters-collapsed .googlemeet-chapters-header {
+        align-items: center;
+    }
+}
