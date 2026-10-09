@@ -3887,3 +3887,22 @@ mark.googlemeet-transcript-match-current {
     white-space: normal;
     text-align: left;
 }
+/* Dark mode fixes from the UI review (K-1, K-2, K-3). Theme primaries are often dark navy,
+   so links/times on dark surfaces use a light accent with >= 4.5:1 contrast. */
+[data-bs-theme="dark"] .path-mod-googlemeet {
+    --gm-accent-on-dark: #8ab4f8;
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .activity-description a,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-fallback-link,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-player-help summary,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hub-back,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-hub-pager-label,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-chapter-time,
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-timestamp-link {
+    color: var(--gm-accent-on-dark);
+}
+[data-bs-theme="dark"] .path-mod-googlemeet .googlemeet-progress-badge-partial {
+    border-color: rgba(255, 193, 7, 0.35);
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffd666;
+}
