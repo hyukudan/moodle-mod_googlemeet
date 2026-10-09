@@ -616,6 +616,7 @@ $string['ai_regenerate_replace_confirm'] = 'This will replace the current summar
 $string['ai_replace_manual_warning'] = 'This analysis was edited by hand: those changes will be lost.';
 $string['question_bulk_actions'] = 'Actions for the selected questions';
 $string['question_select_all'] = 'Select all';
+$string['question_deselect_all'] = 'Deselect all';
 $string['question_bulk_publish_count'] = 'Publish selected ({$a})';
 $string['question_publish_recording'] = 'Publish all for this class';
 $string['question_publish_recording_count'] = 'Publish all for this class ({$a})';

@@ -600,9 +600,8 @@ const bindChaptersToggle = () => {
     if (small) {
         const onChange = event => {
             // Leaving the phone layout: the toggle disappears, so never leave the list hidden.
-            if (!event.matches) {
-                setExpanded(true);
-            }
+            // Entering it (rotation, resized window): start collapsed, as on a phone page load.
+            setExpanded(!event.matches);
         };
         if (small.addEventListener) {
             small.addEventListener('change', onChange);

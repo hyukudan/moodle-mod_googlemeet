@@ -621,6 +621,7 @@ $string['ai_regenerate_replace_confirm'] = 'Esto sustituirá el resumen, los pun
 $string['ai_replace_manual_warning'] = 'Este análisis se editó a mano: perderás esos cambios.';
 $string['question_bulk_actions'] = 'Acciones con las preguntas seleccionadas';
 $string['question_select_all'] = 'Seleccionar todas';
+$string['question_deselect_all'] = 'Deseleccionar todas';
 $string['question_bulk_publish_count'] = 'Publicar seleccionadas ({$a})';
 $string['question_publish_recording'] = 'Publicar todas las de esta clase';
 $string['question_publish_recording_count'] = 'Publicar todas las de esta clase ({$a})';

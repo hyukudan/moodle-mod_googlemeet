@@ -31,6 +31,8 @@ const COMPONENT = 'mod_googlemeet';
 
 const stringKeys = [
     'question_bulk_publish_count',
+    'question_select_all',
+    'question_deselect_all',
     'question_bulk_discard',
     'question_bulk_discard_confirm',
     'question_publishing',
@@ -135,6 +137,12 @@ const refreshState = () => {
 
     selectAll.prop('checked', all.length > 0 && checked.length === all.length);
     selectAll.prop('indeterminate', checked.length > 0 && checked.length < all.length);
+    // Once everything is ticked the same box clears the selection: say so in its label.
+    const allChecked = all.length > 0 && checked.length === all.length;
+    const label = allChecked ? strings.question_deselect_all : strings.question_select_all;
+    if (label) {
+        $('label[for="googlemeet-question-select-all"]').text(label);
+    }
 
     if (settings.busy) {
         return;
