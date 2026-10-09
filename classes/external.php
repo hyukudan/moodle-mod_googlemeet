@@ -1588,4 +1588,79 @@ class mod_googlemeet_external extends external_api {
             'explanation' => new external_value(PARAM_RAW, 'Formatted general feedback HTML'),
         ]);
     }
+
+    /**
+     * Describes the parameters for move_recording.
+     *
+     * @return external_function_parameters
+     */
+    public static function move_recording_parameters() {
+        return new external_function_parameters(
+            [
+                'recordingid' => new external_value(PARAM_INT, 'The recording ID'),
+                'coursemoduleid' => new external_value(PARAM_INT, 'The course module ID of the source activity'),
+                'targetgooglemeetid' => new external_value(PARAM_INT, 'The googlemeet instance ID to move the recording to'),
+            ]
+        );
+    }
+
+    /**
+     * Move a recording to another Google Meet activity in the same course.
+     *
+     * Used to fix same-name room collisions: after the move, future recordings from
+     * the same Drive folder are assigned to the target activity as well (folder
+     * fingerprint).
+     *
+     * @param int $recordingid The recording ID
+     * @param int $coursemoduleid The course module ID of the source activity
+     * @param int $targetgooglemeetid The target googlemeet instance ID
+     * @return array
+     */
+    public static function move_recording($recordingid, $coursemoduleid, $targetgooglemeetid) {
+        global $DB;
+
+        $params = self::validate_parameters(
+            self::move_recording_parameters(),
+            [
+                'recordingid' => $recordingid,
+                'coursemoduleid' => $coursemoduleid,
+                'targetgooglemeetid' => $targetgooglemeetid,
+            ]
+        );
+
+        $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
+        $context = \context_module::instance($cm->id);
+        self::validate_context($context);
+        require_capability('mod/googlemeet:editrecording', $context);
+
+        $recording = $DB->get_record('googlemeet_recordings',
+            ['id' => $params['recordingid'], 'googlemeetid' => $cm->instance, 'deleted' => 0], '*', MUST_EXIST);
+
+        $targetcm = get_coursemodule_from_instance('googlemeet', $params['targetgooglemeetid'], 0, false, MUST_EXIST);
+        // Both activities must live in the same course.
+        if ((int)$targetcm->course !== (int)$cm->course || (int)$targetcm->instance === (int)$cm->instance) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+        $targetcontext = \context_module::instance($targetcm->id);
+        require_capability('mod/googlemeet:editrecording', $targetcontext);
+
+        $DB->update_record('googlemeet_recordings', (object)[
+            'id' => $recording->id,
+            'googlemeetid' => (int)$targetcm->instance,
+            'timemodified' => time(),
+        ]);
+
+        return ['success' => true];
+    }
+
+    /**
+     * Describes the move_recording return value.
+     *
+     * @return external_single_structure
+     */
+    public static function move_recording_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Whether the move operation succeeded'),
+        ]);
+    }
 }

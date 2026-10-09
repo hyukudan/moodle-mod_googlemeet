@@ -471,5 +471,23 @@ function xmldb_googlemeet_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026070502, 'googlemeet');
     }
 
+    if ($oldversion < 2026100600) {
+
+        // Drive folder that contains the recording. One folder per meeting series, so it
+        // acts as a room fingerprint when disambiguating same-named activities.
+        $table = new xmldb_table('googlemeet_recordings');
+        $field = new xmldb_field('drivefolderid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'notesdocid');
+        $index = new xmldb_index('drivefolderid', XMLDB_INDEX_NOTUNIQUE, ['drivefolderid']);
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_mod_savepoint(true, 2026100600, 'googlemeet');
+    }
+
     return true;
 }

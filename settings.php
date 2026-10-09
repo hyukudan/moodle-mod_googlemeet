@@ -162,15 +162,22 @@ if ($ADMIN->fulltree) {
         0
     ));
 
-    // When enabled, synced recordings are granted "anyone with the link" read access on Google
-    // Drive so enrolled students (who are not the Drive owner) can play the embedded recording.
-    // Default 1 preserves prior behaviour; disabling improves privacy but breaks playback for
-    // everyone except the Google account that owns the recordings.
-    $settings->add(new admin_setting_configcheckbox(
-        'googlemeet/makerecordingspublic',
-        get_string('makerecordingspublic', 'googlemeet'),
-        get_string('makerecordingspublic_desc', 'googlemeet'),
-        1
+    // Who can open synced recordings through the Google Drive link. 'domain' grants read
+    // access to every account of the Drive owner's Google Workspace domain so enrolled
+    // students in that domain can play the embedded recording without publishing it on
+    // the internet. The default (empty) keeps the legacy 'makerecordingspublic' switch
+    // behaviour, so upgraded sites are unchanged until an admin picks a mode explicitly.
+    $settings->add(new admin_setting_configselect(
+        'googlemeet/recordinglinkaccess',
+        get_string('recordinglinkaccess', 'googlemeet'),
+        get_string('recordinglinkaccess_desc', 'googlemeet'),
+        '',
+        [
+            '' => get_string('recordinglinkaccess_legacy', 'googlemeet'),
+            'private' => get_string('recordinglinkaccess_private', 'googlemeet'),
+            'anyone' => get_string('recordinglinkaccess_anyone', 'googlemeet'),
+            'domain' => get_string('recordinglinkaccess_domain', 'googlemeet'),
+        ]
     ));
 
     // Language code used when extracting Google Drive auto-generated subtitles

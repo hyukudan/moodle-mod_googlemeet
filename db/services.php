@@ -177,4 +177,12 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
+    'mod_googlemeet_move_recording' => array(
+        'classname' => 'mod_googlemeet_external',
+        'methodname' => 'move_recording',
+        'description' => 'Move a Google Meet recording to another activity in the same course',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:editrecording',
+    ),
 );
