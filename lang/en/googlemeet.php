@@ -725,3 +725,6 @@ $string['completiondetail:recordings'] = 'Watch {$a} classes';
 $string['completiondetail:watchpercent'] = 'Watch {$a}% of the classes';
 $string['completiondetail:practice'] = 'Answer {$a} practice questions';
 $string['completionrule_range'] = 'Enter a whole number between 1 and {$a}.';
+// ANA-02: room entry event.
+$string['eventroomentered'] = 'Live room entered';
+$string['roomunavailable'] = 'The live class room is not available. Ask your teacher to check the room link.';

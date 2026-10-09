@@ -193,4 +193,13 @@ $functions = array(
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
     ),
+    // track: w2-completion.
+    'mod_googlemeet_log_room_entered' => array(
+        'classname' => 'mod_googlemeet\\external\\log_room_entered',
+        'description' => 'Log that the user enters the live Google Meet room and return its URL',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
+    ),
 );
