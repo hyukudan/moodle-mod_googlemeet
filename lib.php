@@ -49,6 +49,8 @@ function googlemeet_supports($feature) {
             return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS:
             return true;
+        case FEATURE_COMPLETION_HAS_RULES:
+            return true;
         case FEATURE_GRADE_HAS_GRADE:
             return false;
         case FEATURE_GRADE_OUTCOMES:
@@ -317,6 +319,7 @@ function googlemeet_delete_instance($id) {
 
     $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $id]);
+    \mod_googlemeet\local\attendance\service::delete_for_activity((int)$id);
     $DB->delete_records('googlemeet_holidays', ['googlemeetid' => $id]);
     $DB->delete_records('googlemeet_cancelled', ['googlemeetid' => $id]);
 
@@ -342,7 +345,7 @@ function googlemeet_get_coursemodule_info($coursemodule) {
     if (!$googlemeet = $DB->get_record(
         'googlemeet',
         ['id' => $coursemodule->instance],
-        'id, name, url, intro, introformat'
+        'id, name, url, intro, introformat, completionrecordings, completionwatchpercent, completionpractice'
     )) {
         return null;
     }
@@ -350,12 +353,52 @@ function googlemeet_get_coursemodule_info($coursemodule) {
     $info = new cached_cm_info();
     $info->name = $googlemeet->name;
 
+    // ANA-01: custom completion rules, only when completion is automatic.
+    if ($coursemodule->completion == COMPLETION_TRACKING_AUTOMATIC) {
+        $info->customdata['customcompletionrules'] = [
+            'completionrecordings' => (int)$googlemeet->completionrecordings,
+            'completionwatchpercent' => (int)$googlemeet->completionwatchpercent,
+            'completionpractice' => (int)$googlemeet->completionpractice,
+        ];
+    }
+
     if ($coursemodule->showdescription) {
         // Convert intro to html. Do not filter cached version, filters run at display time.
         $info->content = format_module_intro('googlemeet', $googlemeet, $coursemodule->id, false);
     }
 
     return $info;
+}
+
+/**
+ * Human-readable descriptions of the active custom completion rules (bulk completion editing).
+ *
+ * @param cm_info|stdClass $cm Object with ->completion and ->customdata['customcompletionrules'].
+ * @return string[]
+ */
+function mod_googlemeet_get_completion_active_rule_descriptions($cm) {
+    if (empty($cm->customdata['customcompletionrules']) || $cm->completion != COMPLETION_TRACKING_AUTOMATIC) {
+        return [];
+    }
+
+    $descriptions = [];
+    foreach ($cm->customdata['customcompletionrules'] as $key => $val) {
+        if (empty($val)) {
+            continue;
+        }
+        switch ($key) {
+            case 'completionrecordings':
+                $descriptions[] = get_string('completiondetail:recordings', 'googlemeet', (int)$val);
+                break;
+            case 'completionwatchpercent':
+                $descriptions[] = get_string('completiondetail:watchpercent', 'googlemeet', (int)$val);
+                break;
+            case 'completionpractice':
+                $descriptions[] = get_string('completiondetail:practice', 'googlemeet', (int)$val);
+                break;
+        }
+    }
+    return $descriptions;
 }
 
 /**
@@ -1743,6 +1786,12 @@ function googlemeet_extend_settings_navigation(settings_navigation $settingsnav,
         $googlemeetnode->add(get_string('report_title', 'googlemeet'),
             new moodle_url('/mod/googlemeet/report.php', ['id' => $cm->id]),
             navigation_node::TYPE_SETTING, null, 'mod_googlemeet_report', new pix_icon('i/report', ''));
+    }
+    // ANA-03: attendance read from Google Meet (site setting + activity opt-in).
+    if (has_capability('mod/googlemeet:viewreports', $context) && \mod_googlemeet\local\attendance\scope::site_enabled()) {
+        $googlemeetnode->add(get_string('attendance_title', 'googlemeet'),
+            new moodle_url('/mod/googlemeet/attendance.php', ['id' => $cm->id]),
+            navigation_node::TYPE_SETTING, null, 'mod_googlemeet_attendance', new pix_icon('i/users', ''));
     }
 }
 

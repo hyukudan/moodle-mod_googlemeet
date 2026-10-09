@@ -204,6 +204,9 @@ class provider implements
         $collection->add_user_preference(self::KEYPOINTS_PREFIX . '<recordingid>',
             'privacy:metadata:preference:keypoints');
 
+        // ANA-03 (track: w2-completion): real attendance read from Google Meet.
+        \mod_googlemeet\local\attendance\privacy::add_metadata($collection);
+
         return $collection;
     }
 
@@ -276,6 +279,7 @@ class provider implements
 
         $contextlist = new contextlist();
         $contextlist->add_from_sql($sql, $params);
+        \mod_googlemeet\local\attendance\privacy::add_contexts($contextlist, $userid);
 
         return $contextlist;
     }
@@ -344,6 +348,8 @@ class provider implements
                  WHERE cm.id = :cmid AND gaa.reviewedby > 0";
 
         $userlist->add_from_sql('reviewedby', $sql, $params);
+
+        \mod_googlemeet\local\attendance\privacy::add_users($userlist);
     }
 
     /**
@@ -540,6 +546,8 @@ class provider implements
             );
         }
         $reviews->close();
+
+        \mod_googlemeet\local\attendance\privacy::export((int)$user->id, $contextlist->get_contextids());
     }
 
     /**
@@ -568,6 +576,7 @@ class provider implements
         );
         $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $cm->instance]);
         $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $cm->instance]);
+        \mod_googlemeet\local\attendance\privacy::delete((int)$cm->instance);
 
         $recordingids = $DB->get_fieldset_select('googlemeet_recordings', 'id', 'googlemeetid = ?', [$cm->instance]);
         if (!empty($recordingids)) {
@@ -624,6 +633,7 @@ class provider implements
             );
             $DB->delete_records('googlemeet_recording_subs', ['googlemeetid' => $instanceid, 'userid' => $userid]);
             $DB->delete_records('googlemeet_practice_attempts', ['googlemeetid' => $instanceid, 'userid' => $userid]);
+            \mod_googlemeet\local\attendance\privacy::delete((int)$instanceid, [(int)$userid]);
             $DB->delete_records_select(
                 'googlemeet_recording_progress',
                 "userid = :userid AND recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)",
@@ -714,6 +724,7 @@ class provider implements
         $select = "googlemeetid = :googlemeetid AND userid $usersql";
         $DB->delete_records_select('googlemeet_recording_subs', $select, $params);
         $DB->delete_records_select('googlemeet_practice_attempts', $select, $params);
+        \mod_googlemeet\local\attendance\privacy::delete((int)$cm->instance, $userlist->get_userids());
 
         $select = "recordingid IN (SELECT id FROM {googlemeet_recordings} WHERE googlemeetid = :googlemeetid)
                    AND userid $usersql";
@@ -736,6 +747,7 @@ class provider implements
             'userid = :userid AND ' . $DB->sql_like('name', ':prefix'),
             ['userid' => $userid, 'prefix' => $DB->sql_like_escape(self::LASTJUMP_PREFIX) . '%'],
             'name', 'id, name, value');
+        \mod_googlemeet\local\attendance\privacy::export_preferences($userid);
         $kppreferences = $DB->get_records_select('user_preferences',
             'userid = :userid AND ' . $DB->sql_like('name', ':prefix'),
             ['userid' => $userid, 'prefix' => $DB->sql_like_escape(self::KEYPOINTS_PREFIX) . '%'],

@@ -858,3 +858,95 @@ $string['sync_status_stale'] = 'La sincronización anterior no terminó (la tare
 $string['task_calendar_delete_event'] = 'Borrar el evento de Google Calendar de una actividad Google Meet eliminada';
 $string['task_calendar_update_event'] = 'Actualizar el evento de Google Calendar de una actividad Google Meet editada';
 $string['task_sync_recordings'] = 'Sincronizar grabaciones de Google Meet a petición de un profesor';
+
+// track: w2-completion
+// ANA-01: custom completion rules.
+$string['completionrecordings'] = 'Ver al menos este número de clases';
+$string['completionrecordings_help'] = 'La actividad se completa cuando el alumno ha visto al menos este número de clases grabadas. Solo cuentan las clases visibles que no están en la papelera.
+
+Con el reproductor de Google Drive el progreso es aproximado: una clase cuenta como vista tras pasar suficiente tiempo con la página de la clase abierta o cuando el alumno la marca como vista.';
+$string['completionwatchpercent'] = 'Marcar como vistas al menos este % de las grabaciones visibles';
+$string['completionwatchpercent_help'] = 'La actividad se completa cuando el alumno ha visto al menos este porcentaje de las clases grabadas visibles para los alumnos. Si se añaden clases nuevas, el porcentaje se recalcula la próxima vez que el alumno avance.
+
+Con el reproductor de Google Drive el progreso es aproximado: una clase cuenta como vista tras pasar suficiente tiempo con la página de la clase abierta o cuando el alumno la marca como vista.';
+$string['completionpractice'] = 'Responder al menos este número de preguntas de práctica';
+$string['completionpractice_help'] = 'La actividad se completa cuando el alumno ha respondido al menos este número de preguntas de práctica distintas de las clases, acierte o falle.';
+$string['completiondetail:recordings'] = 'Ver {$a} clases';
+$string['completiondetail:watchpercent'] = 'Ver el {$a} % de las clases';
+$string['completiondetail:practice'] = 'Responder {$a} preguntas de práctica';
+$string['completionrule_range'] = 'Introduce un número entero entre 1 y {$a}.';
+// ANA-02: room entry event.
+$string['eventroomentered'] = 'Entrada a la sala en directo';
+$string['roomunavailable'] = 'La sala de la clase en directo no está disponible. Pide a tu profesor que revise el enlace de la sala.';
+// ANA-03: real attendance from the Google Meet REST API.
+$string['attendance_heading'] = 'Asistencia real (Google Meet)';
+$string['attendance_heading_desc'] = 'Lee quién se conectó a cada sesión en directo desde la API REST de Google Meet cuando termina la sesión. La API solo devuelve las reuniones organizadas por la cuenta de Google vinculada en la actividad y da nombres visibles e identificadores de Google, no correos: los participantes se casan con los alumnos por nombre y el profesor puede vincular a mano el resto. La aplicación OAuth debe poder usar el ámbito meetings.space.readonly (ámbito sensible que Google puede exigir verificar).';
+$string['attendanceenabled'] = 'Activar la asistencia real';
+$string['attendanceenabled_desc'] = 'Desactivado por defecto. Al activarlo también se pide a Google acceso de lectura a los datos de las reuniones de Meet, por lo que los profesores que organizan las reuniones tienen que desvincular y volver a vincular su cuenta de Google. Además, cada actividad debe activarlo.';
+$string['attendance_header'] = 'Asistencia';
+$string['attendance_activity'] = 'Leer la asistencia real desde Google Meet';
+$string['attendance_activity_help'] = 'Tras cada sesión se lee de Google Meet la lista de participantes (quién entró, cuándo y cuánto tiempo estuvo) y se casa con los alumnos matriculados. Quien entra con otra cuenta de Google o sin cuenta aparece aparte para que puedas vincularlo.';
+$string['attendance_activity_relink'] = 'Tras activar esta opción en el sitio, la cuenta de Google que organiza las reuniones tiene que volver a vincularse para conceder acceso de lectura a la asistencia de Meet.';
+$string['attendance_title'] = 'Asistencia';
+$string['attendance_intro'] = 'Quién se conectó a cada sesión en directo, leído de Google Meet al terminar la sesión. La duración suma todas las veces que cada persona estuvo en la sala.';
+$string['attendance_site_disabled'] = 'La asistencia real está desactivada en este sitio.';
+$string['attendance_activity_disabled'] = 'La asistencia no está activada en esta actividad. <a href="{$a}">Actívala en los ajustes de la actividad</a>.';
+$string['attendance_relink_notice'] = 'Para leer la asistencia real, vuelve a vincular tu cuenta de Google para que conceda acceso a los datos de asistencia de Meet: <a href="{$a}">desvincula la cuenta de Google</a> y vuelve a iniciar sesión.';
+$string['attendance_relink_done'] = 'Se ha desvinculado la cuenta de Google. Vuelve a iniciar sesión para conceder acceso a la asistencia de Meet.';
+$string['attendance_login_needed'] = 'Inicia sesión con la cuenta de Google que organiza las reuniones para leer su asistencia.';
+$string['attendance_no_sessions'] = 'Todavía no hay sesiones pasadas.';
+$string['attendance_sessions'] = 'Sesiones';
+$string['attendance_session_heading'] = 'Sesión del {$a}';
+$string['attendance_counts'] = '{$a->matched} identificados de {$a->total}';
+$string['attendance_refetch'] = 'Volver a leer la asistencia';
+$string['attendance_refetch_queued'] = 'La asistencia se volverá a leer en los próximos minutos.';
+$string['attendance_download'] = 'Descargar la asistencia';
+$string['attendance_link'] = 'Vincular';
+$string['attendance_link_choose'] = 'Elige un alumno…';
+$string['attendance_link_label'] = 'Alumno para el participante {$a}';
+$string['attendance_linked'] = 'Participante vinculado. La misma cuenta de Google se reconocerá automáticamente en las próximas sesiones.';
+$string['attendance_link_duplicate'] = 'Ese alumno ya aparece en esta sesión.';
+$string['attendance_col_session'] = 'Sesión';
+$string['attendance_col_status'] = 'Estado';
+$string['attendance_col_participants'] = 'Participantes';
+$string['attendance_col_student'] = 'Alumno';
+$string['attendance_col_meetname'] = 'Nombre en Meet';
+$string['attendance_col_joined'] = 'Entrada';
+$string['attendance_col_left'] = 'Salida';
+$string['attendance_col_minutes'] = 'Minutos';
+$string['attendance_col_sessions'] = 'Conexiones';
+$string['attendance_kind_present'] = 'Asistió';
+$string['attendance_kind_unmatched'] = 'Sin identificar';
+$string['attendance_kind_absent'] = 'No asistió';
+$string['attendance_matchedby_email'] = 'por correo';
+$string['attendance_matchedby_googleuser'] = 'por cuenta de Google';
+$string['attendance_matchedby_name'] = 'por nombre';
+$string['attendance_matchedby_manual'] = 'vinculado a mano';
+$string['attendance_status_none'] = 'Sin leer';
+$string['attendance_status_pending'] = 'Pendiente de leer';
+$string['attendance_status_done'] = 'Leída';
+$string['attendance_status_nodata'] = 'Google no devolvió ninguna reunión para esta sesión';
+$string['attendance_status_scope'] = 'El organizador tiene que volver a vincular Google';
+$string['attendance_status_error'] = 'Error al leer la asistencia';
+$string['fetch_attendance_task'] = 'Leer la asistencia real desde Google Meet';
+$string['privacy:attendance'] = 'Asistencia';
+$string['privacy:metadata:googlemeet_attendance'] = 'Participantes de cada sesión en directo, leídos de Google Meet.';
+$string['privacy:metadata:googlemeet_attendance:userid'] = 'El usuario identificado.';
+$string['privacy:metadata:googlemeet_attendance:email'] = 'El correo del participante, cuando Google lo facilita.';
+$string['privacy:metadata:googlemeet_attendance:displayname'] = 'El nombre que se muestra en Google Meet.';
+$string['privacy:metadata:googlemeet_attendance:googleuserid'] = 'El identificador de Google del participante con sesión iniciada.';
+$string['privacy:metadata:googlemeet_attendance:timejoined'] = 'Cuándo entró por primera vez.';
+$string['privacy:metadata:googlemeet_attendance:timeleft'] = 'Cuándo salió por última vez.';
+$string['privacy:metadata:googlemeet_attendance:durationseconds'] = 'Tiempo total en la sesión.';
+$string['privacy:metadata:googlemeet_meetapi'] = 'La asistencia se lee de la API REST de Google Meet con la cuenta del organizador; no se envían datos a Google.';
+$string['privacy:metadata:googlemeet_meetapi:displayname'] = 'Nombres e identificadores de Google de los participantes devueltos por Google Meet.';
+$string['privacy:metadata:preference:meetscope'] = 'Cuándo vinculó el usuario Google con acceso a la asistencia de Meet.';
+// UX-05: Moodle App.
+$string['mobile_prev'] = 'Anterior';
+$string['mobile_next'] = 'Siguiente';
+$string['mobile_page_of'] = 'Página {$a->page} de {$a->pages}';
+$string['mobile_open_drive'] = 'Ver en Google Drive';
+$string['mobile_mark_watched'] = 'Marcar como vista';
+$string['mobile_keypoints'] = 'Puntos clave';
+$string['mobile_chapters'] = 'Capítulos';
+$string['mobile_materials'] = 'Materiales';

@@ -47,6 +47,11 @@ $client = new client();
 // Post callback.
 $client->callback();
 
+// ANA-03: remember that Google was linked with the current scopes; drop stale refresh tokens.
+if ($client->check_login()) {
+    \mod_googlemeet\local\attendance\scope::after_login((int)$USER->id);
+}
+
 // If this request is coming from a popup, close window and reload parent window.
 $js = <<<EOD
 <html>

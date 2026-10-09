@@ -662,7 +662,8 @@ function googlemeet_get_room_cta_context($googlemeet, context_module $context, ?
         'roomactive' => $roomactive,
         'roomdisabled' => !$roomactive,
         'roomclasses' => $roomclasses,
-        'roomurl' => $googlemeet->url,
+        // ANA-02: go through enter.php so the entry is logged before redirecting to Meet.
+        'roomurl' => \mod_googlemeet\local\room_entry::entry_url((int)$context->instanceid)->out(false),
         'roomlabel' => $roomlabel,
         'roomnote' => $roomnote,
         'roomhascountdown' => $roomhascountdown,

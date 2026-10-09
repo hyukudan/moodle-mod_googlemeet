@@ -1,0 +1,183 @@
+{{!
+  This file is part of Moodle - http://moodle.org/
+
+  Moodle is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Moodle is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+  @template mod_googlemeet/mobile_recording_page
+
+  Moodle App: one class (UX-05). Summary, key points, chapters, materials, Drive link,
+  "mark as watched" and the practice questions of this class. Angular uses double braces, so the
+  Mustache delimiters are switched to <% %>.
+
+  Example context (json):
+  {
+    "cmid": 3,
+    "id": 7,
+    "title": "Tema 4: el acto administrativo",
+    "subtitle": "",
+    "date": "Tuesday, 17 November 2026",
+    "duration": "1:02:00",
+    "watched": false,
+    "hassummary": true,
+    "summary": [{"text": "<p>Repaso del tema 4.</p>"}],
+    "haskeypoints": true,
+    "keypoints": [{"text": "Elementos del acto"}],
+    "haschapters": true,
+    "chapters": [{"index": 0, "title": "Introducción", "start": "00:00", "url": "https://drive.google.com/file/d/x/preview"}],
+    "hasmaterials": false,
+    "haspracticequestions": false,
+    "practicequestions": [],
+    "practicequestioncount": 0
+  }
+}}
+{{=<% %>=}}
+<div>
+  <ion-item lines="none">
+    <ion-label class="ion-text-wrap">
+      <h1><% title %></h1>
+      <%#subtitle%><p><% subtitle %></p><%/subtitle%>
+      <p><% date %><%#duration%> · <% duration %><%/duration%></p>
+    </ion-label>
+  </ion-item>
+
+  <ion-grid>
+    <ion-row>
+      <ion-col>
+        <ion-button expand="block" (click)="googlemeetOpen(CONTENT_OTHERDATA.webviewlink)">
+          <ion-icon slot="start" name="play" aria-hidden="true"></ion-icon>
+          {{ 'plugin.mod_googlemeet.mobile_open_drive' | translate }}
+        </ion-button>
+      </ion-col>
+      <ion-col>
+        <ion-button *ngIf="!googlemeetWatched" expand="block" fill="outline"
+          core-site-plugins-call-ws
+          name="mod_googlemeet_mark_recording_progress"
+          [params]="{recordingid: <% id %>, coursemoduleid: <% cmid %>, watchedsecondsdelta: 0, completed: true}"
+          [preSets]="{getFromCache: 0, saveToCache: 0}"
+          (onSuccess)="googlemeetWatched = true">
+          {{ 'plugin.mod_googlemeet.mobile_mark_watched' | translate }}
+        </ion-button>
+        <ion-chip *ngIf="googlemeetWatched" color="success">
+          <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+          <ion-label>{{ 'plugin.mod_googlemeet.recording_progress_completed' | translate }}</ion-label>
+        </ion-chip>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <%#hassummary%>
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ 'plugin.mod_googlemeet.ai_summary' | translate }}</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <%#summary%>
+          <core-format-text text="<% text %>" component="mod_googlemeet" componentId="<% cmid %>" contextLevel="module" contextInstanceId="<% cmid %>" [filter]="false"></core-format-text>
+        <%/summary%>
+      </ion-card-content>
+    </ion-card>
+  <%/hassummary%>
+
+  <%#haskeypoints%>
+    <ion-list>
+      <ion-list-header><ion-label><h2>{{ 'plugin.mod_googlemeet.mobile_keypoints' | translate }}</h2></ion-label></ion-list-header>
+      <%#keypoints%>
+        <ion-item lines="none">
+          <ion-icon slot="start" name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+          <ion-label class="ion-text-wrap"><% text %></ion-label>
+        </ion-item>
+      <%/keypoints%>
+    </ion-list>
+  <%/haskeypoints%>
+
+  <%#haschapters%>
+    <ion-list>
+      <ion-list-header><ion-label><h2>{{ 'plugin.mod_googlemeet.mobile_chapters' | translate }}</h2></ion-label></ion-list-header>
+      <%#chapters%>
+        <ion-item button lines="full" detail="false" (click)="googlemeetOpen(CONTENT_OTHERDATA.chapterurls[<% index %>])">
+          <ion-note slot="start"><% start %></ion-note>
+          <ion-label class="ion-text-wrap"><% title %></ion-label>
+        </ion-item>
+      <%/chapters%>
+    </ion-list>
+  <%/haschapters%>
+
+  <%#hasmaterials%>
+    <ion-list>
+      <ion-list-header><ion-label><h2>{{ 'plugin.mod_googlemeet.mobile_materials' | translate }}</h2></ion-label></ion-list-header>
+      <core-files [files]="CONTENT_OTHERDATA.materials" component="mod_googlemeet" [componentId]="<% cmid %>"></core-files>
+    </ion-list>
+  <%/hasmaterials%>
+
+  <%#haspracticequestions%>
+    <ion-list>
+      <ion-list-header lines="full">
+        <ion-label><h2>{{ 'plugin.mod_googlemeet.practice_title' | translate }}</h2></ion-label>
+      </ion-list-header>
+      <%#practicequestions%>
+        <div *ngIf="googlemeetPractice.index === <% index %>">
+          <ion-item lines="none">
+            <ion-label class="ion-text-wrap">
+              <p class="item-heading"><%position%>/<%practicequestioncount%></p>
+              <p><%stem%></p>
+            </ion-label>
+          </ion-item>
+          <ion-radio-group [(ngModel)]="googlemeetPractice.selected[<% questionid %>]">
+            <%#options%>
+              <ion-item lines="full">
+                <ion-radio slot="start" [value]="<% answerid %>" [disabled]="googlemeetPractice.checked[<% questionid %>]"></ion-radio>
+                <ion-label class="ion-text-wrap"><%text%></ion-label>
+              </ion-item>
+            <%/options%>
+          </ion-radio-group>
+          <ion-button expand="block" class="ion-margin"
+            core-site-plugins-call-ws
+            name="mod_googlemeet_check_practice_answer"
+            [params]="{recordingid: <% id %>, coursemoduleid: <% cmid %>, questionid: <% questionid %>, answerid: googlemeetPractice.selected[<% questionid %>]}"
+            [preSets]="{getFromCache: 0, saveToCache: 0}"
+            [disabled]="!googlemeetPractice.selected[<% questionid %>] || googlemeetPractice.checked[<% questionid %>]"
+            (onSuccess)="googlemeetPractice.checked[<% questionid %>] = true; googlemeetPractice.answer[<% questionid %>] = $event">
+            {{ 'plugin.mod_googlemeet.practice_check' | translate }}
+          </ion-button>
+          <ion-item *ngIf="googlemeetPractice.checked[<% questionid %>]" lines="none">
+            <ion-label class="ion-text-wrap">
+              <p>
+                <ion-text [color]="googlemeetPractice.answer[<% questionid %>].correct ? 'success' : 'danger'">
+                  <strong>{{ googlemeetPractice.answer[<% questionid %>].correct ? ('plugin.mod_googlemeet.practice_correct' | translate) : ('plugin.mod_googlemeet.practice_incorrect' | translate) }}</strong>
+                </ion-text>
+              </p>
+              <%#options%>
+                <p *ngIf="googlemeetPractice.answer[<% questionid %>].correctanswerid === <% answerid %>">
+                  <strong>{{ 'plugin.mod_googlemeet.practice_correct_answer' | translate }}</strong> <%text%>
+                </p>
+              <%/options%>
+              <core-format-text *ngIf="googlemeetPractice.answer[<% questionid %>].explanation" [text]="googlemeetPractice.answer[<% questionid %>].explanation" component="mod_googlemeet" componentId="<% cmid %>" contextLevel="module" contextInstanceId="<% cmid %>"></core-format-text>
+            </ion-label>
+          </ion-item>
+          <ion-button *ngIf="googlemeetPractice.checked[<% questionid %>] && <%position%> < <%practicequestioncount%>"
+            expand="block" fill="outline" class="ion-margin"
+            (click)="googlemeetPractice.index = <% index %> + 1">
+            {{ 'plugin.mod_googlemeet.practice_next' | translate }}
+          </ion-button>
+          <ion-button *ngIf="googlemeetPractice.checked[<% questionid %>] && <%position%> === <%practicequestioncount%>"
+            expand="block" fill="outline" class="ion-margin"
+            (click)="googlemeetPractice.index = 0; googlemeetPractice.selected = {}; googlemeetPractice.checked = {}; googlemeetPractice.answer = {}">
+            {{ 'plugin.mod_googlemeet.practice_retry' | translate }}
+          </ion-button>
+        </div>
+      <%/practicequestions%>
+    </ion-list>
+  <%/haspracticequestions%>
+</div>

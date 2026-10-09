@@ -371,6 +371,9 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         ]);
         $mform->addHelpButton('attachments', 'attachments', 'googlemeet');
 
+        // ANA-03 (track: w2-completion): per-activity opt-in to real attendance from Google Meet.
+        \mod_googlemeet\local\attendance\settings_form::add_activity_fields($mform);
+
         // Add standard elements.
         $this->standard_coursemodule_elements();
 
@@ -434,6 +437,8 @@ class mod_googlemeet_mod_form extends moodleform_mod {
                 $i++;
             }
         }
+
+        $this->completion_rules_preprocessing($defaultvalues);
     }
 
     /**
@@ -476,6 +481,8 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         if ($addmulti && ceil(($data['eventenddate'] - $data['eventdate']) / YEARSECS) > 1) {
             $errors['eventenddate'] = get_string('timeahead', 'googlemeet');
         }
+
+        $errors = array_merge($errors, $this->completion_rules_validation($data));
 
         // Validate holiday periods.
         if ($addmulti && !empty($data['holiday_repeats'])) {
@@ -656,6 +663,121 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         }
 
         return false;
+    }
+
+    // ANA-01 (track: w2-completion): custom completion rules.
+
+    /**
+     * Rule definitions: rule => [checkbox lang string, max value].
+     *
+     * @return array
+     */
+    private static function completion_rule_specs(): array {
+        return [
+            'completionrecordings' => ['completionrecordings', 9999],
+            'completionwatchpercent' => ['completionwatchpercent', 100],
+            'completionpractice' => ['completionpractice', 9999],
+        ];
+    }
+
+    /**
+     * Add the custom completion rule elements.
+     *
+     * @return string[] Names of the added group elements.
+     */
+    public function add_completion_rules() {
+        $mform = $this->_form;
+        $suffix = $this->get_suffix();
+
+        $groups = [];
+        foreach (self::completion_rule_specs() as $rule => [$label, $max]) {
+            $enabledel = $rule . 'enabled' . $suffix;
+            $valueel = $rule . $suffix;
+            $groupel = $rule . 'group' . $suffix;
+            $group = [];
+            $group[] = $mform->createElement('checkbox', $enabledel, '', get_string($label, 'googlemeet'));
+            $group[] = $mform->createElement('text', $valueel, '', ['size' => 3]);
+            $mform->setType($valueel, PARAM_INT);
+            $mform->addGroup($group, $groupel, '', ' ', false);
+            $mform->addHelpButton($groupel, $label, 'googlemeet');
+            $mform->hideIf($valueel, $enabledel, 'notchecked');
+            $groups[] = $groupel;
+        }
+        return $groups;
+    }
+
+    /**
+     * Whether any custom completion rule is enabled in the submitted data.
+     *
+     * @param array $data Submitted data.
+     * @return bool
+     */
+    public function completion_rule_enabled($data) {
+        $suffix = $this->get_suffix();
+        foreach (array_keys(self::completion_rule_specs()) as $rule) {
+            if (!empty($data[$rule . 'enabled' . $suffix]) && (int)($data[$rule . $suffix] ?? 0) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Set the rule checkboxes from the stored values.
+     *
+     * @param array $defaultvalues Form defaults (by reference).
+     * @return void
+     */
+    protected function completion_rules_preprocessing(array &$defaultvalues): void {
+        $suffix = $this->get_suffix();
+        $fallbacks = ['completionrecordings' => 1, 'completionwatchpercent' => 80, 'completionpractice' => 10];
+        foreach (array_keys(self::completion_rule_specs()) as $rule) {
+            $valueel = $rule . $suffix;
+            $value = (int)($defaultvalues[$valueel] ?? ($defaultvalues[$rule] ?? 0));
+            $defaultvalues[$rule . 'enabled' . $suffix] = $value > 0 ? 1 : 0;
+            $defaultvalues[$valueel] = $value > 0 ? $value : $fallbacks[$rule];
+        }
+    }
+
+    /**
+     * Validate the enabled rule values.
+     *
+     * @param array $data Submitted data.
+     * @return array Errors keyed by group element.
+     */
+    protected function completion_rules_validation(array $data): array {
+        $suffix = $this->get_suffix();
+        $errors = [];
+        foreach (self::completion_rule_specs() as $rule => [$label, $max]) {
+            if (empty($data[$rule . 'enabled' . $suffix])) {
+                continue;
+            }
+            $value = (int)($data[$rule . $suffix] ?? 0);
+            if ($value < 1 || $value > $max) {
+                $errors[$rule . 'group' . $suffix] = get_string('completionrule_range', 'googlemeet', $max);
+            }
+        }
+        return $errors;
+    }
+
+    /**
+     * Zero the rules whose checkbox is off or when completion is not automatic.
+     *
+     * @param \stdClass $data Submitted data.
+     * @return void
+     */
+    public function data_postprocessing($data) {
+        parent::data_postprocessing($data);
+        if (!empty($data->completionunlocked)) {
+            $suffix = $this->get_suffix();
+            $completion = $data->{'completion' . $suffix} ?? null;
+            $automatic = !empty($completion) && $completion == COMPLETION_TRACKING_AUTOMATIC;
+            foreach (array_keys(self::completion_rule_specs()) as $rule) {
+                if (empty($data->{$rule . 'enabled' . $suffix}) || !$automatic) {
+                    $data->{$rule . $suffix} = 0;
+                }
+            }
+        }
     }
 
     /**

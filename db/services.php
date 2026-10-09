@@ -176,6 +176,7 @@ $functions = array(
         'type' => 'write', // ANA-05: also stores the attempt.
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE], // UX-05: used by the Moodle App.
     ),
     'mod_googlemeet_mark_recording_progress' => array(
         'classname' => 'mod_googlemeet_external',
@@ -184,6 +185,7 @@ $functions = array(
         'type' => 'write',
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:view',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE], // UX-05: used by the Moodle App.
     ),
     // track: analytics.
     'mod_googlemeet_get_practice_session' => array(
@@ -215,5 +217,14 @@ $functions = array(
         'type' => 'read',
         'ajax' => true,
         'capabilities' => 'mod/googlemeet:editrecording',
+    ),
+    // track: w2-completion.
+    'mod_googlemeet_log_room_entered' => array(
+        'classname' => 'mod_googlemeet\\external\\log_room_entered',
+        'description' => 'Log that the user enters the live Google Meet room and return its URL',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'mod/googlemeet:view',
+        'services' => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ),
 );

@@ -1543,6 +1543,11 @@ class mod_googlemeet_external extends external_api {
         ];
         $DB->update_record('googlemeet_recording_progress', $update);
 
+        // ANA-01: a newly watched class may complete the activity without a page reload.
+        if ($iscompleted && empty($progress->completed)) {
+            \mod_googlemeet\local\completion_updater::progress_changed($cm, (int)$USER->id);
+        }
+
         return [
             'watchedseconds' => $watchedseconds,
             'completed' => $iscompleted,
@@ -1689,6 +1694,8 @@ class mod_googlemeet_external extends external_api {
         global $USER;
         \mod_googlemeet\local\practice_attempts::record((int)$googlemeet->id, (int)$params['recordingid'],
             (int)$params['questionid'], (int)$USER->id, !empty($result['correct']));
+        // ANA-01: answered-questions completion rule.
+        \mod_googlemeet\local\completion_updater::practice_changed($cm, (int)$USER->id);
 
         return $result;
     }

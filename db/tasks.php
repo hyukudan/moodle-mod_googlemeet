@@ -70,5 +70,15 @@ $tasks = [
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
+    ],
+    // track: w2-completion (ANA-03). No-op unless googlemeet/attendanceenabled is on.
+    [
+        'classname' => 'mod_googlemeet\task\fetch_attendance',
+        'blocking' => 0,
+        'minute' => '*/30',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
     ]
 ];

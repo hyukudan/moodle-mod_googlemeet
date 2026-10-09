@@ -853,3 +853,95 @@ $string['sync_status_stale'] = 'The previous sync did not finish (the background
 $string['task_calendar_delete_event'] = 'Delete the Google Calendar event of a deleted Google Meet activity';
 $string['task_calendar_update_event'] = 'Update the Google Calendar event of an edited Google Meet activity';
 $string['task_sync_recordings'] = 'Sync Google Meet recordings requested by a teacher';
+
+// track: w2-completion
+// ANA-01: custom completion rules.
+$string['completionrecordings'] = 'Watch at least this number of classes';
+$string['completionrecordings_help'] = 'The activity is completed when the student has watched at least this number of recorded classes. Only visible classes that are not in the trash count.
+
+Progress is approximate while classes are played with the Google Drive player: a class counts as watched after enough time with the class page open, or when the student marks it as watched.';
+$string['completionwatchpercent'] = 'Watch at least this percentage of the visible classes';
+$string['completionwatchpercent_help'] = 'The activity is completed when the student has watched at least this percentage of the recorded classes that are visible to students. When new classes are added the percentage is recalculated the next time the student makes progress.
+
+Progress is approximate while classes are played with the Google Drive player: a class counts as watched after enough time with the class page open, or when the student marks it as watched.';
+$string['completionpractice'] = 'Answer at least this number of practice questions';
+$string['completionpractice_help'] = 'The activity is completed when the student has answered at least this number of different practice questions of the classes, whether the answers are right or wrong.';
+$string['completiondetail:recordings'] = 'Watch {$a} classes';
+$string['completiondetail:watchpercent'] = 'Watch {$a}% of the classes';
+$string['completiondetail:practice'] = 'Answer {$a} practice questions';
+$string['completionrule_range'] = 'Enter a whole number between 1 and {$a}.';
+// ANA-02: room entry event.
+$string['eventroomentered'] = 'Live room entered';
+$string['roomunavailable'] = 'The live class room is not available. Ask your teacher to check the room link.';
+// ANA-03: real attendance from the Google Meet REST API.
+$string['attendance_heading'] = 'Real attendance (Google Meet)';
+$string['attendance_heading_desc'] = 'Reads who joined each live session from the Google Meet REST API after the session ends. The API only returns the meetings organised by the Google account linked in the activity, and gives display names and Google ids, not e-mail addresses: participants are matched to students by name and the teacher can link the rest by hand. The OAuth app must be allowed to use the scope meetings.space.readonly (a sensitive scope that Google may require to verify).';
+$string['attendanceenabled'] = 'Enable real attendance';
+$string['attendanceenabled_desc'] = 'Off by default. When enabled, Google is also asked for read access to Meet conference data, so the teachers who organise the meetings must unlink and link their Google account again. Each activity must also opt in.';
+$string['attendance_header'] = 'Attendance';
+$string['attendance_activity'] = 'Read real attendance from Google Meet';
+$string['attendance_activity_help'] = 'After each session, the list of participants is read from Google Meet (who joined, when, and for how long) and matched to the enrolled students. Participants who join with another Google account or without one are listed apart so you can link them.';
+$string['attendance_activity_relink'] = 'The Google account that organises the meetings must be linked again after this option is enabled for the site, to grant read access to Meet attendance.';
+$string['attendance_title'] = 'Attendance';
+$string['attendance_intro'] = 'Who joined each live session, read from Google Meet after the session ends. Durations add up all the times each person was in the room.';
+$string['attendance_site_disabled'] = 'Real attendance is disabled for this site.';
+$string['attendance_activity_disabled'] = 'Attendance is not enabled for this activity. <a href="{$a}">Enable it in the activity settings</a>.';
+$string['attendance_relink_notice'] = 'To read real attendance, link your Google account again so that Google grants access to Meet attendance data: <a href="{$a}">unlink the Google account</a> and then log in again.';
+$string['attendance_relink_done'] = 'The Google account has been unlinked. Log in again to grant access to Meet attendance.';
+$string['attendance_login_needed'] = 'Log in with the Google account that organises the meetings to read their attendance.';
+$string['attendance_no_sessions'] = 'There are no past sessions yet.';
+$string['attendance_sessions'] = 'Sessions';
+$string['attendance_session_heading'] = 'Session of {$a}';
+$string['attendance_counts'] = '{$a->matched} matched of {$a->total}';
+$string['attendance_refetch'] = 'Read attendance again';
+$string['attendance_refetch_queued'] = 'Attendance will be read again in the next few minutes.';
+$string['attendance_download'] = 'Download attendance';
+$string['attendance_link'] = 'Link';
+$string['attendance_link_choose'] = 'Choose a student…';
+$string['attendance_link_label'] = 'Student for participant {$a}';
+$string['attendance_linked'] = 'Participant linked. The same Google account will be matched automatically in later sessions.';
+$string['attendance_link_duplicate'] = 'That student already appears in this session.';
+$string['attendance_col_session'] = 'Session';
+$string['attendance_col_status'] = 'Status';
+$string['attendance_col_participants'] = 'Participants';
+$string['attendance_col_student'] = 'Student';
+$string['attendance_col_meetname'] = 'Name in Meet';
+$string['attendance_col_joined'] = 'Joined';
+$string['attendance_col_left'] = 'Left';
+$string['attendance_col_minutes'] = 'Minutes';
+$string['attendance_col_sessions'] = 'Joins';
+$string['attendance_kind_present'] = 'Attended';
+$string['attendance_kind_unmatched'] = 'Not matched';
+$string['attendance_kind_absent'] = 'Did not attend';
+$string['attendance_matchedby_email'] = 'by e-mail';
+$string['attendance_matchedby_googleuser'] = 'by Google account';
+$string['attendance_matchedby_name'] = 'by name';
+$string['attendance_matchedby_manual'] = 'linked by hand';
+$string['attendance_status_none'] = 'Not read';
+$string['attendance_status_pending'] = 'Waiting to be read';
+$string['attendance_status_done'] = 'Read';
+$string['attendance_status_nodata'] = 'Google returned no meeting for this session';
+$string['attendance_status_scope'] = 'The organiser must link Google again';
+$string['attendance_status_error'] = 'Error reading attendance';
+$string['fetch_attendance_task'] = 'Read real attendance from Google Meet';
+$string['privacy:attendance'] = 'Attendance';
+$string['privacy:metadata:googlemeet_attendance'] = 'Participants of each live session, read from Google Meet.';
+$string['privacy:metadata:googlemeet_attendance:userid'] = 'The matched user.';
+$string['privacy:metadata:googlemeet_attendance:email'] = 'The participant e-mail, when Google provides it.';
+$string['privacy:metadata:googlemeet_attendance:displayname'] = 'The name shown in Google Meet.';
+$string['privacy:metadata:googlemeet_attendance:googleuserid'] = 'The Google id of the signed-in participant.';
+$string['privacy:metadata:googlemeet_attendance:timejoined'] = 'When the participant first joined.';
+$string['privacy:metadata:googlemeet_attendance:timeleft'] = 'When the participant last left.';
+$string['privacy:metadata:googlemeet_attendance:durationseconds'] = 'Total time in the session.';
+$string['privacy:metadata:googlemeet_meetapi'] = 'Attendance is read from the Google Meet REST API with the organiser account; no data is sent to Google.';
+$string['privacy:metadata:googlemeet_meetapi:displayname'] = 'Participant names and Google ids returned by Google Meet.';
+$string['privacy:metadata:preference:meetscope'] = 'When the user linked Google with access to Meet attendance.';
+// UX-05: Moodle App.
+$string['mobile_prev'] = 'Previous';
+$string['mobile_next'] = 'Next';
+$string['mobile_page_of'] = 'Page {$a->page} of {$a->pages}';
+$string['mobile_open_drive'] = 'Watch in Google Drive';
+$string['mobile_mark_watched'] = 'Mark as watched';
+$string['mobile_keypoints'] = 'Key points';
+$string['mobile_chapters'] = 'Chapters';
+$string['mobile_materials'] = 'Materials';
