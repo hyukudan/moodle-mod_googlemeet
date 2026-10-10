@@ -5,7 +5,8 @@ Feature: Recorded classes in the Google Meet activity
   I need to list the recordings and open a class hub, while teachers get management actions
 
   Background:
-    Given the following "users" exist:
+    Given an offline Google issuer is configured for googlemeet
+    And the following "users" exist:
       | username | firstname | lastname | email                |
       | teacher1 | Teacher   | One      | teacher1@example.com |
       | student1 | Student   | One      | student1@example.com |

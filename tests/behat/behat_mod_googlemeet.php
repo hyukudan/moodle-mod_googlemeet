@@ -50,4 +50,30 @@ class behat_mod_googlemeet extends behat_base {
         $this->getSession()->visit($this->locate_path('/mod/googlemeet/' . $script . '?id=' . $cm->id .
             '&recording=' . $recordingid));
     }
+
+    /**
+     * Configure an offline Google OAuth 2 issuer (no network) so the recordings list is rendered.
+     *
+     * Without an enabled issuer the activity page only shows the live-class block.
+     *
+     * @Given /^an offline Google issuer is configured for googlemeet$/
+     */
+    public function an_offline_google_issuer_is_configured(): void {
+        $issuer = new \core\oauth2\issuer(0, (object)[
+            'name' => 'Google (behat)', 'image' => '', 'baseurl' => 'https://accounts.google.com',
+            'clientid' => 'behat-client', 'clientsecret' => 'behat-secret', 'loginscopes' => 'openid profile email',
+            'loginscopesoffline' => 'openid profile email', 'loginparams' => '',
+            'loginparamsoffline' => 'access_type=offline&prompt=consent', 'alloweddomains' => '', 'enabled' => 1,
+            'showonloginpage' => 0, 'basicauth' => 0, 'servicetype' => 'google',
+        ]);
+        $issuer->create();
+        foreach ([
+            'authorization_endpoint' => 'https://accounts.google.com/o/oauth2/v2/auth',
+            'token_endpoint' => 'https://oauth2.googleapis.com/token',
+            'userinfo_endpoint' => 'https://openidconnect.googleapis.com/v1/userinfo',
+        ] as $name => $url) {
+            (new \core\oauth2\endpoint(0, (object)['issuerid' => $issuer->get('id'), 'name' => $name, 'url' => $url]))->create();
+        }
+        set_config('issuerid', $issuer->get('id'), 'googlemeet');
+    }
 }
