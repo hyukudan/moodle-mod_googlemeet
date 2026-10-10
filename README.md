@@ -103,7 +103,8 @@ Settings (Site administration → Plugins → Activity modules → Google Meet):
 ## Requirements
 
 - Moodle 5.0 or higher (tested on 5.1). Since 2.29.0 the templates use Bootstrap 5 `data-bs-*` markup (teacher "Acciones" menu), so Moodle 4.5 is no longer supported; stay on 2.28.x there.
-- PHP 8.1 or higher
+- PHP 8.2 or higher
+- Cron every minute recommended (background sync, Calendar updates and AI run as adhoc tasks)
 
 ## Installation
 
@@ -197,6 +198,59 @@ Subtitle language priority: `--language`/`-l` flag > `googlemeet/subtitlelanguag
 The CLI script extracts Google Drive's auto-generated subtitles (~200KB) instead of downloading the full video (~1GB), making it much faster and lighter.
 
 ## Changes in this fork
+
+### Version 2.30.0 (2026-10-12) — Wave 2: data safety, notifications, AI review, Calendar sync, completion and attendance
+
+Six tracks merged (`w2/data`, `w2/notify`, `w2/aireview`, `w2/calsync`, `w2/completion`, `w2/quality`) plus the fixes from their code reviews.
+
+**Data and operations**
+- **One cascade delete** (`\mod_googlemeet\local\recording_cleanup`): purging a recording or deleting the activity removes its AI analysis, viewing progress, practice attempts, material files, per-recording preferences and tagged practice questions (questions used elsewhere, e.g. in a quiz, are hidden by core instead). `cli/cleanup_orphans.php` (dry run by default, `--execute` to delete) cleans data of recordings/activities that no longer exist; it only looks for questions in Google Meet activity banks, never in shared banks.
+- **Trash retention**: setting `googlemeet/trashretentiondays` (default **30**, 0 = never) and the daily task `purge_trash`. It only purges recordings **a teacher moved to the trash by hand** (`googlemeet_recordings.trashreason = manual`). Recordings the Drive sync trashed because they were missing from the Drive listing (`sync`) are **never** purged automatically. The trash panel shows "Will be deleted on dd/mm" for manual ones.
+- **"Delete all recordings"** (web service `mod_googlemeet_delete_all_recordings`) now moves every active recording to the manual trash (nothing is deleted right away, practice questions are never touched; a later sync restores in place those still in Drive).
+- **Course reset** deletes viewing progress, practice answers, subscriptions, per-recording preferences and the attendance read from Google Meet; recordings, AI content and questions stay.
+- **Backup**: the AI summary, key points, topics, chapters and their review state travel without user data (a duplicate or course copy keeps them); the transcript and error texts only with user data.
+- `googlemeet_recordings.durationseconds` (numeric duration) and `googlemeet.stalealerttime` (replaces the `stalealert_<id>` config keys).
+- **Useful activity index** (`index.php`): next session, recordings and, for students, their progress.
+- **Background Drive sync** (PERF-02): the "Sync with Google Drive" button queues an adhoc task and the panel polls its status (WS `mod_googlemeet_request_sync` / `mod_googlemeet_get_sync_status`). Only the organiser's Google account (`creatoremail`) can run it: the sync trashes whatever is missing from the linked Drive.
+- **Aggregated queries** in the list and hub (16 queries for a teacher list instead of ~5 per recording).
+- **Admin sync status page** (`admin_status.php`, Site administration → Plugins → Activity modules → "Google Meet sync status", also linked from the plugin settings): failed/retrying/exhausted autosync, stuck AI analyses, failed Calendar updates, last sync per activity. Table `googlemeet_sync_log` (60-day retention). Structured `mtrace` lines per activity for autosync.
+- Google impersonation in cron (autosync, enrichment, background sync, attendance, Calendar) no longer reuses another organiser's OAuth access token kept in the shared cron session.
+
+**Notifications**
+- Reminders tolerate cron gaps; an optional **early reminder** `notifyhoursbefore` hours before each session (site default for **new** activities 24 h; **existing activities stay off**). The form rejects an early reminder that would not come before the "minutes before" one.
+- **Push to the Moodle app** (airnotifier) for reminders and new recordings, with `customdata` that opens the activity. The upgrade unlocks and enables airnotifier for the existing providers.
+- New-recording notice with lesson titles, a short AI summary and chapters — only content a teacher has published; teachers get `autosyncfailed` when auto-sync gives up. "Add to my calendar" (`.ics` and Google Calendar template). Names are no longer HTML-escaped in subjects and calendar texts ("Q&A").
+
+**AI review (IA-04, IA-03, F-8)**
+- `googlemeet/requireaireview` (**on by default**): AI summaries, key points, topics and chapters are hidden from students until a teacher clicks **Publish** in the hub (or "Publish all" in the activity banner). Existing analyses were marked as reviewed by the upgrade. Every AI (re)write needs a new review; publishing checks that the text on screen is still the current one. The web service never returns content of a processing/failed analysis to students. Exception: `cli/backfill_chapters.php` (admin) keeps the reviewed flag when it only adds chapters.
+- Gemini safety threshold `googlemeet/aisafetythreshold` (default `BLOCK_ONLY_HIGH`) and a clear "blocked by safety filters" error, without paid retries.
+- Stuck analyses (`googlemeet/aistuckminutes`, default 60, minimum 45) are shown to teachers with a retry button and failed by cron.
+
+**Google Calendar (DAT-04)**
+- Editing name, date, times or recurrence patches the organiser's Google Calendar event in the background (adhoc task, organiser's stored token; the series id is used even when the stored link points at the first instance).
+- Deleting the event, safety rules: only when a teacher **deletes the activity itself** (never during course deletion, restore with "delete contents" or any other bulk path), only when no other activity in **any course** shares the event id **or the Meet room URL** (restored copies and next year's course keep the URL), and only after the course recycle bin item has expired (default 7 days + 1; re-checked at run time, so restoring from the bin cancels it; a bin that never expires means the event is never deleted). The token must belong to the organiser account; a 404 from another account is an error, not "already deleted".
+
+**Completion, attendance and app (ANA-01/02/03, UX-05)**
+- Custom completion rules: watch N classes, watch X % of the visible classes, answer N practice questions. "Watched" includes the student's own "Mark as viewed" (a declaration, not proof).
+- `room_entered` event when joining the live room (web `enter.php`, app WS `mod_googlemeet_log_room_entered`).
+- **Real attendance from the Google Meet REST API** (opt-in, **off by default**): see the deployment notes. Teacher page `attendance.php` per session with CSV/XLSX export (e-mail column only when e-mail is a visible identity field; spreadsheet formulas neutralised), manual linking and **unlinking** of participants. Name matching needs the full first name plus a surname; only teacher links (and e-mail matches) are remembered for later sessions, per course. Changing the schedule keeps past sessions that have attendance. Restoring without user data switches attendance off in the copy.
+- Moodle App: activity view with intro and paginated classes, class view with summary, key points, chapters, materials, practice and "mark as viewed"; AI content follows the same review rule as the web; server texts can no longer inject Angular bindings.
+
+**Quality**
+- GitHub Actions CI (PHP 8.2/8.4 × Moodle 5.0/5.1 × PostgreSQL/MariaDB; push only on `master`); style checks are informative (`continue-on-error`) until the legacy warnings are cleaned. Behat features and generator helpers. Unused jstable code and 28 unused strings removed.
+
+#### Deployment notes (2.30.0)
+
+- Version `2026101200`, release 2.30.0, still `requires` Moodle 5.0 (`supported = [500, 501]`). Run `admin/cli/upgrade.php`, purge all caches (strings, templates, AMD, CSS) and reset opcache.
+- **Upgrade steps**: 2026101100-101 (durationseconds, stalealerttime), 2026101110-111 (notifyhoursbefore, notify_done.kind + unique index), 2026101120 (AI review fields; existing analyses marked reviewed; `requireaireview` = 1), 2026101130 (`googlemeet_sync_log`), 2026101140-141 (completion fields, `attendanceenabled`, `googlemeet_attendance`, `googlemeet_attendance_sync`), 2026101190 (`trashreason`; **existing trash is marked `sync` and its `timedeleted` restarted** → nothing that is already in the trash will ever be purged automatically), 2026101191 (airnotifier unlocked/enabled for `notification` and `recordingavailable`; it overrides an admin who had disabled it there).
+- **New tables**: `googlemeet_sync_log`, `googlemeet_attendance`, `googlemeet_attendance_sync`. **New scheduled tasks**: `purge_trash` (03:xx), `fetch_attendance` (every 30 min, no-op while attendance is off). **New adhoc tasks**: background sync, Calendar update/delete.
+- **Cron every minute is recommended**: the background "Sync with Google Drive", the Calendar update and the AI tasks are adhoc tasks; with a 5-minute cron teachers wait up to 5 minutes for the sync result.
+- **New settings and defaults**: `trashretentiondays` 30; `notifyhoursbefore` 24 (only for new activities; existing ones stay 0); `requireaireview` on; `aisafetythreshold` BLOCK_ONLY_HIGH; `aistuckminutes` 60; `attendanceenabled` off.
+- **Push**: needs the Moodle app notifications configured on the site (Site administration → Messaging → Mobile, airnotifier access key). Check on a real device that a reminder arrives and opens the activity.
+- **Communicate to teachers before deploying**: with `requireaireview` on, **new AI summaries are not visible to students until a teacher publishes them** (yellow "Pending review" banner in the class, "Publish all" banner in the activity). Summaries that existed before the upgrade stay visible. Turn the setting off if the academy prefers automatic publication.
+- **Google Calendar**: renames/schedule changes now reach the organiser's calendar (manual changes made directly in Google Calendar to those fields are overwritten by the next Moodle edit). Deleting an activity deletes its event only in the safe cases above, about 8 days later with the default recycle bin; deleting a course never touches Google. Verify once with a real organiser account that editing a recurring activity patches the whole series (not only the first session) and that deleting a test activity removes the series after the bin expiry.
+- **Attendance (off)**: to try it, 1) enable the *Google Meet REST API* in the Google Cloud project of the OAuth client; 2) Site administration → Google Meet → enable `attendanceenabled` (from then on the plugin also requests the `meetings.space.readonly` scope); 3) the **organiser account** (the activity's `creatoremail`) opens the activity and follows the "link your Google account again" notice (unlink + log in again) — other teachers only see an informative notice; 4) enable "Read real attendance from Google Meet" in the activity settings; 5) after a session ends (+30 min), `fetch_attendance` reads it; check `attendance.php` and link/unlink unmatched participants. Google keeps attendance records about 30 days.
+- The admin sync status page is under the plugin settings (`moodle/site:config`).
 
 ### Version 2.29.1 (2026-10-09) — Fixes from the 2.29.0 production check (RemUI)
 
