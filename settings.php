@@ -181,6 +181,15 @@ if ($ADMIN->fulltree) {
         $aimodels
     ));
 
+    // Domain context injected into every Gemini prompt (subject area, audience, exam type).
+    $settings->add(new admin_setting_configtextarea(
+        'googlemeet/aicontext',
+        get_string('aicontext', 'googlemeet'),
+        get_string('aicontext_desc', 'googlemeet'),
+        \mod_googlemeet\gemini_client::DEFAULT_AI_CONTEXT,
+        PARAM_TEXT
+    ));
+
     $settings->add(new admin_setting_configcheckbox(
         'googlemeet/ai_autogenerate',
         get_string('ai_autogenerate', 'googlemeet'),

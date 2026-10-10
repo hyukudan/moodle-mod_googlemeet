@@ -73,6 +73,12 @@ class gemini_client {
         'HARM_CATEGORY_DANGEROUS_CONTENT',
     ];
 
+    /** @var string Default teaching context when googlemeet/aicontext is not set. */
+    const DEFAULT_AI_CONTEXT = 'Online training classes';
+
+    /** @var int Maximum length of the teaching context injected into prompts. */
+    const AI_CONTEXT_MAXLENGTH = 500;
+
     /** @var bool Whether AI features are enabled */
     private $enabled;
 
@@ -95,6 +101,37 @@ class gemini_client {
         // extensible place; the request/parse logic below merely follows the
         // attempt chain it produces.
         $this->modelpolicy = new model_policy($this->model, self::FALLBACK_MODEL);
+    }
+
+    /**
+     * Teaching context injected into every prompt (googlemeet/aicontext).
+     *
+     * Lets each site describe its own domain (subject area, audience, exam type)
+     * instead of hardcoding one in the prompts. Whitespace is collapsed and the
+     * value is capped so a long admin text cannot dominate the prompt.
+     *
+     * @return string
+     */
+    public static function get_ai_context(): string {
+        $context = get_config('googlemeet', 'aicontext');
+        if ($context === false) {
+            $context = self::DEFAULT_AI_CONTEXT;
+        }
+        $context = trim(preg_replace('/\s+/u', ' ', (string)$context));
+        if (\core_text::strlen($context) > self::AI_CONTEXT_MAXLENGTH) {
+            $context = \core_text::substr($context, 0, self::AI_CONTEXT_MAXLENGTH);
+        }
+        return $context;
+    }
+
+    /**
+     * Prompt line describing the teaching context, or '' when the admin left it empty.
+     *
+     * @return string
+     */
+    private function context_line(): string {
+        $context = self::get_ai_context();
+        return $context === '' ? '' : "Teaching context: {$context}\n\n";
     }
 
     /**
@@ -192,10 +229,11 @@ class gemini_client {
         }
 
         $count = max(1, min(20, $count));
+        $ctx = $this->context_line();
         $prompt = <<<PROMPT
-You are an expert teacher creating exam-practice questions from a class transcript.
+You are an expert teacher creating practice questions from a class transcript.
 
-Write in this language whenever possible: {$lang}.
+{$ctx}Write in this language whenever possible: {$lang}.
 Focus only on educational, assessable content. Ignore greetings, admin chatter, and off-topic discussion.
 Create {$count} single-answer multiple-choice questions.
 
@@ -254,10 +292,11 @@ PROMPT;
             $contextinfo .= "\n";
         }
 
+        $ctx = $this->context_line();
         $prompt = <<<PROMPT
 You are an expert educational editor extracting lesson chapters from a class transcript.
 
-Write chapter titles in this language whenever possible: {$lang}.
+{$ctx}Write chapter titles in this language whenever possible: {$lang}.
 Use ONLY timestamp marks that already appear in the transcript. Do not invent timestamps.
 Ignore greetings, admin chatter, and off-topic discussion unless they are the only content at the beginning.
 
@@ -293,10 +332,11 @@ PROMPT;
      * @return string The prompt
      */
     private function build_analysis_prompt(string $videoname, string $duration, string $videourl): string {
+        $ctx = $this->context_line();
         return <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
-CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+{$ctx}CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
 
 Video Information:
 - Title: {$videoname}
@@ -307,17 +347,17 @@ Please analyze this video and provide the following in a structured JSON format:
 
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
-3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long headings — produce compact chip labels (e.g. "Photosynthesis", "Cell cycle", "Mitosis"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript/audio when available; do not invent timestamps. If timestamp marks are not available, return an empty array.
 5. **Transcript Summary**: If audio is available, provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
-    "summary": "Resumen completo aquí (en el idioma del vídeo)...",
-    "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
-    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
-    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
-    "transcript": "Transcripción condensada o 'No disponible'...",
+    "summary": "Full summary here (in the language of the video)...",
+    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
+    "topics": ["Photosynthesis", "Cell cycle", "Mitosis"],
+    "chapters": [{"title": "Introduction and questions", "start": "5:03"}],
+    "transcript": "Condensed transcript, or 'Not available'...",
     "language": "detected language code (e.g., es, en, fr)"
 }
 
@@ -408,7 +448,7 @@ PROMPT;
                 'topP' => 0.95,
                 'maxOutputTokens' => 8192,
             ],
-            // IA-03: class transcripts (law, health, security syllabi) often trip MEDIUM filters.
+            // IA-03: class transcripts (e.g. law, health or security courses) often trip MEDIUM filters.
             'safetySettings' => self::build_safety_settings(),
         ];
 
@@ -1016,10 +1056,11 @@ PROMPT;
             $contextinfo .= "\n";
         }
 
+        $ctx = $this->context_line();
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a class transcript.
 
-CRITICAL RULE: You MUST write the summary, keypoints, topics, and chapters in the SAME language as the transcript. If the transcript is in Spanish, your entire response (summary, keypoints, topics, chapters) MUST be in Spanish. If the transcript is in English, respond in English. NEVER translate to a different language.
+{$ctx}CRITICAL RULE: You MUST write the summary, keypoints, topics, and chapters in the SAME language as the transcript. If the transcript is in Spanish, your entire response (summary, keypoints, topics, chapters) MUST be in Spanish. If the transcript is in English, respond in English. NEVER translate to a different language.
 
 Focus ONLY on educational content and curriculum topics. Ignore any casual conversation, greetings, small talk, holiday wishes, off-topic discussions, or informal chat.
 
@@ -1030,17 +1071,17 @@ Based ONLY on the educational content, provide in JSON format:
 
 1. **Summary**: Summary of the educational content covered (2-3 paragraphs) — MUST be in the same language as the transcript
 2. **Key Points**: 5-10 key learning points from the lesson — MUST be in the same language as the transcript
-3. **Topics**: 3 to 6 SHORT study tags in the same language as the transcript. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the transcript. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long headings — produce compact chip labels (e.g. "Photosynthesis", "Cell cycle", "Mitosis"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript. Do not invent timestamps. If timestamp marks are not available, return an empty array.
 5. **Language**: Detect the language of the transcript (ISO 639-1 code: es, en, pt, fr, de, etc.)
 
 Respond ONLY with valid JSON (no markdown):
 {
-    "summary": "Resumen educativo aquí (en el idioma de la transcripción)...",
-    "keypoints": ["Punto clave 1", "Punto clave 2", ...],
-    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
-    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
-    "language": "es"
+    "summary": "Educational summary here (in the language of the transcript)...",
+    "keypoints": ["Key point 1", "Key point 2", ...],
+    "topics": ["Photosynthesis", "Cell cycle", "Mitosis"],
+    "chapters": [{"title": "Introduction and questions", "start": "5:03"}],
+    "language": "detected ISO 639-1 code"
 }
 PROMPT;
 
@@ -1105,10 +1146,11 @@ PROMPT;
         // Key sent via the x-goog-api-key header, never in the URL/query string.
         $url = self::API_BASE_URL . $model . ':generateContent';
 
+        $ctx = $this->context_line();
         $prompt = <<<PROMPT
 You are an educational assistant analyzing a recorded meeting/class video.
 
-CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
+{$ctx}CRITICAL RULE: You MUST write the summary, keypoints, topics, chapters, and transcript in the SAME language as the video/audio content. If the video is in Spanish, your entire response MUST be in Spanish. NEVER translate to English or any other language.
 
 Video Information:
 - Title: {$videoname}
@@ -1118,17 +1160,17 @@ Please analyze this video and provide the following in a structured JSON format:
 
 1. **Summary**: A comprehensive summary of the video content (2-3 paragraphs) — in the language of the video
 2. **Key Points**: A list of 5-10 main takeaways or important points discussed — in the language of the video
-3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long legal headings — produce compact chip labels (e.g. "Caducidad", "LPAC", "Procedimiento sancionador"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
+3. **Topics**: 3 to 6 SHORT study tags in the same language as the video. Each topic MUST be 1-3 words where possible and at most 40 characters. Do NOT write full sentences, procedural descriptions, or long headings — produce compact chip labels (e.g. "Photosynthesis", "Cell cycle", "Mitosis"). No duplicates or near-duplicates. Put any detailed description in the summary or keypoints, never in topics.
 4. **Chapters**: 4-10 timestamped lesson sections. Each chapter MUST use a real timestamp mark from the transcript/audio when available; do not invent timestamps. If timestamp marks are not available, return an empty array.
 5. **Transcript Summary**: Provide a condensed transcript of the main discussions — in the language of the video
 
 IMPORTANT: Respond ONLY with valid JSON in the following format (no markdown, no code blocks):
 {
-    "summary": "Resumen completo aquí (en el idioma del vídeo)...",
-    "keypoints": ["Punto 1", "Punto 2", "Punto 3", ...],
-    "topics": ["Caducidad", "LPAC", "Procedimiento sancionador"],
-    "chapters": [{"title": "Introducción y dudas", "start": "5:03"}],
-    "transcript": "Transcripción condensada del vídeo...",
+    "summary": "Full summary here (in the language of the video)...",
+    "keypoints": ["Point 1", "Point 2", "Point 3", ...],
+    "topics": ["Photosynthesis", "Cell cycle", "Mitosis"],
+    "chapters": [{"title": "Introduction and questions", "start": "5:03"}],
+    "transcript": "Condensed transcript of the video...",
     "language": "detected language code (e.g., es, en, fr)"
 }
 PROMPT;
