@@ -125,7 +125,7 @@ class locallib_test extends \advanced_testcase {
      * Generic meeting-named recordings get their first AI topic as title; unique names are kept.
      */
     public function test_assign_lesson_titles(): void {
-        $activity = 'Clases en directo curso COURSE';
+        $activity = 'Live classes course A';
         $titles = googlemeet_assign_lesson_titles([
             1 => ['name' => $activity . ' - 2026/06/25 17:00 CEST - Recording', 'topics' => ['Ley General Sanidad', 'SNS']],
             2 => ['name' => $activity, 'topics' => []],

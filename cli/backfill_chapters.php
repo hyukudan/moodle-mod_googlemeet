@@ -276,6 +276,8 @@ function googlemeet_backfill_chapters_generate_with_retries(ai_service $service,
  * @return void
  */
 function googlemeet_backfill_chapters_print_resume_command(array $options): void {
+    global $CFG;
+
     $parts = ['php', 'mod/googlemeet/cli/backfill_chapters.php'];
     foreach (['googlemeetid', 'recordingid', 'limit', 'pause'] as $key) {
         if (!empty($options[$key])) {
@@ -285,5 +287,5 @@ function googlemeet_backfill_chapters_print_resume_command(array $options): void
     if (!empty($options['force'])) {
         $parts[] = '--force';
     }
-    cli_writeln('Continue with: cd /path/to/moodle/public && ' . implode(' ', $parts));
+    cli_writeln('Continue with: cd ' . escapeshellarg($CFG->dirroot) . ' && ' . implode(' ', $parts));
 }

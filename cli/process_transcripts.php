@@ -4,7 +4,7 @@
 // CLI script to automatically extract subtitles from Google Drive recordings
 // and process them with Gemini AI for analysis.
 //
-// Usage: php8.5 process_transcripts.php --googlemeetid=1 [--recordingid=4] [--dry-run]
+// Usage: php mod/googlemeet/cli/process_transcripts.php --googlemeetid=1 [--recordingid=4] [--dry-run]
 
 define('CLI_SCRIPT', true);
 
@@ -15,13 +15,13 @@ require_once(__DIR__ . '/../classes/subtitle_extractor.php');
 // Back-off schedule in seconds for retry attempts on transient Gemini errors.
 // Index = retrycount BEFORE incrementing. After 4 retries (final value 4), give up.
 const TRANSIENT_BACKOFF = [
-    0 => 2 * 3600,    // primer fallo → reintenta en 2h
-    1 => 4 * 3600,    // 2º fallo → 4h
-    2 => 8 * 3600,    // 3º fallo → 8h
-    3 => 24 * 3600,   // 4º fallo → 24h
+    0 => 2 * 3600,    // 1st failure -> retry in 2h
+    1 => 4 * 3600,    // 2nd failure -> 4h
+    2 => 8 * 3600,    // 3rd failure -> 8h
+    3 => 24 * 3600,   // 4th failure -> 24h
 ];
-const MAX_RETRIES = 4;            // tras 4 reintentos transitorios, se rinde
-const PERMANENT_RETRYCOUNT = 99;  // sentinela: error permanente, no reintentar nunca
+const MAX_RETRIES = 4;            // give up after 4 transient retries
+const PERMANENT_RETRYCOUNT = 99;  // sentinel: permanent error, never retry
 
 list($options, $unrecognized) = cli_get_params([
     'googlemeetid' => 0,
@@ -52,8 +52,8 @@ Options:
   -h, --help              Show this help
 
 Example:
-  php8.5 process_transcripts.php --googlemeetid=1
-  php8.5 process_transcripts.php --googlemeetid=1 --recordingid=4 --dry-run
+  php mod/googlemeet/cli/process_transcripts.php --googlemeetid=1
+  php mod/googlemeet/cli/process_transcripts.php --googlemeetid=1 --recordingid=4 --dry-run
 ");
     exit(0);
 }
@@ -79,7 +79,7 @@ if ($ytdlp === '' || !is_executable($ytdlp)) {
     cli_error("yt-dlp not found. Set the googlemeet/ytdlppath admin setting or install it "
         . "to a persistent path (NOT /tmp): "
         . "curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp "
-        . "-o /path/to/bin/yt-dlp && chmod +x /path/to/bin/yt-dlp");
+        . "-o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp");
 }
 
 // Resolve subtitle language: explicit CLI param > site setting > 'es'.
@@ -288,7 +288,7 @@ foreach ($recordings as $recording) {
         if ($new_rc >= MAX_RETRIES) {
             // Hemos agotado los reintentos, marcamos como permanente.
             $next_unix = 0;
-            $new_rc = MAX_RETRIES; // fija en 4, no escala más
+            $new_rc = MAX_RETRIES; // pinned at 4, no further escalation
             $log_suffix = "Max retries reached, giving up.";
         } else {
             $backoff = TRANSIENT_BACKOFF[$new_rc - 1] ?? 24 * 3600;
@@ -305,7 +305,7 @@ foreach ($recordings as $recording) {
         ]);
         cli_writeln("  TRANSIENT ERROR (retrycount={$new_rc}): " . $e->getMessage());
         cli_writeln("  " . $log_suffix);
-        // No se cuenta como error fatal; el transcript ya está guardado.
+        // Not a fatal error: the transcript is already saved.
     } catch (\moodle_exception $e) {
         // Permanent error → mark and don't retry.
         $DB->update_record('googlemeet_ai_analysis', (object)[

@@ -276,11 +276,13 @@ function googlemeet_backfill_question_counts(
  * @return void
  */
 function googlemeet_backfill_print_resume_command(array $options): void {
+    global $CFG;
+
     $parts = ['php', 'mod/googlemeet/cli/backfill_questions.php'];
     foreach (['googlemeetid', 'recordingid', 'limit', 'count', 'pause'] as $key) {
         if (!empty($options[$key])) {
             $parts[] = '--' . $key . '=' . (int)$options[$key];
         }
     }
-    cli_writeln('Continue with: cd /path/to/moodle/public && ' . implode(' ', $parts));
+    cli_writeln('Continue with: cd ' . escapeshellarg($CFG->dirroot) . ' && ' . implode(' ', $parts));
 }
