@@ -228,7 +228,7 @@ The plugin works without any of these; they are detected at run time.
 
 ## Changelog
 
-### Unreleased
+### 2.30.1 (2026-10-10)
 - Teaching context setting for AI prompts (`aicontext`); prompts no longer contain domain-specific
   examples.
 - Generic CLI hints and sample data; licence headers completed.
