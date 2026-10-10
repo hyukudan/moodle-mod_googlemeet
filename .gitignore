@@ -3,3 +3,5 @@
 *.wip.bak
 .superpowers/
 CLAUDE.md
+# Internal working notes are kept outside the repository.
+docs/
