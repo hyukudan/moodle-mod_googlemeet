@@ -18,7 +18,7 @@
  * Manage materials attached to a recording.
  *
  * @package     mod_googlemeet
- * @copyright   2026
+ * @copyright   2026 PreparaOposiciones
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

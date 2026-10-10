@@ -1,10 +1,28 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
 //
-// CLI script to automatically extract subtitles from Google Drive recordings
-// and process them with Gemini AI for analysis.
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-// Usage: php mod/googlemeet/cli/process_transcripts.php --googlemeetid=1 [--recordingid=4] [--dry-run]
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Extract Google Drive auto-generated subtitles for recordings and analyse them with Gemini.
+ *
+ * Usage: php mod/googlemeet/cli/process_transcripts.php --googlemeetid=1 [--recordingid=4] [--dry-run]
+ *
+ * @package     mod_googlemeet
+ * @copyright   2026 PreparaOposiciones
+ * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 define('CLI_SCRIPT', true);
 

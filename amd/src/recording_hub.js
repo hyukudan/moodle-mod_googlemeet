@@ -17,7 +17,7 @@
  * Recording hub interactions.
  *
  * @module     mod_googlemeet/recording_hub
- * @copyright  2026 Eduardo Kraus
+ * @copyright  2026 PreparaOposiciones
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
