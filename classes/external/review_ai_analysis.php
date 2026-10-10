@@ -41,6 +41,8 @@ class review_ai_analysis extends external_api {
             'coursemoduleid' => new external_value(PARAM_INT, 'Course module ID'),
             'recordingid' => new external_value(PARAM_INT, 'Recording ID; 0 publishes every reviewable summary of the activity',
                 VALUE_DEFAULT, 0),
+            'seen' => new external_value(PARAM_INT, 'Single: timemodified of the content the teacher reviewed. '
+                . 'All: time the teacher loaded the page. 0 = no check (publishes the current content)', VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -49,14 +51,16 @@ class review_ai_analysis extends external_api {
      *
      * @param int $coursemoduleid Course module id.
      * @param int $recordingid Recording id, or 0 for the whole activity.
+     * @param int $seen Version check, see execute_parameters().
      * @return array
      */
-    public static function execute(int $coursemoduleid, int $recordingid = 0): array {
+    public static function execute(int $coursemoduleid, int $recordingid = 0, int $seen = 0): array {
         global $DB, $USER;
 
         $params = self::validate_parameters(self::execute_parameters(), [
             'coursemoduleid' => $coursemoduleid,
             'recordingid' => $recordingid,
+            'seen' => $seen,
         ]);
 
         $cm = get_coursemodule_from_id('googlemeet', $params['coursemoduleid'], 0, false, MUST_EXIST);
@@ -65,8 +69,8 @@ class review_ai_analysis extends external_api {
         require_capability(ai_review::CAPABILITY, $context);
 
         if (empty($params['recordingid'])) {
-            $count = ai_review::mark_all_reviewed((int)$cm->instance, (int)$USER->id);
-            return ['success' => true, 'count' => $count];
+            $count = ai_review::mark_all_reviewed((int)$cm->instance, (int)$USER->id, (int)$params['seen']);
+            return ['success' => true, 'count' => $count, 'changed' => false];
         }
 
         // Scope the recording to this activity (prevent IDOR).
@@ -75,9 +79,10 @@ class review_ai_analysis extends external_api {
         if (!$recording) {
             throw new \moodle_exception('recordingnotfound', 'googlemeet');
         }
-        $analysisid = $DB->get_field('googlemeet_ai_analysis', 'id', ['recordingid' => $recording->id]);
-        $success = $analysisid && ai_review::mark_reviewed((int)$analysisid, (int)$USER->id);
-        return ['success' => (bool)$success, 'count' => $success ? 1 : 0];
+        $analysis = $DB->get_record('googlemeet_ai_analysis', ['recordingid' => $recording->id], 'id, status, timemodified');
+        $success = $analysis && ai_review::mark_reviewed((int)$analysis->id, (int)$USER->id, (int)$params['seen']);
+        $changed = !$success && $analysis && $params['seen'] > 0 && (int)$analysis->timemodified !== (int)$params['seen'];
+        return ['success' => (bool)$success, 'count' => $success ? 1 : 0, 'changed' => (bool)$changed];
     }
 
     /**
@@ -89,6 +94,7 @@ class review_ai_analysis extends external_api {
         return new external_single_structure([
             'success' => new external_value(PARAM_BOOL, 'Whether the content is now published'),
             'count' => new external_value(PARAM_INT, 'Number of summaries published by this call (or already published)'),
+            'changed' => new external_value(PARAM_BOOL, 'The content changed after the teacher loaded it; reload and review again'),
         ]);
     }
 }

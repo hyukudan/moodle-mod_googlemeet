@@ -93,9 +93,9 @@ class process_recording_enrichment extends \core\task\adhoc_task {
         }
 
         $processedids = [];
-        $previoususer = $GLOBALS['USER'] ?? null;
+        $impersonation = null;
         try {
-            \core\session\manager::set_user($creator);
+            $impersonation = \mod_googlemeet\local\impersonation::begin($creator);
 
             $client = new client();
             if (!$client->enabled || !$client->check_login()) {
@@ -110,8 +110,8 @@ class process_recording_enrichment extends \core\task\adhoc_task {
 
             $processedids = $client->enrich_recordings($googlemeet, $recordingids);
         } finally {
-            if ($previoususer) {
-                \core\session\manager::set_user($previoususer);
+            if ($impersonation !== null) {
+                \mod_googlemeet\local\impersonation::end($impersonation);
             }
             $lock->release();
         }

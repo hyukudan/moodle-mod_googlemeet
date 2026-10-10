@@ -139,7 +139,6 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
             'chapters',
             'language',
             'status',
-            'error',
             'aimodel',
             'retrycount',
             'nextretry',
@@ -153,6 +152,9 @@ class backup_googlemeet_activity_structure_step extends backup_activity_structur
         ];
         if ($userinfo) {
             $aifields[] = 'transcript';
+            // Error texts can hold exception details: only in full backups (without user data,
+            // restore keeps completed analyses only, so the error is irrelevant there).
+            $aifields[] = 'error';
         }
         $aianalysis = new backup_nested_element('aianalysis', ['id'], $aifields);
 

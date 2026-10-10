@@ -242,8 +242,8 @@ class process_autosync extends \core\task\scheduled_task {
                     $identitymissing = true;
                 } else {
                     // Impersonate so core\oauth2\client resolves the refresh token for this user.
-                    $previoususer = $GLOBALS['USER'] ?? null;
-                    \core\session\manager::set_user($creator);
+                    // impersonation also isolates the OAuth token kept in the shared cron $SESSION.
+                    $impersonation = \mod_googlemeet\local\impersonation::begin($creator);
 
                     try {
                         $client = new client();
@@ -277,9 +277,7 @@ class process_autosync extends \core\task\scheduled_task {
                             }
                         }
                     } finally {
-                        if ($previoususer) {
-                            \core\session\manager::set_user($previoususer);
-                        }
+                        \mod_googlemeet\local\impersonation::end($impersonation);
                     }
                 }
             }
@@ -478,9 +476,9 @@ class process_autosync extends \core\task\scheduled_task {
             }
             try {
                 $a = (object)[
-                    'name' => format_string($googlemeet->name, true, ['context' => $context]),
+                    'name' => format_string($googlemeet->name, true, ['context' => $context, 'escape' => false]),
                     'course' => $course ? format_string($course->fullname, true,
-                        ['context' => \context_course::instance($course->id)]) : '',
+                        ['context' => \context_course::instance($course->id), 'escape' => false]) : '',
                     'date' => userdate((int)$event->eventdate, get_string('strftimedmyhm', 'googlemeet'),
                         $user->timezone ?? 99),
                     'attempts' => $attempts,

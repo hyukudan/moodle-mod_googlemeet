@@ -139,6 +139,8 @@ class soft_delete_test extends \advanced_testcase {
         $old = $DB->get_record('googlemeet_recordings', ['id' => $oldid], '*', MUST_EXIST);
         $this->assertEquals(1, (int)$old->deleted);
         $this->assertGreaterThan(0, (int)$old->timedeleted);
+        // Sync-trashed: the retention task never purges it.
+        $this->assertSame(\mod_googlemeet\local\recording_cleanup::TRASH_SYNC, $old->trashreason);
         $this->assertTrue($DB->record_exists('googlemeet_ai_analysis', ['id' => $analysisid, 'recordingid' => $oldid]));
         $this->assertSame(1, (int)$result['stats']['trashed']);
         $this->assertSame(0, (int)$result['stats']['deleted']);
@@ -155,6 +157,7 @@ class soft_delete_test extends \advanced_testcase {
         $recordingid = $this->create_recording($googlemeet->id, 'drive-back', [
             'deleted' => 1,
             'timedeleted' => time() - 50,
+            'trashreason' => 'sync',
             'name' => 'Old trashed name',
         ]);
         $analysisid = $this->create_analysis($recordingid);
@@ -166,6 +169,7 @@ class soft_delete_test extends \advanced_testcase {
         $this->assertSame('Restored name', $recording->name);
         $this->assertEquals(0, (int)$recording->deleted);
         $this->assertEquals(0, (int)$recording->timedeleted);
+        $this->assertSame('', $recording->trashreason);
         $this->assertTrue($DB->record_exists('googlemeet_ai_analysis', ['id' => $analysisid, 'recordingid' => $recordingid]));
         $this->assertSame(1, (int)$result['stats']['restored']);
         $this->assertSame(0, (int)$result['stats']['inserted']);
@@ -274,6 +278,7 @@ class soft_delete_test extends \advanced_testcase {
         $this->assertTrue($result['success']);
         $this->assertSame(1, (int)$recording->deleted);
         $this->assertGreaterThan(0, (int)$recording->timedeleted);
+        $this->assertSame(\mod_googlemeet\local\recording_cleanup::TRASH_MANUAL, $recording->trashreason);
     }
 
     /**

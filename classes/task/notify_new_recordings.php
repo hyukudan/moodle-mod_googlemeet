@@ -179,9 +179,7 @@ class notify_new_recordings extends \core\task\adhoc_task {
             $analyses[(int)$analysis->recordingid] = $analysis;
         }
 
-        // IA-04 (owned by another track): when the site requires review before publishing AI
-        // content, only reviewed analyses are quoted. Tolerates the setting or field not existing.
-        $requirereview = !empty(get_config('googlemeet', 'requireaireview'));
+        // IA-04: AI content not yet reviewed by a teacher is never quoted (same rule as the web pages).
         $titles = self::lesson_titles($googlemeet);
 
         $lessons = [];
@@ -191,7 +189,7 @@ class notify_new_recordings extends \core\task\adhoc_task {
             $summary = '';
             $chapters = [];
             $analysis = $analyses[$id] ?? null;
-            if ($analysis && (!$requirereview || !empty($analysis->reviewed))) {
+            if ($analysis && \mod_googlemeet\local\ai_review::is_visible_to_students($analysis)) {
                 $summary = self::summary_excerpt((string)($analysis->summary ?? ''));
                 foreach (array_slice(\googlemeet_normalise_chapters($analysis->chapters ?? null), 0,
                         self::MAX_CHAPTERS) as $chapter) {
@@ -222,7 +220,7 @@ class notify_new_recordings extends \core\task\adhoc_task {
     protected static function lesson_titles(\stdClass $googlemeet): array {
         global $DB;
         $rows = $DB->get_records_sql(
-            "SELECT r.id, r.name, a.topics
+            "SELECT r.id, r.name, a.topics, a.status, a.reviewed
                FROM {googlemeet_recordings} r
           LEFT JOIN {googlemeet_ai_analysis} a ON a.recordingid = r.id AND a.status = 'completed'
               WHERE r.googlemeetid = :googlemeetid AND r.deleted = 0 AND r.visible = 1",
@@ -230,7 +228,12 @@ class notify_new_recordings extends \core\task\adhoc_task {
         );
         $items = [];
         foreach ($rows as $row) {
-            $items[$row->id] = ['name' => (string)$row->name, 'topics' => json_decode((string)$row->topics) ?: []];
+            // IA-04: titles built from unreviewed AI topics would leak them into the email subject.
+            $topics = [];
+            if ($row->status !== null && !\mod_googlemeet\local\ai_review::is_pending_review($row)) {
+                $topics = json_decode((string)$row->topics) ?: [];
+            }
+            $items[$row->id] = ['name' => (string)$row->name, 'topics' => $topics];
         }
         return \googlemeet_assign_lesson_titles($items,
             [(string)($googlemeet->name ?? ''), (string)($googlemeet->originalname ?? '')]);
@@ -273,7 +276,8 @@ class notify_new_recordings extends \core\task\adhoc_task {
         try {
             $context = \context_module::instance($cm->id);
             $url = new \moodle_url('/mod/googlemeet/view.php', ['id' => $cm->id]);
-            $name = format_string($googlemeet->name, true, ['context' => $context]);
+            // Plain text and Mustache-escaped uses: format_string() must not HTML-escape here.
+            $name = format_string($googlemeet->name, true, ['context' => $context, 'escape' => false]);
             $isone = ($newcount === 1);
             $a = (object)[
                 'name' => $name,

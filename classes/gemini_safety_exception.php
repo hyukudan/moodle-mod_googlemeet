@@ -37,4 +37,13 @@ class gemini_safety_exception extends \moodle_exception {
     public function __construct(string $categories = '') {
         parent::__construct('ai_error_safety', 'googlemeet', '', null, $categories !== '' ? 'Blocked: ' . $categories : null);
     }
+
+    /**
+     * Text to store and show to teachers (getMessage() also carries the debug info in developer mode).
+     *
+     * @return string
+     */
+    public function get_user_message(): string {
+        return get_string('ai_error_safety', 'googlemeet');
+    }
 }

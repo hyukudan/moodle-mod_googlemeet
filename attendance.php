@@ -61,6 +61,10 @@ if ($sessionid) {
 // Actions.
 if ($action === 'relink') {
     require_sesskey();
+    // Only the organiser's link matters for the attendance fetch: nobody else unlinks their account here.
+    if (!scope::is_organiser($googlemeet, $USER)) {
+        redirect($baseurl);
+    }
     scope::reset_link((int)$USER->id);
     redirect($baseurl, get_string('attendance_relink_done', 'googlemeet'), null, \core\output\notification::NOTIFY_INFO);
 }
@@ -76,7 +80,7 @@ if ($action === 'link' && $session) {
     $userid = required_param('userid', PARAM_INT);
     try {
         service::link_manually($googlemeet, $attendanceid, $userid);
-        $message = get_string('attendance_linked', 'googlemeet');
+        $message = get_string($userid ? 'attendance_linked' : 'attendance_unlinked', 'googlemeet');
         $type = \core\output\notification::NOTIFY_SUCCESS;
     } catch (moodle_exception $e) {
         $message = $e->getMessage();
@@ -88,7 +92,7 @@ if ($action === 'link' && $session) {
 $rows = $session ? report::session_rows($googlemeet, (int)$session->id) : [];
 
 if ($download !== '' && $session) {
-    $table = report::export_table($rows);
+    $table = report::export_table($rows, $context);
     $filename = clean_filename(format_string($googlemeet->name) . '-' . get_string('attendance_title', 'googlemeet')
         . '-' . userdate($session->eventdate, '%Y%m%d-%H%M'));
     \core\dataformat::download_data($filename, $download, $table['columns'], $table['rows']);
@@ -115,8 +119,7 @@ if (empty($googlemeet->attendanceenabled)) {
 echo scope::relink_notice($googlemeet, $context);
 
 // Organiser without a Google link: offer the login popup here (callback reloads this page).
-$isorganiser = !empty($googlemeet->creatoremail)
-    && core_text::strtolower(trim($googlemeet->creatoremail)) === core_text::strtolower(trim($USER->email));
+$isorganiser = scope::is_organiser($googlemeet, $USER);
 if ($isorganiser) {
     $client = new \mod_googlemeet\client();
     if ($client->enabled && !$client->check_login()) {
@@ -179,7 +182,7 @@ if ($session) {
         $candidates = service::get_candidates($googlemeet);
         $options = [0 => get_string('attendance_link_choose', 'googlemeet')];
         foreach ($candidates as $user) {
-            $options[$user->id] = fullname($user);
+            $options[$user->id] = s(fullname($user));
         }
         core_collator::asort($options);
 
@@ -203,12 +206,26 @@ if ($session) {
                     $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => $k, 'value' => $v]);
                 }
                 $selectid = 'googlemeet-attendance-link-' . $row['attendanceid'];
-                $form .= html_writer::label(get_string('attendance_link_label', 'googlemeet', $row['meetname']), $selectid,
+                $form .= html_writer::label(get_string('attendance_link_label', 'googlemeet', s($row['meetname'])), $selectid,
                     false, ['class' => 'visually-hidden']);
                 $form .= html_writer::select($options, 'userid', 0, false, ['id' => $selectid,
                     'class' => 'form-select form-select-sm w-auto']);
                 $form .= html_writer::tag('button', get_string('attendance_link', 'googlemeet'),
                     ['type' => 'submit', 'class' => 'btn btn-sm btn-outline-primary']);
+                $form .= html_writer::end_tag('form');
+                $name .= $form;
+            } else if ($row['kind'] === report::ROW_PRESENT && $row['attendanceid']) {
+                // Undo a wrong (automatic or manual) match: the participant goes back to "not matched"
+                // and stays so on later fetches.
+                $form = html_writer::start_tag('form', ['method' => 'post', 'action' => $baseurl->out(false),
+                    'class' => 'd-inline googlemeet-attendance-unlink']);
+                foreach (['id' => $cm->id, 'session' => $session->id, 'action' => 'link', 'sesskey' => sesskey(),
+                        'attendanceid' => $row['attendanceid'], 'userid' => 0] as $k => $v) {
+                    $form .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => $k, 'value' => $v]);
+                }
+                $form .= html_writer::tag('button', get_string('attendance_unlink', 'googlemeet'),
+                    ['type' => 'submit', 'class' => 'btn btn-link btn-sm p-0 ms-2',
+                        'title' => get_string('attendance_unlink_title', 'googlemeet', s($row['meetname']))]);
                 $form .= html_writer::end_tag('form');
                 $name .= $form;
             }

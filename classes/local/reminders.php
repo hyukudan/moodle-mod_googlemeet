@@ -143,7 +143,12 @@ class reminders {
                     mtrace('mod_googlemeet reminder failed for user ' . $user->id . ': ' . $e->getMessage());
                     continue;
                 }
-                \googlemeet_notify_done($user->id, $event->id, (int)$event->kind);
+                try {
+                    \googlemeet_notify_done($user->id, $event->id, (int)$event->kind);
+                } catch (\dml_write_exception $e) {
+                    // Already recorded by an overlapping run: keep going with the other users.
+                    mtrace('mod_googlemeet reminder already recorded for user ' . $user->id . ': ' . $e->getMessage());
+                }
                 $sent++;
             }
         }
@@ -166,8 +171,9 @@ class reminders {
         try {
             $kind = (int)($event->kind ?? self::KIND_MINUTES);
             $a = (object)[
+                // Plain-text subject: no HTML escaping (would show "Q&amp;A").
                 'name' => format_string($event->googlemeetname, true,
-                    ['context' => \context_module::instance($event->cmid)]),
+                    ['context' => \context_module::instance($event->cmid), 'escape' => false]),
                 'date' => userdate($event->eventdate, get_string('strftimedmy', 'googlemeet'), $user->timezone),
                 'start' => userdate($event->eventdate, get_string('strftimehm', 'googlemeet'), $user->timezone),
                 'end' => userdate($event->eventdate + $event->duration, get_string('strftimehm', 'googlemeet'),

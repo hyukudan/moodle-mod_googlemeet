@@ -163,11 +163,18 @@ final class attendance_test extends \advanced_testcase {
         $this->assertFalse(meet_api_source::is_scope_error('500: Internal error'));
         $this->assertSame('jose maria nunez', service::normalise_name('  José-María  Núñez '));
 
-        $names = [1 => ['ana garcia lopez', 'garcia lopez ana'], 2 => ['juan martin'], 3 => ['juan martin']];
+        $names = [1 => ['ana garcia lopez', 'garcia lopez ana', 'first' => 'ana'],
+            2 => ['juan martin', 'first' => 'juan'], 3 => ['juan martin', 'first' => 'juan'],
+            4 => ['maria jose ruiz perez', 'ruiz perez maria jose', 'first' => 'maria jose']];
         $this->assertSame(1, service::match_name('Ana García', $names));
         $this->assertSame(1, service::match_name('ANA GARCIA LOPEZ', $names));
         $this->assertSame(0, service::match_name('Juan Martín', $names));
         $this->assertSame(0, service::match_name('Ana', $names));
+        // A compound first name alone is not enough: it must include at least one surname.
+        $this->assertSame(0, service::match_name('María José', $names));
+        $this->assertSame(4, service::match_name('María José Ruiz', $names));
+        // Surname first only matches exactly, never by prefix.
+        $this->assertSame(0, service::match_name('García Ana', $names));
     }
 
     public function test_process_stores_matched_and_unmatched_participants(): void {
@@ -235,6 +242,80 @@ final class attendance_test extends \advanced_testcase {
         $anon = $DB->get_record('googlemeet_attendance', ['eventid' => $event2, 'participanttype' => 'anonymous']);
         $this->expectException(\moodle_exception::class);
         service::link_manually($this->googlemeet, (int)$anon->id, (int)$this->students['ana']->id);
+    }
+
+    /**
+     * A name match is not remembered for later sessions, and a teacher can undo any match for good.
+     */
+    public function test_name_match_not_remembered_and_unlink(): void {
+        global $DB;
+
+        service::process($this->googlemeet, $this->sync_row(), $this->double($this->start), time());
+        $anarow = $DB->get_record('googlemeet_attendance', ['eventid' => $this->eventid, 'googleuserid' => 'users/1']);
+        $this->assertSame('name', $anarow->matchedby);
+
+        // Next session the same Google id shows up with another name: no automatic match from memory.
+        $start2 = $this->start - DAYSECS;
+        $event2 = $this->create_session($start2);
+        $double = $this->double($start2);
+        $double->participants['conferenceRecords/c1'][0]['displayname'] = 'Invitada';
+        service::process($this->googlemeet, $this->sync_row($event2), $double, time());
+        $row = $DB->get_record('googlemeet_attendance', ['eventid' => $event2, 'googleuserid' => 'users/1']);
+        $this->assertEquals(0, $row->userid);
+
+        // The teacher undoes the automatic match; re-fetching keeps it unmatched.
+        service::link_manually($this->googlemeet, (int)$anarow->id, 0);
+        service::process($this->googlemeet, $this->sync_row(), $this->double($this->start), time());
+        $anarow = $DB->get_record('googlemeet_attendance', ['eventid' => $this->eventid, 'googleuserid' => 'users/1']);
+        $this->assertEquals(0, $anarow->userid);
+        $this->assertSame(service::MATCH_UNLINKED, $anarow->matchedby);
+        $rows = report::session_rows($this->googlemeet, $this->eventid);
+        $kinds = array_column($rows, 'kind', 'attendanceid');
+        $this->assertSame(report::ROW_UNMATCHED, $kinds[$anarow->id]);
+    }
+
+    /**
+     * The export hides e-mails unless they are an identity field the user may see, and neutralises formulas.
+     */
+    public function test_export_identity_and_formulas(): void {
+        $rows = [['kind' => report::ROW_UNMATCHED, 'name' => '=HYPERLINK("http://x","y")', 'email' => 'a@b.c',
+            'meetname' => '@SUM(1)', 'timejoined' => 0, 'timeleft' => 0, 'durationseconds' => 60, 'sessions' => 1]];
+        $context = \context_module::instance($this->cm->id);
+
+        set_config('showuseridentity', '');
+        $table = report::export_table($rows, $context);
+        $this->assertArrayNotHasKey('email', $table['columns']);
+        $this->assertCount(count($table['columns']), $table['rows'][0]);
+        $this->assertSame("'=HYPERLINK(\"http://x\",\"y\")", $table['rows'][0][0]);
+        $this->assertSame("'@SUM(1)", $table['rows'][0][2]);
+
+        set_config('showuseridentity', 'email');
+        $table = report::export_table($rows, $context);
+        $this->assertArrayHasKey('email', $table['columns']);
+        $this->assertSame('a@b.c', $table['rows'][0][1]);
+    }
+
+    /**
+     * Changing the schedule never drops a past session that has attendance.
+     */
+    public function test_schedule_change_keeps_sessions_with_attendance(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/mod/googlemeet/locallib.php');
+
+        service::process($this->googlemeet, $this->sync_row(), $this->double($this->start), time());
+        $empty = $this->create_session($this->start - 2 * DAYSECS);
+        $future = $this->create_session(time() + 2 * DAYSECS);
+
+        // The new schedule generates none of the old dates (e.g. the start time moved).
+        $form = clone $this->googlemeet;
+        $form->coursemodule = $this->cm->id;
+        googlemeet_merge_events($form, []);
+
+        $this->assertTrue($DB->record_exists('googlemeet_events', ['id' => $this->eventid]));
+        $this->assertTrue($DB->record_exists('googlemeet_attendance', ['eventid' => $this->eventid]));
+        $this->assertFalse($DB->record_exists('googlemeet_events', ['id' => $empty]));
+        $this->assertFalse($DB->record_exists('googlemeet_events', ['id' => $future]));
+        $this->assertNotEmpty(service::get_sessions((int)$this->googlemeet->id, time()));
     }
 
     public function test_scope_error_and_relink_notice(): void {
@@ -359,9 +440,12 @@ final class attendance_test extends \advanced_testcase {
         $this->assertNotContains((int)$this->teacher->id, array_column($rows, 'userid'));
         $this->assertSame(report::ROW_PRESENT, $rows[0]['kind']);
 
+        // Without a context there is no e-mail column (identity fields are checked per context).
         $table = report::export_table($rows);
-        $this->assertCount(8, $table['columns']);
+        $this->assertCount(7, $table['columns']);
         $this->assertCount(7, $table['rows']);
+        $table = report::export_table($rows, \context_module::instance($this->cm->id));
+        $this->assertCount(count($table['columns']), $table['rows'][0]);
     }
 
     public function test_privacy_export_and_delete(): void {

@@ -207,7 +207,7 @@ class mod_googlemeet_external extends external_api {
     }
 
     /**
-     * Removes all recordings from Google Meet.
+     * Moves every active recording of the activity to the teacher trash (manual).
      *
      * @param int $googlemeetid the googlemeet ID
      * @param int $coursemoduleid the course module ID
@@ -234,8 +234,16 @@ class mod_googlemeet_external extends external_api {
         // Always operate on the instance bound to the validated course module (prevent IDOR).
         $googlemeetid = $cm->instance;
 
-        // DAT-01: permanent delete of every recording with all its dependents.
-        \mod_googlemeet\local\recording_cleanup::purge_instance_recordings((int)$googlemeetid, $context);
+        // Move every active recording to the teacher trash (manual): nothing is lost right away, the
+        // teacher can restore them, a later sync restores in place those still in Drive (keeping
+        // their AI analysis and questions), and the retention task purges the rest. Practice
+        // questions are never deleted here.
+        $now = time();
+        $DB->execute("UPDATE {googlemeet_recordings}
+                         SET deleted = 1, timedeleted = :now, trashreason = :reason, timemodified = :now2
+                       WHERE googlemeetid = :googlemeetid AND deleted = 0",
+            ['now' => $now, 'now2' => $now, 'reason' => \mod_googlemeet\local\recording_cleanup::TRASH_MANUAL,
+                'googlemeetid' => $googlemeetid]);
 
         // Use set_field instead of get_record + update_record.
         $DB->set_field('googlemeet', 'lastsync', time(), ['id' => $googlemeetid]);
@@ -299,6 +307,7 @@ class mod_googlemeet_external extends external_api {
             'id' => $recording->id,
             'deleted' => 0,
             'timedeleted' => 0,
+            'trashreason' => '',
             'timemodified' => time(),
         ]);
 
@@ -364,6 +373,7 @@ class mod_googlemeet_external extends external_api {
             'id' => $recording->id,
             'deleted' => 1,
             'timedeleted' => $now,
+            'trashreason' => \mod_googlemeet\local\recording_cleanup::TRASH_MANUAL,
             'timemodified' => $now,
         ]);
 
@@ -606,9 +616,19 @@ class mod_googlemeet_external extends external_api {
         $analysis = $aiservice->get_analysis($recordingid);
 
         // IA-04: unreviewed content is not served to students (it looks as if there was no analysis yet).
+        $canreview = has_capability(\mod_googlemeet\local\ai_review::CAPABILITY, $context);
         if ($analysis && $analysis->status === 'completed'
                 && !\mod_googlemeet\local\ai_review::is_visible_to_user($analysis, $context)) {
             $analysis = null;
+        }
+        // A row that is processing, pending or failed (regeneration, safety block, stale cleanup) still
+        // holds the text of its previous run, which may never have been reviewed: students only get the
+        // status, never that content.
+        if ($analysis && $analysis->status !== 'completed' && !$canreview) {
+            $analysis->summary = '';
+            $analysis->keypoints = [];
+            $analysis->topics = [];
+            $analysis->transcript = '';
         }
 
         if (!$analysis) {

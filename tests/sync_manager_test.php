@@ -242,4 +242,44 @@ final class sync_manager_test extends \advanced_testcase {
         sync_log::start(1, sync_log::KIND_AUTO);
         $this->assertFalse($DB->record_exists(sync_log::TABLE, ['id' => $old]));
     }
+
+    /**
+     * Only the organiser's Google account may run the Drive sync (it trashes what its Drive lacks).
+     */
+    public function test_require_creator_account(): void {
+        sync_manager::require_creator_account('Teacher@Example.com', 'teacher@example.com');
+        foreach ([['other@example.com', 'teacher@example.com'], ['', 'teacher@example.com'], ['a@b.c', '']] as [$l, $c]) {
+            try {
+                sync_manager::require_creator_account($l, $c);
+                $this->fail('Expected isnotcreatoremail');
+            } catch (\moodle_exception $e) {
+                $this->assertSame('isnotcreatoremail', $e->errorcode);
+            }
+        }
+    }
+
+    /**
+     * Impersonation never hands one user's OAuth access token (kept in the shared cron session) to another.
+     */
+    public function test_impersonation_isolates_oauth_session_state(): void {
+        global $SESSION, $USER;
+        $a = $this->getDataGenerator()->create_user();
+        $b = $this->getDataGenerator()->create_user();
+        $this->setAdminUser();
+        $adminid = $USER->id;
+        $SESSION->{'oauth2-state-7'} = 'admin-token';
+
+        $state = \mod_googlemeet\local\impersonation::begin($a);
+        $this->assertEquals($a->id, $USER->id);
+        $this->assertFalse(isset($SESSION->{'oauth2-state-7'}));
+        $SESSION->{'oauth2-state-7'} = 'token-of-a';
+        \mod_googlemeet\local\impersonation::end($state);
+        $this->assertEquals($adminid, $USER->id);
+        $this->assertSame('admin-token', $SESSION->{'oauth2-state-7'});
+
+        $state = \mod_googlemeet\local\impersonation::begin($b);
+        $this->assertFalse(isset($SESSION->{'oauth2-state-7'}), 'B must not see the token of A or of the admin');
+        \mod_googlemeet\local\impersonation::end($state);
+        unset($SESSION->{'oauth2-state-7'});
+    }
 }

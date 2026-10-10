@@ -98,9 +98,10 @@ final class notify_new_recordings_test extends \advanced_testcase {
      *
      * @param int $recordingid Recording id.
      * @param string $status Status.
+     * @param int $reviewed IA-04 review flag (1 = published to students).
      * @return int Analysis id.
      */
-    private function create_analysis(int $recordingid, string $status = 'completed'): int {
+    private function create_analysis(int $recordingid, string $status = 'completed', int $reviewed = 1): int {
         global $DB;
         return (int)$DB->insert_record('googlemeet_ai_analysis', (object)[
             'recordingid' => $recordingid,
@@ -112,6 +113,7 @@ final class notify_new_recordings_test extends \advanced_testcase {
                 ['title' => 'Article 137', 'start' => '12:30'],
             ]),
             'status' => $status,
+            'reviewed' => $reviewed,
             'timecreated' => time(),
             'timemodified' => time(),
         ]);
@@ -177,13 +179,15 @@ final class notify_new_recordings_test extends \advanced_testcase {
         $this->resetAfterTest();
         [, $googlemeet] = $this->create_fixture();
         $recordingid = $this->create_recording($googlemeet->id, 'Constitution');
-        $this->create_analysis($recordingid);
+        $this->create_analysis($recordingid, 'completed', 0);
         set_config('requireaireview', 1, 'googlemeet');
 
         $lessons = notify_new_recordings::get_lessons($googlemeet, (int)$googlemeet->cmid, [$recordingid]);
         $this->assertCount(1, $lessons);
         $this->assertSame('', $lessons[0]['summary']);
         $this->assertSame([], $lessons[0]['chapters']);
+        // The lesson title is not built from unreviewed AI topics either.
+        $this->assertStringNotContainsString('Title VIII', $lessons[0]['title']);
     }
 
     /**

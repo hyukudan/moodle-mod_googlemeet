@@ -57,6 +57,9 @@ class generate_questions extends adhoc_task {
         } catch (gemini_transient_exception $e) {
             mtrace('Transient Gemini error while generating questions: ' . $e->getMessage());
             throw $e;
+        } catch (\mod_googlemeet\gemini_safety_exception $e) {
+            // IA-03: the same content would be blocked again; retrying only repeats paid calls.
+            mtrace('Question generation blocked by Gemini safety filters: ' . ($e->debuginfo ?? ''));
         } catch (\Throwable $e) {
             mtrace('Question generation failed: ' . $e->getMessage());
             throw $e;

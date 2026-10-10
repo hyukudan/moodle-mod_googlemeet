@@ -122,7 +122,7 @@ final class delete_cascade_test extends \advanced_testcase {
         $qv = $DB->get_record('question_versions', ['questionid' => $used], 'questionbankentryid, version', MUST_EXIST);
         $DB->insert_record('question_references', (object)[
             'usingcontextid' => \context_course::instance($googlemeet->course)->id,
-            'component' => 'mod_quiz', 'questionarea' => 'slot', 'itemid' => 1,
+            'component' => 'mod_quiz', 'questionarea' => 'slot', 'itemid' => $recordingid,
             'questionbankentryid' => $qv->questionbankentryid, 'version' => $qv->version,
         ]);
         $DB->insert_record('googlemeet_practice_attempts', (object)[
@@ -147,7 +147,7 @@ final class delete_cascade_test extends \advanced_testcase {
             'files' => $DB->count_records_select('files',
                 "component = 'mod_googlemeet' AND filearea = 'recordingmaterial' AND itemid = ? AND filename <> '.'",
                 [$recordingid]),
-            'preferences' => $DB->count_records_list('user_preferences', 'name', [
+            'preferences' => $DB->count_records_select('user_preferences', 'name = ? OR name = ?', [
                 googlemeet_lastjump_preference_name($recordingid), googlemeet_keypoints_preference_name($recordingid)]),
             'tagged' => $DB->count_records_sql(
                 "SELECT COUNT(1) FROM {tag_instance} ti JOIN {tag} t ON t.id = ti.tagid
@@ -188,25 +188,36 @@ final class delete_cascade_test extends \advanced_testcase {
     }
 
     /**
-     * delete_all_recordings uses the cascade too.
+     * delete_all_recordings moves the active recordings to the manual trash and deletes nothing.
      */
-    public function test_delete_all_recordings_cascade(): void {
+    public function test_delete_all_recordings_moves_to_trash(): void {
         global $DB;
         $this->resetAfterTest();
         [, $googlemeet, $cm, $context] = $this->create_activity();
         $student = $this->getDataGenerator()->create_user();
         $a = $this->create_recording($googlemeet->id);
-        $b = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => time()]);
-        $this->add_dependents($googlemeet, $cm, $context, $a, $student->id);
-        $this->add_dependents($googlemeet, $cm, $context, $b, $student->id);
+        $synctrashed = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => time() - 50,
+            'trashreason' => recording_cleanup::TRASH_SYNC]);
+        [$free, $used] = $this->add_dependents($googlemeet, $cm, $context, $a, $student->id);
+        $this->add_dependents($googlemeet, $cm, $context, $synctrashed, $student->id);
 
         \mod_googlemeet_external::delete_all_recordings($googlemeet->id, $cm->id);
 
-        $this->assertEquals(0, $DB->count_records('googlemeet_recordings', ['googlemeetid' => $googlemeet->id]));
-        foreach ([$a, $b] as $id) {
-            $counts = $this->count_dependents($id);
-            $this->assertSame(0, array_sum($counts), json_encode($counts));
+        $this->assertEquals(2, $DB->count_records('googlemeet_recordings', ['googlemeetid' => $googlemeet->id]));
+        $row = $DB->get_record('googlemeet_recordings', ['id' => $a]);
+        $this->assertEquals(1, $row->deleted);
+        $this->assertSame(recording_cleanup::TRASH_MANUAL, $row->trashreason);
+        $this->assertGreaterThan(0, (int)$row->timedeleted);
+        // Rows already in the trash keep their reason and date.
+        $this->assertSame(recording_cleanup::TRASH_SYNC,
+            $DB->get_field('googlemeet_recordings', 'trashreason', ['id' => $synctrashed]));
+        // Nothing is deleted: dependents and practice questions stay.
+        foreach ([$a, $synctrashed] as $id) {
+            $this->assertSame(['analysis' => 1, 'progress' => 1, 'attempts' => 1, 'files' => 1, 'preferences' => 2,
+                'tagged' => 2], $this->count_dependents($id));
         }
+        $this->assertTrue($DB->record_exists('question', ['id' => $free]));
+        $this->assertTrue($DB->record_exists('question', ['id' => $used]));
     }
 
     /**
@@ -282,9 +293,15 @@ final class delete_cascade_test extends \advanced_testcase {
         [, $googlemeet, $cm, $context] = $this->create_activity();
         $student = $this->getDataGenerator()->create_user();
         $now = time();
-        $old = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => $now - 31 * DAYSECS]);
-        $recent = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => $now - 10 * DAYSECS]);
-        $legacy = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => 0]);
+        $manual = ['deleted' => 1, 'trashreason' => recording_cleanup::TRASH_MANUAL];
+        $old = $this->create_recording($googlemeet->id, ['timedeleted' => $now - 31 * DAYSECS] + $manual);
+        $recent = $this->create_recording($googlemeet->id, ['timedeleted' => $now - 10 * DAYSECS] + $manual);
+        $legacy = $this->create_recording($googlemeet->id, ['timedeleted' => 0] + $manual);
+        // Trashed by the Drive sync (missing from the listing): never purged, whatever its age.
+        $synctrashed = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => $now - 400 * DAYSECS,
+            'trashreason' => recording_cleanup::TRASH_SYNC]);
+        $synclegacy = $this->create_recording($googlemeet->id, ['deleted' => 1, 'timedeleted' => 0,
+            'trashreason' => recording_cleanup::TRASH_SYNC]);
         $active = $this->create_recording($googlemeet->id, ['createdtime' => $now - 100 * DAYSECS]);
         $this->add_dependents($googlemeet, $cm, $context, $old, $student->id);
 
@@ -304,6 +321,9 @@ final class delete_cascade_test extends \advanced_testcase {
         $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $active]));
         // A trashed row without timestamp starts its clock now instead of being purged.
         $this->assertEquals($now, (int)$DB->get_field('googlemeet_recordings', 'timedeleted', ['id' => $legacy]));
+        // Sync-trashed rows are left completely alone.
+        $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $synctrashed]));
+        $this->assertEquals(0, (int)$DB->get_field('googlemeet_recordings', 'timedeleted', ['id' => $synclegacy]));
 
         // The scheduled task uses the same path.
         set_config('trashretentiondays', 5, 'googlemeet');
@@ -313,6 +333,7 @@ final class delete_cascade_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('googlemeet_recordings', ['id' => $recent]));
         $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $legacy]));
         $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $active]));
+        $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $synctrashed]));
     }
 
     /**
@@ -325,9 +346,12 @@ final class delete_cascade_test extends \advanced_testcase {
         $expected = get_string('recordings_trash_purgeon', 'googlemeet',
             userdate($now + 30 * DAYSECS, get_string('trash_purge_dateformat', 'googlemeet')));
         $this->assertSame($expected, recording_cleanup::purge_notice($now, 30, $now));
-        $this->assertStringContainsString('08/11', $expected);
+        // userdate() drops the leading zero of the day.
+        $this->assertStringContainsString('8/11', $expected);
         $this->assertSame(get_string('recordings_trash_purgesoon', 'googlemeet'),
             recording_cleanup::purge_notice($now - 40 * DAYSECS, 30, $now));
+        // Sync-trashed recordings are never purged, so no notice.
+        $this->assertSame('', recording_cleanup::purge_notice($now - 40 * DAYSECS, 30, $now, recording_cleanup::TRASH_SYNC));
     }
 
     /**
@@ -342,6 +366,15 @@ final class delete_cascade_test extends \advanced_testcase {
         $this->add_dependents($googlemeet, $cm, $context, $a, $student->id);
         $DB->insert_record('googlemeet_recording_subs', (object)['googlemeetid' => $googlemeet->id,
             'userid' => $student->id, 'timecreated' => time()]);
+        // ANA-03 attendance of a past session.
+        $eventid = $DB->insert_record('googlemeet_events', (object)['googlemeetid' => $googlemeet->id,
+            'eventdate' => time() - DAYSECS, 'duration' => 3600, 'timemodified' => time()]);
+        $DB->insert_record('googlemeet_attendance', (object)['googlemeetid' => $googlemeet->id, 'eventid' => $eventid,
+            'userid' => $student->id, 'displayname' => 'Student', 'googleuserid' => 'users/1', 'matchedby' => 'name',
+            'timejoined' => time() - DAYSECS, 'timeleft' => time() - DAYSECS + 3000, 'durationseconds' => 3000,
+            'sessions' => 1, 'timecreated' => time(), 'timemodified' => time()]);
+        $DB->insert_record('googlemeet_attendance_sync', (object)['googlemeetid' => $googlemeet->id, 'eventid' => $eventid,
+            'status' => 'done', 'participants' => 1, 'matched' => 1, 'timemodified' => time()]);
 
         $status = googlemeet_reset_userdata((object)['courseid' => $course->id, 'reset_googlemeet_userdata' => 1]);
         $this->assertCount(1, $status);
@@ -355,5 +388,36 @@ final class delete_cascade_test extends \advanced_testcase {
         $this->assertSame(2, $counts['tagged']);
         $this->assertTrue($DB->record_exists('googlemeet_recordings', ['id' => $a]));
         $this->assertFalse($DB->record_exists('googlemeet_recording_subs', ['googlemeetid' => $googlemeet->id]));
+        // Attendance is student data: gone, and the session is not fetched from Google again.
+        $this->assertFalse($DB->record_exists('googlemeet_attendance', ['googlemeetid' => $googlemeet->id]));
+        $sync = $DB->get_record('googlemeet_attendance_sync', ['eventid' => $eventid]);
+        $this->assertSame('done', $sync->status);
+        $this->assertEquals(0, $sync->participants);
+    }
+
+    /**
+     * Orphan questions are only looked for in Google Meet activity banks, never in shared banks.
+     */
+    public function test_orphan_questions_limited_to_googlemeet_banks(): void {
+        global $DB;
+        $this->resetAfterTest();
+        [$course, $googlemeet, $cm, $context] = $this->create_activity();
+        $student = $this->getDataGenerator()->create_user();
+        $gone = $this->create_recording($googlemeet->id);
+        [$free, $used] = $this->add_dependents($googlemeet, $cm, $context, $gone, $student->id);
+
+        // The teacher moved one practice question to a shared question bank (another module).
+        $qbank = $this->getDataGenerator()->create_module('qbank', ['course' => $course->id]);
+        $qbankcontext = \context_module::instance($qbank->cmid);
+        $categoryid = $DB->insert_record('question_categories', (object)[
+            'name' => 'Shared', 'contextid' => $qbankcontext->id, 'info' => '', 'infoformat' => FORMAT_HTML,
+            'stamp' => make_unique_id_code(), 'parent' => 0, 'sortorder' => 999,
+        ]);
+        $qbeid = $DB->get_field('question_versions', 'questionbankentryid', ['questionid' => $free]);
+        $DB->set_field('question_bank_entries', 'questioncategoryid', $categoryid, ['id' => $qbeid]);
+
+        $DB->delete_records('googlemeet_recordings', ['id' => $gone]);
+        $orphans = recording_cleanup::find_orphans();
+        $this->assertSame([$used], array_keys($orphans['questions']));
     }
 }

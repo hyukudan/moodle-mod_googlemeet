@@ -94,7 +94,9 @@ final class gemini_safety_test extends \advanced_testcase {
             $this->fail('A SAFETY response must throw');
         } catch (gemini_safety_exception $e) {
             $this->assertSame('ai_error_safety', $e->errorcode);
-            $this->assertSame(get_string('ai_error_safety', 'googlemeet'), $e->getMessage());
+            // getMessage() appends the debug info under PHPUnit / developer debugging.
+            $this->assertStringStartsWith(get_string('ai_error_safety', 'googlemeet'), $e->getMessage());
+            $this->assertSame(get_string('ai_error_safety', 'googlemeet'), $e->get_user_message());
             $this->assertStringContainsString('HARM_CATEGORY_DANGEROUS_CONTENT', (string)$e->debuginfo);
             $this->assertStringNotContainsString('HARM_CATEGORY_HARASSMENT', (string)$e->debuginfo);
             $this->assertNotSame(get_string('ai_error_generic', 'googlemeet'), $e->getMessage());
@@ -113,7 +115,9 @@ final class gemini_safety_test extends \advanced_testcase {
                 $this->parse($method, $this->safety_response());
                 $this->fail("{$method} must throw on SAFETY");
             } catch (gemini_safety_exception $e) {
-                $this->assertSame(get_string('ai_error_safety', 'googlemeet'), $e->getMessage());
+                // getMessage() appends the debug info under PHPUnit / developer debugging.
+                $this->assertStringStartsWith(get_string('ai_error_safety', 'googlemeet'), $e->getMessage());
+                $this->assertSame(get_string('ai_error_safety', 'googlemeet'), $e->get_user_message());
             }
         }
     }
@@ -168,7 +172,7 @@ final class gemini_safety_test extends \advanced_testcase {
         $id = $DB->insert_record('googlemeet_ai_analysis', (object)[
             'recordingid' => $recordingid, 'status' => 'processing', 'timecreated' => $now, 'timemodified' => $now,
         ]);
-        (new ai_service())->record_permanent_failure($id, (new gemini_safety_exception('X'))->getMessage());
+        (new ai_service())->record_permanent_failure($id, (new gemini_safety_exception('X'))->get_user_message());
         $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $id]);
         $this->assertSame('failed', $row->status);
         $this->assertSame(get_string('ai_error_safety', 'googlemeet'), $row->error);

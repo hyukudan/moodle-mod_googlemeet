@@ -98,7 +98,7 @@ class mobile {
             'templates' => [
                 [
                     'id' => 'main',
-                    'html' => $OUTPUT->render_from_template('mod_googlemeet/mobile_view_page', $data),
+                    'html' => $OUTPUT->render_from_template('mod_googlemeet/mobile_view_page', self::no_bindings($data)),
                 ],
             ],
             'javascript' => 'this.showUpcomingEvents = ' . json_encode(empty($list['hasrecordings'])) . ';'
@@ -164,36 +164,45 @@ class mobile {
     }
 
     /**
-     * Whether students may see the AI analysis of a class.
+     * Neutralise Angular bindings in server text before it goes into an app template.
      *
-     * When the site requires teacher review of AI content (googlemeet/requireaireview) and the
-     * analysis table has a "reviewed" flag, unreviewed analyses are hidden from students. Both the
-     * setting and the column are optional (another feature adds them).
+     * The app compiles the returned HTML as an Angular template, so "{{ expr }}" inside a class
+     * title, an AI key point or a practice question would be evaluated. Mustache escaping does not
+     * touch braces: a zero-width space between them keeps the text readable and inert.
+     *
+     * @param mixed $data Template context (arrays/objects walked recursively).
+     * @return mixed
+     */
+    public static function no_bindings($data) {
+        if (is_string($data)) {
+            return str_replace(['{{', '}}'], ["{\u{200B}{", "}\u{200B}}"], $data);
+        }
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = self::no_bindings($value);
+            }
+            return $data;
+        }
+        if ($data instanceof \stdClass) {
+            foreach (get_object_vars($data) as $key => $value) {
+                $data->$key = self::no_bindings($value);
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Whether the current user may see the AI analysis of a class.
+     *
+     * Same rule as the web pages (IA-04, {@see \mod_googlemeet\local\ai_review}): completed, and
+     * reviewed by a teacher when the site requires it; teachers always see it.
      *
      * @param \stdClass|false $analysis Analysis row.
      * @param \context_module $context Module context.
      * @return bool
      */
     public static function ai_visible($analysis, \context_module $context): bool {
-        global $DB;
-
-        if (!$analysis || ($analysis->status ?? '') !== 'completed') {
-            return false;
-        }
-        if (has_capability('mod/googlemeet:editrecording', $context)) {
-            return true;
-        }
-        if (empty(get_config('googlemeet', 'requireaireview'))) {
-            return true;
-        }
-        if (!property_exists($analysis, 'reviewed')) {
-            static $hascolumn = null;
-            if ($hascolumn === null) {
-                $hascolumn = $DB->get_manager()->field_exists('googlemeet_ai_analysis', 'reviewed');
-            }
-            return !$hascolumn;
-        }
-        return !empty($analysis->reviewed);
+        return \mod_googlemeet\local\ai_review::is_visible_to_user($analysis, $context);
     }
 
     /**
@@ -312,7 +321,7 @@ class mobile {
             'templates' => [
                 [
                     'id' => 'main',
-                    'html' => $OUTPUT->render_from_template('mod_googlemeet/mobile_recording_page', $data),
+                    'html' => $OUTPUT->render_from_template('mod_googlemeet/mobile_recording_page', self::no_bindings($data)),
                 ],
             ],
             'javascript' => 'this.googlemeetPractice = ' . json_encode($practicestate) . ';'

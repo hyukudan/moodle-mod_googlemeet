@@ -359,6 +359,8 @@ class mod_googlemeet_mod_form extends moodleform_mod {
         $notifyhoursdefault = get_config('googlemeet', 'notifyhoursbefore');
         $mform->setDefault('notifyhoursbefore', $notifyhoursdefault === false ? 24 : (int)$notifyhoursdefault);
         $mform->addHelpButton('notifyhoursbefore', 'notifyhoursbefore', 'googlemeet');
+        $mform->disabledIf('notifyhoursbefore', 'notify');
+        $mform->disabledIf('minutesbefore', 'notify');
 
         // Attachments for students to download.
         $mform->addElement('header', 'headerattachments', get_string('attachmentsheader', 'googlemeet'));
@@ -480,6 +482,12 @@ class mod_googlemeet_mod_form extends moodleform_mod {
 
         if ($addmulti && ceil(($data['eventenddate'] - $data['eventdate']) / YEARSECS) > 1) {
             $errors['eventenddate'] = get_string('timeahead', 'googlemeet');
+        }
+
+        // NOT-04: the early reminder must come before the "minutes before" one, or it is never sent.
+        $hoursbefore = (int)($data['notifyhoursbefore'] ?? 0);
+        if (!empty($data['notify']) && $hoursbefore > 0 && $hoursbefore * 60 <= (int)($data['minutesbefore'] ?? 0)) {
+            $errors['notifyhoursbefore'] = get_string('notifyhoursbefore_tooclose', 'googlemeet');
         }
 
         $errors = array_merge($errors, $this->completion_rules_validation($data));

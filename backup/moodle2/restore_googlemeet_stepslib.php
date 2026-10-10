@@ -101,6 +101,11 @@ class restore_googlemeet_activity_structure_step extends restore_activity_struct
         // autosync close every event of the copy as "no identity" (permanent failure).
         $data->eventid = null;
         $data->lastsync = null;
+        // ANA-03: a copy without user data (new course edition, duplicate) shares the Meet room of the
+        // original; reading attendance must be switched on again deliberately by its teacher.
+        if (!$this->userinfo) {
+            $data->attendanceenabled = 0;
+        }
 
         // Insert the googlemeet record.
         $newitemid = $DB->insert_record('googlemeet', $data);

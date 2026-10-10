@@ -1490,11 +1490,13 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
         $params = $inparams + [
             'deleted' => 1,
             'timedeleted' => $now,
+            'trashreason' => \mod_googlemeet\local\recording_cleanup::TRASH_SYNC,
             'timemodified' => $now,
         ];
         $DB->execute("UPDATE {googlemeet_recordings}
                          SET deleted = :deleted,
                              timedeleted = :timedeleted,
+                             trashreason = :trashreason,
                              timemodified = :timemodified
                        WHERE id $insql", $params);
         $stats['trashed'] = count($trashrecordings);
@@ -1514,6 +1516,7 @@ function googlemeet_sync_recordings($googlemeetid, $files, bool $deferenrichment
                 'webviewlink' => $restorerecording->webViewLink,
                 'deleted' => 0,
                 'timedeleted' => 0,
+                'trashreason' => '',
                 'timemodified' => time(),
             ];
             if (empty($existing->notestext) && !empty($restorerecording->notestext)) {

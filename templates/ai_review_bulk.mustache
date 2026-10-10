@@ -31,7 +31,7 @@
     <strong>{{message}}</strong>
     <div class="small">{{# str }} aireview_bulk_hint, mod_googlemeet {{/ str }}</div>
   </div>
-  <button type="button" class="btn btn-outline-primary btn-sm" data-action="ai-review-publish-all" data-cmid="{{cmid}}" data-count="{{count}}">{{# str }} aireview_publish_all, mod_googlemeet {{/ str }}</button>
+  <button type="button" class="btn btn-outline-primary btn-sm" data-action="ai-review-publish-all" data-cmid="{{cmid}}" data-count="{{count}}" data-seen="{{seen}}">{{# str }} aireview_publish_all, mod_googlemeet {{/ str }}</button>
 </div>
 {{#js}}
 require(['mod_googlemeet/ai_review'], function(m) { m.init(); });

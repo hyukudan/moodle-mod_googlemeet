@@ -452,6 +452,31 @@ function googlemeet_merge_events($googlemeet, $events) {
         }
     }
 
+    // ANA-03: a past session with attendance read from Google Meet is history, not schedule. Changing
+    // the start time or the recurrence must not orphan that attendance (Google keeps it ~30 days
+    // only), so such sessions are kept as they are.
+    $now = time();
+    $withattendance = [];
+    $pastids = [];
+    foreach ($existingevents as $existing) {
+        if (empty($keptids[$existing->id]) && (int)$existing->eventdate < $now) {
+            $pastids[] = (int)$existing->id;
+        }
+    }
+    if ($pastids) {
+        list($pinsql, $pparams) = $DB->get_in_or_equal($pastids);
+        foreach ($DB->get_fieldset_select('googlemeet_attendance', 'DISTINCT eventid', "eventid $pinsql", $pparams) as $eid) {
+            $withattendance[(int)$eid] = true;
+        }
+        foreach ($DB->get_fieldset_select('googlemeet_attendance_sync', 'eventid', "eventid $pinsql AND participants > 0",
+                $pparams) as $eid) {
+            $withattendance[(int)$eid] = true;
+        }
+    }
+    foreach (array_keys($withattendance) as $eid) {
+        $keptids[$eid] = true;
+    }
+
     // Delete existing events whose date is no longer scheduled, along with their dependents.
     $deleteids = [];
     foreach ($existingevents as $existing) {
@@ -465,6 +490,8 @@ function googlemeet_merge_events($googlemeet, $events) {
 
         // Remove notify_done rows for removed events.
         $DB->delete_records_select('googlemeet_notify_done', "eventid $insql", $params);
+        // And the attendance fetch state of removed sessions (no attendance rows by construction).
+        $DB->delete_records_select('googlemeet_attendance_sync', "eventid $insql", $params);
 
         // Remove the calendar mirrors for the removed dates.
         foreach ($existingevents as $existing) {
@@ -1088,7 +1115,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
             'googlemeet_recordings',
             ['googlemeetid' => $googlemeet->id, 'deleted' => 1],
             'timedeleted DESC, createdtime DESC',
-            'id,name,createdtime,timedeleted'
+            'id,name,createdtime,timedeleted,trashreason'
         );
         $retentiondays = \mod_googlemeet\local\recording_cleanup::get_retention_days();
         foreach ($deletedrecords as $deletedrecording) {
@@ -1101,7 +1128,7 @@ function googlemeet_print_recordings($googlemeet, $cm, $context, $page = 0, $ord
                     : get_string('never', 'googlemeet'),
                 // OPS-03: when the retention task will purge it ('' when automatic purge is off).
                 'purgenotice' => \mod_googlemeet\local\recording_cleanup::purge_notice(
-                    (int)$deletedrecording->timedeleted, $retentiondays),
+                    (int)$deletedrecording->timedeleted, $retentiondays, null, (string)$deletedrecording->trashreason),
             ];
         }
     }

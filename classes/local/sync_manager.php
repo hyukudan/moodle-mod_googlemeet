@@ -145,14 +145,14 @@ class sync_manager {
         $start = microtime(true);
         sync_log::mark_running($logid);
         $user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0, 'suspended' => 0]);
-        $previoususer = $GLOBALS['USER'] ?? null;
+        $impersonation = null;
         $status = sync_log::STATUS_ERROR;
         $stats = null;
         try {
             if (!$user) {
                 throw new \moodle_exception('sync_status_nouser', 'googlemeet');
             }
-            \core\session\manager::set_user($user);
+            $impersonation = impersonation::begin($user);
             $stats = self::$runner !== null ? (self::$runner)($googlemeet, $user) : self::default_runner($googlemeet);
             $stats = is_array($stats) ? $stats : [];
             $status = sync_log::STATUS_SUCCESS;
@@ -160,8 +160,8 @@ class sync_manager {
         } catch (\Throwable $e) {
             $message = $e->getMessage();
         } finally {
-            if ($previoususer) {
-                \core\session\manager::set_user($previoususer);
+            if ($impersonation !== null) {
+                impersonation::end($impersonation);
             }
             $lock->release();
         }
@@ -188,8 +188,27 @@ class sync_manager {
         if (!$client->enabled || !$client->check_login()) {
             throw new \moodle_exception('sync_status_notlinked', 'googlemeet');
         }
+        // The sync lists the Drive of the linked account and trashes whatever is missing from it:
+        // only the room organiser's account may run it (the button is hidden for others, this also
+        // covers the web service and stale forms).
+        self::require_creator_account((string)$client->get_email(), (string)($googlemeet->creatoremail ?? ''));
         googlemeet_reset_exhausted_autosync_events((int)$googlemeet->id);
         return $client->syncrecordings($googlemeet, true, true) ?: [];
+    }
+
+    /**
+     * Throw unless the linked Google account is the organiser's (creatoremail).
+     *
+     * @param string $linkedemail Email of the Google account linked by the requesting user.
+     * @param string $creatoremail Organiser email of the activity.
+     * @return void
+     * @throws \moodle_exception isnotcreatoremail
+     */
+    public static function require_creator_account(string $linkedemail, string $creatoremail): void {
+        $linked = \core_text::strtolower(trim($linkedemail));
+        if ($creatoremail === '' || $linked !== \core_text::strtolower(trim($creatoremail))) {
+            throw new \moodle_exception('isnotcreatoremail', 'googlemeet');
+        }
     }
 
     /**

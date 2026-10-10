@@ -107,12 +107,17 @@ final class calendar_sync_test extends \advanced_testcase {
      * @param string $eventid
      * @return array [googlemeet record, cm]
      */
-    private function make_linked_activity(\stdClass $creator, string $eventid = 'evt0123abc'): array {
+    private function make_linked_activity(\stdClass $creator, string $eventid = 'evt0123abc', string $url = ''): array {
         global $DB;
+        static $n = 0;
+        $n++;
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         $gm = $this->getDataGenerator()->create_module('googlemeet', [
             'course' => $course->id,
+            // Each activity its own room unless a test shares one on purpose.
+            'url' => $url !== '' ? $url
+                : 'https://meet.google.com/q' . chr(97 + intdiv($n, 26) % 26) . chr(97 + $n % 26) . '-defg-hij',
             'name' => 'Derecho administrativo',
             'eventdate' => make_timestamp(2026, 3, 2, 0, 0, 0, 'Europe/Madrid'),
             'starthour' => 18, 'startminute' => 30, 'endhour' => 20, 'endminute' => 0,
@@ -146,6 +151,10 @@ final class calendar_sync_test extends \advanced_testcase {
     public function test_decode_event_id(): void {
         $this->assertSame('evt0123abc', calendar_sync::decode_event_id(self::eid('evt0123abc')));
         $this->assertSame('rawid_123', calendar_sync::decode_event_id('rawid_123'));
+        // htmlLink of a recurring event may carry the first instance: the series id is used.
+        $this->assertSame('evt0123abc', calendar_sync::decode_event_id(self::eid('evt0123abc_20260302T173000Z')));
+        $this->assertSame('evt0123abc', calendar_sync::decode_event_id(self::eid('evt0123abc_20260302')));
+        $this->assertSame('evt0123abc', calendar_sync::series_id('evt0123abc'));
         $this->assertSame('', calendar_sync::decode_event_id(null));
         $this->assertSame('', calendar_sync::decode_event_id('  '));
     }
@@ -283,10 +292,11 @@ final class calendar_sync_test extends \advanced_testcase {
      */
     public function test_delete_instance_deletes_event_after_cron(): void {
         global $DB;
+        set_config('coursebinenable', 0, 'tool_recyclebin');
         $creator = $this->getDataGenerator()->create_user(['email' => 'profe@example.com']);
-        [$record] = $this->make_linked_activity($creator);
+        [$record, $cm] = $this->make_linked_activity($creator);
 
-        $this->assertTrue(googlemeet_delete_instance($record->id));
+        course_delete_module($cm->id);
         $this->assertFalse($DB->record_exists('googlemeet', ['id' => $record->id]));
         $tasks = \core\task\manager::get_adhoc_tasks(calendar_delete_event::class);
         $this->assertCount(1, $tasks);
@@ -326,12 +336,77 @@ final class calendar_sync_test extends \advanced_testcase {
         [$copy] = $this->make_linked_activity($creator);
         $this->assertSame($record->eventid, $copy->eventid);
 
-        $this->assertFalse(calendar_sync::queue_delete($copy, 0));
-        googlemeet_delete_instance($copy->id);
+        $this->assertFalse(calendar_sync::queue_delete($copy, 0, 'activity'));
+        $DB->delete_records('googlemeet', ['id' => $copy->id]);
         $this->assertEmpty(\core\task\manager::get_adhoc_tasks(calendar_delete_event::class));
 
         // Now unique again: deletion is queued.
-        $this->assertTrue(calendar_sync::queue_delete($DB->get_record('googlemeet', ['id' => $record->id]), 0));
+        $this->assertTrue(calendar_sync::queue_delete($DB->get_record('googlemeet', ['id' => $record->id]), 0, 'activity'));
+    }
+
+    /**
+     * A restored/copied activity (eventid dropped, same Meet URL) in another course protects the event,
+     * also when it appears after the deletion was queued.
+     */
+    public function test_room_shared_by_url_is_left_alone(): void {
+        global $DB;
+        set_config('coursebinenable', 0, 'tool_recyclebin');
+        $creator = $this->getDataGenerator()->create_user(['email' => 'profe@example.com']);
+        [$record] = $this->make_linked_activity($creator, 'evtshared1', 'https://meet.google.com/aaa-bbbb-ccc');
+        [$copy] = $this->make_linked_activity($creator, 'unused', 'https://meet.google.com/AAA-BBBB-CCC?authuser=1');
+        $DB->set_field('googlemeet', 'eventid', null, ['id' => $copy->id]);
+
+        $this->assertTrue(calendar_sync::is_room_shared((string)$record->eventid, $record->url, (int)$record->id));
+        $this->assertFalse(calendar_sync::queue_delete($record, 0, 'activity'));
+
+        // Queued while unique, but a copy shows up before the task runs: skipped at run time.
+        $DB->set_field('googlemeet', 'url', 'https://meet.google.com/zzz-zzzz-zzz', ['id' => $copy->id]);
+        $this->assertTrue(calendar_sync::queue_delete($record, 0, 'activity'));
+        $DB->set_field('googlemeet', 'url', $record->url, ['id' => $copy->id]);
+        $DB->delete_records('googlemeet', ['id' => $record->id]);
+        ob_start();
+        $this->runAdhocTasks(calendar_delete_event::class);
+        $output = ob_get_clean();
+        $this->assertStringContainsString('result=skipped', $output);
+        $this->assertSame([], $this->rest->calls);
+    }
+
+    /**
+     * Course deletion (and any path that is not an explicit activity deletion) never touches Google.
+     */
+    public function test_course_deletion_never_deletes_event(): void {
+        set_config('coursebinenable', 0, 'tool_recyclebin');
+        set_config('categorybinenable', 0, 'tool_recyclebin');
+        $creator = $this->getDataGenerator()->create_user(['email' => 'profe@example.com']);
+        [$record] = $this->make_linked_activity($creator);
+
+        delete_course($record->course, false);
+        $this->assertEmpty(\core\task\manager::get_adhoc_tasks(calendar_delete_event::class));
+
+        // Direct callback call (other path): nothing queued either.
+        [$other] = $this->make_linked_activity($creator, 'evtother');
+        googlemeet_delete_instance($other->id);
+        $this->assertEmpty(\core\task\manager::get_adhoc_tasks(calendar_delete_event::class));
+    }
+
+    /**
+     * With the course recycle bin on, the deletion waits until the bin item has expired.
+     */
+    public function test_recycle_bin_delays_deletion(): void {
+        set_config('coursebinenable', 1, 'tool_recyclebin');
+        set_config('coursebinexpiry', WEEKSECS, 'tool_recyclebin');
+        $this->assertSame(WEEKSECS + DAYSECS, calendar_sync::recyclebin_delay());
+        $creator = $this->getDataGenerator()->create_user(['email' => 'profe@example.com']);
+        [$record] = $this->make_linked_activity($creator);
+        $this->assertTrue(calendar_sync::queue_delete($record, 0, 'activity'));
+        $task = \core\task\manager::get_adhoc_tasks(calendar_delete_event::class);
+        $this->assertGreaterThanOrEqual(time() + WEEKSECS, reset($task)->get_next_run_time());
+
+        // A bin that never expires: never deleted.
+        set_config('coursebinexpiry', 0, 'tool_recyclebin');
+        $this->assertNull(calendar_sync::recyclebin_delay());
+        [$other] = $this->make_linked_activity($creator, 'evtother');
+        $this->assertFalse(calendar_sync::queue_delete($other, 0, 'activity'));
     }
 
     /**

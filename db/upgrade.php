@@ -683,7 +683,7 @@ function xmldb_googlemeet_upgrade($oldversion) {
         $table->add_field('displayname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
         $table->add_field('googleuserid', XMLDB_TYPE_CHAR, '100', null, null, null, null);
         $table->add_field('participanttype', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'signedin');
-        $table->add_field('matchedby', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, '');
+        $table->add_field('matchedby', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, null);
         $table->add_field('timejoined', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('timeleft', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
         $table->add_field('durationseconds', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
@@ -719,6 +719,47 @@ function xmldb_googlemeet_upgrade($oldversion) {
         }
 
         upgrade_mod_savepoint(true, 2026101141, 'googlemeet');
+    }
+
+
+    // Integration of wave 2 (2.30.0).
+    if ($oldversion < 2026101190) {
+        // OPS-03 safety: only recordings a teacher moved to the trash by hand are purged automatically.
+        // Rows the Drive sync trashed (file missing from the listing) are never purged.
+        $table = new xmldb_table('googlemeet_recordings');
+        $field = new xmldb_field('trashreason', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL, null, null, 'timedeleted');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+
+            // The trash that already exists cannot tell who trashed what: treat it as sync-trashed
+            // (never purged) and restart its clock, so any later manual decision gets a full grace period.
+            $DB->execute("UPDATE {googlemeet_recordings}
+                             SET trashreason = :reason, timedeleted = :now
+                           WHERE deleted = 1", ['reason' => 'sync', 'now' => time()]);
+        }
+
+        upgrade_mod_savepoint(true, 2026101190, 'googlemeet');
+    }
+
+    if ($oldversion < 2026101191) {
+        // NOT-03: db/messages.php defaults only apply to new providers. Permit and enable the
+        // Moodle app push (airnotifier) for the class reminder and new recording providers that
+        // already exist, so the push actually reaches students' devices.
+        if ($DB->record_exists('message_processors', ['name' => 'airnotifier'])) {
+            foreach (['notification', 'recordingavailable'] as $provider) {
+                $base = 'mod_googlemeet_' . $provider;
+                set_config('airnotifier_provider_' . $base . '_locked', 0, 'message');
+                $enabledname = 'message_provider_' . $base . '_enabled';
+                $enabled = (string)get_config('message', $enabledname);
+                $list = array_filter(array_map('trim', explode(',', $enabled)));
+                if (!in_array('airnotifier', $list, true)) {
+                    $list[] = 'airnotifier';
+                    set_config($enabledname, implode(',', $list), 'message');
+                }
+            }
+        }
+
+        upgrade_mod_savepoint(true, 2026101191, 'googlemeet');
     }
 
     return true;

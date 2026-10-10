@@ -81,14 +81,14 @@ final class ai_stuck_test extends \advanced_testcase {
     }
 
     /**
-     * Threshold: default 60 min, configurable, never below 15 min.
+     * Threshold: default 60 min, configurable, never below 45 min.
      */
     public function test_threshold_and_is_stuck(): void {
         $this->assertSame(60 * MINSECS, ai_service::get_stuck_threshold());
-        set_config('aistuckminutes', 30, 'googlemeet');
-        $this->assertSame(30 * MINSECS, ai_service::get_stuck_threshold());
-        set_config('aistuckminutes', 5, 'googlemeet');
-        $this->assertSame(15 * MINSECS, ai_service::get_stuck_threshold());
+        set_config('aistuckminutes', 90, 'googlemeet');
+        $this->assertSame(90 * MINSECS, ai_service::get_stuck_threshold());
+        set_config('aistuckminutes', 15, 'googlemeet');
+        $this->assertSame(45 * MINSECS, ai_service::get_stuck_threshold());
         set_config('aistuckminutes', 60, 'googlemeet');
 
         $this->assertTrue(ai_service::is_stuck($this->create_analysis('processing', 2 * HOURSECS)));

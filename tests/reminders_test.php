@@ -224,7 +224,7 @@ final class reminders_test extends \advanced_testcase {
         $this->assertSame('notification', $message->name);
         $this->assertStringStartsWith('Upcoming live class: Constitution, Title VIII', $message->subject);
         $this->assertSame(0, preg_match('/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $message->subject));
-        $this->assertSame(FORMAT_PLAIN, (int)$message->fullmessageformat);
+        $this->assertEquals(FORMAT_PLAIN, $message->fullmessageformat);
         $this->assertStringNotContainsString('<p>', $message->fullmessage);
         $this->assertStringContainsString('Ana', $message->fullmessagehtml);
         $this->assertStringContainsString('/mod/googlemeet/view.php?id=' . $googlemeet->cmid, $message->contexturl);

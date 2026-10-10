@@ -40,6 +40,12 @@ class recording_cleanup {
     /** @var int Default trash retention in days when the setting was never saved. */
     public const DEFAULT_RETENTION_DAYS = 30;
 
+    /** @var string trashreason of a recording a teacher moved to the trash (purged after the retention period). */
+    public const TRASH_MANUAL = 'manual';
+
+    /** @var string trashreason of a recording the Drive sync moved to the trash (never purged automatically). */
+    public const TRASH_SYNC = 'sync';
+
     /** @var int Maximum recordings purged by one run of the retention task. */
     public const PURGE_BATCH = 500;
 
@@ -84,7 +90,9 @@ class recording_cleanup {
         global $DB;
 
         $recordingids = self::clean_ids($recordingids);
-        $stats = self::delete_dependents($recordingids, $context, $includequestions);
+        // Without a module context the questions could only be found site-wide by tag, which could
+        // reach shared banks or restored tags pointing at other sites' ids: leave them alone.
+        $stats = self::delete_dependents($recordingids, $context, $includequestions && $context !== null);
         foreach (array_chunk($recordingids, self::CHUNK) as $chunk) {
             [$insql, $params] = $DB->get_in_or_equal($chunk);
             $stats['recordings'] += $DB->count_records_select('googlemeet_recordings', "id $insql", $params);
@@ -280,10 +288,18 @@ class recording_cleanup {
         }
         question_delete_question($questionid);
         if (!$DB->record_exists('question', ['id' => $questionid])) {
+            // Core leaves the tag instances of a deleted question behind (the tag API skips areas it
+            // considers disabled): drop them directly.
+            $DB->delete_records('tag_instance', ['component' => 'core_question', 'itemtype' => 'question',
+                'itemid' => $questionid]);
             return [1, 0];
         }
         // In use: core marked it hidden. Unbind it from the (gone) recording.
-        \core_tag_tag::remove_item_tag('core_question', 'question', $questionid, $tagname);
+        $tagid = $DB->get_field('tag', 'id', ['name' => \core_text::strtolower($tagname)]);
+        if ($tagid) {
+            $DB->delete_records('tag_instance', ['tagid' => $tagid, 'component' => 'core_question',
+                'itemtype' => 'question', 'itemid' => $questionid]);
+        }
         return [0, 1];
     }
 
@@ -316,7 +332,8 @@ class recording_cleanup {
     public static function delete_user_data(array $googlemeetids): array {
         global $DB;
 
-        $stats = ['progress' => 0, 'attempts' => 0, 'subscriptions' => 0, 'preferences' => 0, 'notifications' => 0];
+        $stats = ['progress' => 0, 'attempts' => 0, 'subscriptions' => 0, 'preferences' => 0, 'notifications' => 0,
+            'attendance' => 0];
         $googlemeetids = self::clean_ids($googlemeetids);
         if (!$googlemeetids) {
             return $stats;
@@ -339,6 +356,14 @@ class recording_cleanup {
         $eventselect = "eventid IN (SELECT id FROM {googlemeet_events} WHERE googlemeetid $insql)";
         $stats['notifications'] = $DB->count_records_select('googlemeet_notify_done', $eventselect, $params);
         $DB->delete_records_select('googlemeet_notify_done', $eventselect, $params);
+
+        // ANA-03: attendance read from Google Meet is student data too (names, Google ids). The fetch
+        // state is kept but marked done and emptied, so the task does not read those sessions again.
+        $stats['attendance'] = $DB->count_records_select('googlemeet_attendance', "googlemeetid $insql", $params);
+        $DB->delete_records_select('googlemeet_attendance', "googlemeetid $insql", $params);
+        $DB->execute("UPDATE {googlemeet_attendance_sync}
+                         SET status = 'done', participants = 0, matched = 0, message = NULL, nextattempt = 0
+                       WHERE googlemeetid $insql", $params);
 
         return $stats;
     }
@@ -378,9 +403,15 @@ class recording_cleanup {
      * @param int $timedeleted Trash timestamp.
      * @param int|null $retentiondays Retention, defaults to the site setting.
      * @param int|null $now Current time (tests).
-     * @return string '' when automatic purge is disabled.
+     * @param string $trashreason trashreason of the row; only manual trash is purged.
+     * @return string '' when automatic purge is disabled or does not apply.
      */
-    public static function purge_notice(int $timedeleted, ?int $retentiondays = null, ?int $now = null): string {
+    public static function purge_notice(int $timedeleted, ?int $retentiondays = null, ?int $now = null,
+            string $trashreason = self::TRASH_MANUAL): string {
+        if ($trashreason !== self::TRASH_MANUAL) {
+            // Sync-trashed recordings are never purged automatically.
+            return '';
+        }
         $purgetime = self::purge_time($timedeleted, $retentiondays);
         if (!$purgetime) {
             return '';
@@ -395,8 +426,11 @@ class recording_cleanup {
     /**
      * Purge recordings that have been in the trash longer than the retention period.
      *
-     * Trashed rows without a timestamp (legacy data) get "now" as their trash time, so they are
-     * purged one full retention period later instead of immediately.
+     * Only recordings a teacher trashed by hand (trashreason = manual) are purged: the Drive sync
+     * also trashes recordings that are missing from a listing (filter change, permissions, partial
+     * listing) and those must never disappear for good without a human decision.
+     * Manual trash rows without a timestamp get "now" as their trash time, so they are purged one
+     * full retention period later instead of immediately.
      *
      * @param int|null $now Current time (tests).
      * @param int|null $retentiondays Retention, defaults to the site setting.
@@ -412,11 +446,13 @@ class recording_cleanup {
             return $stats;
         }
 
-        $DB->set_field_select('googlemeet_recordings', 'timedeleted', $now, 'deleted = 1 AND timedeleted = 0');
+        $DB->set_field_select('googlemeet_recordings', 'timedeleted', $now, 'deleted = 1 AND timedeleted = 0 AND trashreason = ?',
+            [self::TRASH_MANUAL]);
 
         $cutoff = $now - $retentiondays * DAYSECS;
-        $rows = $DB->get_records_select('googlemeet_recordings', 'deleted = 1 AND timedeleted > 0 AND timedeleted < ?',
-            [$cutoff], 'googlemeetid, id', 'id, googlemeetid', 0, self::PURGE_BATCH);
+        $rows = $DB->get_records_select('googlemeet_recordings',
+            'deleted = 1 AND trashreason = ? AND timedeleted > 0 AND timedeleted < ?',
+            [self::TRASH_MANUAL, $cutoff], 'googlemeetid, id', 'id, googlemeetid', 0, self::PURGE_BATCH);
         $bygooglemeet = [];
         foreach ($rows as $row) {
             $bygooglemeet[(int)$row->googlemeetid][] = (int)$row->id;
@@ -477,10 +513,23 @@ class recording_cleanup {
               LEFT JOIN {googlemeet} g ON g.id = x.googlemeetid
                   WHERE g.id IS NULL");
         }
+        // Rows whose session (or the session's activity) no longer exists: one pass is enough even
+        // when the sessions themselves are orphans found above.
         $orphans['notifications'] = self::ids_sql(
             "SELECT x.id FROM {googlemeet_notify_done} x
           LEFT JOIN {googlemeet_events} e ON e.id = x.eventid
-              WHERE e.id IS NULL");
+          LEFT JOIN {googlemeet} g ON g.id = e.googlemeetid
+              WHERE e.id IS NULL OR g.id IS NULL");
+        foreach ([
+            'attendance' => 'googlemeet_attendance',
+            'attendancesync' => 'googlemeet_attendance_sync',
+        ] as $key => $table) {
+            $orphans[$key] = self::ids_sql(
+                "SELECT x.id FROM {{$table}} x
+              LEFT JOIN {googlemeet_events} e ON e.id = x.eventid
+              LEFT JOIN {googlemeet} g ON g.id = x.googlemeetid
+                  WHERE e.id IS NULL OR g.id IS NULL");
+        }
 
         // Material files whose recording no longer exists.
         $orphans['files'] = self::ids_sql(
@@ -532,8 +581,21 @@ class recording_cleanup {
             if (isset($existing[$recordingid])) {
                 continue;
             }
-            $questionids = $DB->get_fieldset_select('tag_instance', 'itemid',
-                'tagid = ? AND component = ? AND itemtype = ?', [$tag->id, 'core_question', 'question']);
+            // Only questions living in a Google Meet activity's own bank: a teacher may have moved
+            // practice questions to a shared bank (mod_qbank), and restored tags may point at ids
+            // of another site. Those are never touched.
+            $questionids = $DB->get_fieldset_sql(
+                "SELECT DISTINCT ti.itemid
+                   FROM {tag_instance} ti
+                   JOIN {question_versions} qv ON qv.questionid = ti.itemid
+                   JOIN {question_bank_entries} qbe ON qbe.id = qv.questionbankentryid
+                   JOIN {question_categories} qc ON qc.id = qbe.questioncategoryid
+                   JOIN {context} ctx ON ctx.id = qc.contextid AND ctx.contextlevel = :ctxlevel
+                   JOIN {course_modules} cm ON cm.id = ctx.instanceid
+                   JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+                  WHERE ti.tagid = :tagid AND ti.component = :component AND ti.itemtype = :itemtype",
+                ['ctxlevel' => CONTEXT_MODULE, 'modname' => 'googlemeet', 'tagid' => $tag->id,
+                    'component' => 'core_question', 'itemtype' => 'question']);
             foreach ($questionids as $questionid) {
                 $orphans['questions'][(int)$questionid] = $tag->name;
             }
@@ -563,6 +625,8 @@ class recording_cleanup {
             'attempts' => 'googlemeet_practice_attempts',
             'subscriptions' => 'googlemeet_recording_subs',
             'notifications' => 'googlemeet_notify_done',
+            'attendance' => 'googlemeet_attendance',
+            'attendancesync' => 'googlemeet_attendance_sync',
             'events' => 'googlemeet_events',
             'holidays' => 'googlemeet_holidays',
             'cancelled' => 'googlemeet_cancelled',

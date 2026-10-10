@@ -84,9 +84,23 @@ class calendar_sync {
         }
         $decoded = base64_decode($b64, true);
         if ($decoded !== false && preg_match('/^([A-Za-z0-9_]+) \S+$/', $decoded, $m)) {
-            return $m[1];
+            return self::series_id($m[1]);
         }
-        return $stored;
+        return self::series_id($stored);
+    }
+
+    /**
+     * Id of the recurring series for an instance id ("<id>_20260302T173000Z" or "<id>_20260302").
+     *
+     * Google's own ids only use base32hex characters, so an underscore can only start the instance
+     * suffix that htmlLink carries for recurring events; patching or deleting that id would act on
+     * the first session only instead of the series.
+     *
+     * @param string $eventid
+     * @return string
+     */
+    public static function series_id(string $eventid): string {
+        return preg_replace('/_\d{8}(T\d{6}Z?)?$/', '', $eventid);
     }
 
     /**
@@ -227,6 +241,52 @@ class calendar_sync {
     }
 
     /**
+     * Whether another activity (any course) still uses the same Google event or the same Meet room.
+     *
+     * Restored, duplicated and copied activities (DAT-03) keep the Meet URL but drop the eventid, so
+     * comparing eventids alone misses them; the URL / meeting code is what they share.
+     *
+     * @param string $storedeventid googlemeet.eventid value ('' when unknown).
+     * @param string $url Meet URL of the activity ('' when unknown).
+     * @param int $excludeid Activity to ignore.
+     * @return bool
+     */
+    public static function is_room_shared(string $storedeventid, string $url, int $excludeid): bool {
+        global $DB;
+        if (self::is_event_shared($storedeventid, $excludeid)) {
+            return true;
+        }
+        $code = client::extract_meeting_code($url);
+        if ($code === null || $code === '') {
+            return false;
+        }
+        $like = $DB->sql_like('url', ':code', false);
+        return $DB->record_exists_select('googlemeet', "id <> :id AND {$like}",
+            ['id' => $excludeid, 'code' => '%' . $DB->sql_like_escape($code) . '%']);
+    }
+
+    /**
+     * How the activity is being deleted, from the call stack.
+     *
+     * Only an explicit deletion of the activity (course_delete_module(), directly or through the
+     * asynchronous deletion task) may remove the Google event. Course deletion, "delete existing
+     * content" restores and any other path return 'course' / 'other' and leave Google alone: the
+     * same room is very often still used by next year's copy of the course.
+     *
+     * @return string 'activity', 'course' or 'other'.
+     */
+    public static function deletion_context(): string {
+        $functions = array_column(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), 'function');
+        if (array_intersect(['remove_course_contents', 'delete_course'], $functions)) {
+            return 'course';
+        }
+        if (in_array('course_delete_module', $functions, true)) {
+            return 'activity';
+        }
+        return 'other';
+    }
+
+    /**
      * Queue the events.patch for an edited activity.
      *
      * @param stdClass $googlemeet Activity record (needs id, eventid, creatoremail).
@@ -249,33 +309,72 @@ class calendar_sync {
     /**
      * Queue the events.delete for an activity that is being deleted.
      *
+     * Safety rules (the event usually is a recurring series in the teacher's own calendar):
+     *  - only when a teacher deletes this activity explicitly, never during course deletion or any
+     *    other bulk path (see deletion_context());
+     *  - never while another activity, in any course, shares the eventid or the Meet room (URL);
+     *  - with the course recycle bin on, the task waits until the bin item expires and re-checks:
+     *    restoring the activity from the bin brings back an activity with the same URL, which
+     *    cancels the deletion. With a bin that never expires the event is never deleted.
+     *
      * Everything the task needs is copied into the custom data because the record is gone by
-     * the time it runs.
+     * the time it runs. Runs inside web requests too, so it never prints (no mtrace) when skipping.
      *
      * @param stdClass $googlemeet Activity record (still present).
      * @param int $editorid User deleting the activity.
+     * @param string|null $context deletion_context() override (tests).
      * @return bool True when a task was queued.
      */
-    public static function queue_delete(stdClass $googlemeet, int $editorid): bool {
+    public static function queue_delete(stdClass $googlemeet, int $editorid, ?string $context = null): bool {
         if (empty($googlemeet->eventid) || empty($googlemeet->creatoremail)) {
             return false;
         }
-        if (self::is_event_shared((string)$googlemeet->eventid, (int)$googlemeet->id)) {
-            // A duplicate still uses the same room/event: deleting it would break the other activity.
+        $context = $context ?? self::deletion_context();
+        if ($context !== 'activity') {
+            return false;
+        }
+        if (self::is_room_shared((string)$googlemeet->eventid, (string)($googlemeet->url ?? ''), (int)$googlemeet->id)) {
+            // A duplicate or a copy in another course still uses the same room/event.
+            return false;
+        }
+        $delay = self::recyclebin_delay();
+        if ($delay === null) {
             return false;
         }
         $task = new calendar_delete_event();
         $task->set_custom_data([
             'googlemeetid' => (int)$googlemeet->id,
             'eventid' => (string)$googlemeet->eventid,
+            'url' => (string)($googlemeet->url ?? ''),
             'creatoremail' => (string)$googlemeet->creatoremail,
             'name' => (string)$googlemeet->name,
             'course' => (int)$googlemeet->course,
             'editorid' => $editorid,
         ]);
         $task->set_component('mod_googlemeet');
+        if ($delay > 0) {
+            $task->set_next_run_time(time() + $delay);
+        }
         \core\task\manager::queue_adhoc_task($task, true);
         return true;
+    }
+
+    /**
+     * Seconds to wait before deleting the event so a recycle bin restore can still cancel it.
+     *
+     * @return int|null 0 when the course recycle bin is off, null when its items never expire.
+     */
+    public static function recyclebin_delay(): ?int {
+        if (!\core_component::get_component_directory('tool_recyclebin')
+                || !get_config('tool_recyclebin', 'coursebinenable')) {
+            return 0;
+        }
+        $expiry = (int)get_config('tool_recyclebin', 'coursebinexpiry');
+        if ($expiry <= 0) {
+            return null;
+        }
+        // One extra day so the bin cleanup (and a last-minute restore) has run first.
+        return $expiry + DAYSECS;
     }
 
     /**
@@ -299,9 +398,10 @@ class calendar_sync {
             return 'skipped';
         }
         if (self::is_event_shared((string)$googlemeet->eventid, $googlemeetid)) {
-            $reason = get_string('calsync_reason_shared', 'googlemeet');
-            self::finish($googlemeet, sync_log::KIND_CALENDAR_UPDATE, 'error', $reason, $editorid);
-            return 'error';
+            // Legacy copies (before DAT-03) share the eventid: neither may drive the event. Logged
+            // once per run without notifying the teacher on every save.
+            self::trace($googlemeetid, 'update', 'skipped', get_string('calsync_reason_shared', 'googlemeet'));
+            return 'skipped';
         }
 
         return self::with_creator($googlemeet, sync_log::KIND_CALENDAR_UPDATE, $editorid,
@@ -333,9 +433,9 @@ class calendar_sync {
             self::trace($googlemeet->id, 'delete', 'skipped', 'no Google event linked');
             return 'skipped';
         }
-        if (self::is_event_shared($googlemeet->eventid, $googlemeet->id)) {
-            // Re-checked at run time: a duplicate may have been restored in between.
-            self::trace($googlemeet->id, 'delete', 'skipped', 'event shared with another activity');
+        if (self::is_room_shared($googlemeet->eventid, (string)($data['url'] ?? ''), $googlemeet->id)) {
+            // Re-checked at run time: a duplicate, a course copy or a recycle bin restore may now use it.
+            self::trace($googlemeet->id, 'delete', 'skipped', 'event or room shared with another activity');
             return 'skipped';
         }
 
@@ -370,10 +470,9 @@ class calendar_sync {
             return 'error';
         }
 
-        $previoususer = $GLOBALS['USER'] ?? null;
-        \core\session\manager::set_user($creator);
+        $impersonation = impersonation::begin($creator);
         try {
-            $service = self::make_service($creator);
+            $service = self::make_service($creator, (string)$googlemeet->creatoremail);
             if (!$service) {
                 $reason = get_string('calsync_reason_notlinked', 'googlemeet', s($googlemeet->creatoremail));
             } else {
@@ -383,9 +482,7 @@ class calendar_sync {
         } catch (\Throwable $e) {
             $reason = $e->getMessage();
         } finally {
-            if ($previoususer) {
-                \core\session\manager::set_user($previoususer);
-            }
+            impersonation::end($impersonation);
         }
 
         if ($reason !== null) {
@@ -400,9 +497,12 @@ class calendar_sync {
      * Build the authenticated service for the (already impersonated) creator.
      *
      * @param stdClass $creator
+     * @param string $creatoremail Organiser email the token must belong to.
      * @return object|null rest-like service, null when the creator has no usable Google link.
+     * @throws \moodle_exception isnotcreatoremail when the linked Google account is another one (a
+     *     404 from someone else's calendar must never be reported as "already deleted").
      */
-    private static function make_service(stdClass $creator): ?object {
+    private static function make_service(stdClass $creator, string $creatoremail): ?object {
         if (self::$servicefactory !== null) {
             return (self::$servicefactory)($creator);
         }
@@ -410,6 +510,7 @@ class calendar_sync {
         if (!$client->enabled || !$client->check_login()) {
             return null;
         }
+        sync_manager::require_creator_account((string)$client->get_email(), $creatoremail);
         return $client->get_rest_service();
     }
 
@@ -484,7 +585,7 @@ class calendar_sync {
         if (!$editor) {
             return;
         }
-        $a = (object)['name' => format_string($googlemeet->name), 'reason' => $reason];
+        $a = (object)['name' => format_string($googlemeet->name, true, ['escape' => false]), 'reason' => $reason];
         $message = new \core\message\message();
         $message->component = 'mod_googlemeet';
         $message->name = 'notification';

@@ -420,13 +420,13 @@ $string['noeventswithperiod'] = 'With the selected days and "Repeat every N week
 $string['privacy:metadata:core_oauth2'] = 'The Google Meet activity makes use of the OAuth 2 subsystem to authenticate users against Google services.';
 $string['privacy:metadata:googlemeet'] = 'Information about the Google Meet activity instances.';
 $string['privacy:metadata:googlemeet:creatoremail'] = 'The email address of the Google account used to create the Meet room. This identifies the creator but is stored as an activity property, not linked to a Moodle user account.';
-$string['privacy:metadata:googlemeet_ai_analysis'] = 'AI-generated analysis of recordings. The transcript may incidentally contain the names or voices of session participants. This data is associated with a recording, not with an individual Moodle user.';
+$string['privacy:metadata:googlemeet_ai_analysis'] = 'AI-generated analysis of recordings. The transcript may incidentally contain the names or voices of session participants. The content is associated with a recording; the only Moodle user stored is the teacher who published it to students (reviewedby).';
 $string['privacy:metadata:googlemeet_ai_analysis:summary'] = 'An AI-generated summary of the recording content.';
 $string['privacy:metadata:googlemeet_ai_analysis:keypoints'] = 'AI-generated key points extracted from the recording content.';
 $string['privacy:metadata:googlemeet_ai_analysis:topics'] = 'AI-generated topics discussed in the recording content.';
 $string['privacy:metadata:googlemeet_ai_analysis:chapters'] = 'AI-generated timestamped chapters extracted from the recording transcript.';
 $string['privacy:metadata:googlemeet_ai_analysis:transcript'] = 'A transcript of the recording, which may contain the names or voices of session participants.';
-$string['privacy:metadata:googlemeet_recordings'] = 'Information about recordings synced from Google Drive, including the original Meet transcript. The transcript may contain the names or speech of session participants. This data is associated with a recording, not with an individual Moodle user.';
+$string['privacy:metadata:googlemeet_recordings'] = 'Information about recordings synced from Google Drive, including the original Meet transcript. The transcript may contain the names or speech of session participants. The content is associated with a recording; the only Moodle user stored is the teacher who published it to students (reviewedby).';
 $string['privacy:metadata:googlemeet_recordings:name'] = 'The name of the recording file.';
 $string['privacy:metadata:googlemeet_recordings:webviewlink'] = 'The Google Drive link used to view the recording.';
 $string['privacy:metadata:googlemeet_recordings:transcripttext'] = 'The original Google Meet transcript of the recording, which may contain the names or speech of session participants.';
@@ -686,10 +686,10 @@ $string['recordings_trash_purgeon'] = 'Will be deleted on {$a}';
 $string['recordings_trash_purgesoon'] = 'Will be deleted shortly';
 $string['trash_purge_dateformat'] = '%d/%m';
 $string['trashretentiondays'] = 'Trash retention (days)';
-$string['trashretentiondays_desc'] = 'Recordings that stay in the teacher trash longer than this number of days are deleted permanently, together with their AI analysis, viewing progress, practice attempts, materials and practice questions (questions used elsewhere, e.g. in a quiz, are hidden instead). 0 = never delete automatically.';
+$string['trashretentiondays_desc'] = 'Recordings that a teacher moved to the trash by hand and that stay there longer than this number of days are deleted permanently, together with their AI analysis, viewing progress, practice attempts, materials and practice questions (questions used elsewhere, e.g. in a quiz, are hidden instead). Recordings the Drive sync moved to the trash because they were missing from Google Drive are never deleted automatically. 0 = never delete automatically.';
 $string['task_purge_trash'] = 'Purge expired recordings from the trash';
 $string['reset_userdata'] = 'Delete viewing progress, practice attempts and subscriptions';
-$string['reset_userdata_help'] = 'Deletes the students\' viewing progress, practice answers, "Continue at" and key point checklist state, and new recording subscriptions of every Google Meet activity in the course. Recordings, AI summaries and practice questions are kept.';
+$string['reset_userdata_help'] = 'Deletes the students\' viewing progress, practice answers, "Continue at" and key point checklist state, new recording subscriptions and the attendance read from Google Meet of every Google Meet activity in the course. Recordings, AI summaries and practice questions are kept.';
 $string['index_nextsession'] = 'Next session';
 $string['index_nextsession_none'] = 'No sessions scheduled';
 $string['index_nextsession_live'] = 'Live now';
@@ -764,7 +764,7 @@ $string['aisafetythreshold_none'] = 'Do not block (subject to Google policy)';
 $string['ai_error_safety'] = 'Gemini blocked this analysis with its content-safety filters (it considered the content sensitive). Check the transcript, or lower the safety threshold in the plugin settings, and regenerate it.';
 // F-8: stuck analyses.
 $string['aistuckminutes'] = 'Stuck analysis after (minutes)';
-$string['aistuckminutes_desc'] = 'An AI analysis still "in progress" after this many minutes is shown to teachers as stuck (with a retry button), and the scheduled task marks it as failed. Minimum 15.';
+$string['aistuckminutes_desc'] = 'An AI analysis still "in progress" after this many minutes is shown to teachers as stuck (with a retry button), and the scheduled task marks it as failed. Minimum 45.';
 $string['ai_status_stuck'] = 'The analysis seems stuck: it has been "in progress" for more than {$a} minutes. You can retry it.';
 $string['ai_status_stuck_panel'] = 'The analysis seems stuck (it has been in progress for too long). Use "Regenerate" to retry it.';
 $string['ai_status_chip_stuck'] = 'Analysis stuck';
@@ -905,7 +905,7 @@ $string['privacy:metadata:googlemeet_attendance:googleuserid'] = 'The Google id 
 $string['privacy:metadata:googlemeet_attendance:timejoined'] = 'When the participant first joined.';
 $string['privacy:metadata:googlemeet_attendance:timeleft'] = 'When the participant last left.';
 $string['privacy:metadata:googlemeet_attendance:durationseconds'] = 'Total time in the session.';
-$string['privacy:metadata:googlemeet_meetapi'] = 'Attendance is read from the Google Meet REST API with the organiser account; no data is sent to Google.';
+$string['privacy:metadata:googlemeet_meetapi'] = 'Attendance is read from the Google Meet REST API with the organiser account: the meeting code and the session time window are sent to Google, and the participants\' names and Google ids are received from it.';
 $string['privacy:metadata:googlemeet_meetapi:displayname'] = 'Participant names and Google ids returned by Google Meet.';
 $string['privacy:metadata:preference:meetscope'] = 'When the user linked Google with access to Meet attendance.';
 // UX-05: Moodle App.
@@ -917,3 +917,12 @@ $string['mobile_mark_watched'] = 'Mark as watched';
 $string['mobile_keypoints'] = 'Key points';
 $string['mobile_chapters'] = 'Chapters';
 $string['mobile_materials'] = 'Materials';
+
+// Integration 2.30.0 (wave 2 review fixes).
+$string['aireview_publish_changed'] = 'This summary changed after you opened the page (a new AI run finished). The page will reload so you can review the new text before publishing it.';
+$string['notifyhoursbefore_tooclose'] = 'The early reminder must be sent before the "Minutes before" reminder. Choose more hours, or turn it off.';
+$string['attendance_unlink'] = 'Unlink';
+$string['attendance_unlink_title'] = 'Undo the match of "{$a}" with this student';
+$string['attendance_unlinked'] = 'The participant is no longer matched to a student and will stay unmatched on later reads.';
+$string['attendance_matchedby_unlinked'] = 'unlinked by a teacher';
+$string['attendance_relink_organiser'] = 'Attendance cannot be read until the organiser of the room ({$a}) links their Google account again from this activity.';

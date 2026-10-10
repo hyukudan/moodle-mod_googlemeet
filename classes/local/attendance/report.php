@@ -110,12 +110,30 @@ class report {
     }
 
     /**
+     * Neutralise spreadsheet formulas in exported text (a Meet display name is chosen by the participant).
+     *
+     * @param string $value
+     * @return string
+     */
+    public static function safe_cell(string $value): string {
+        if ($value !== '' && strpbrk($value[0], "=+-@\t\r") !== false) {
+            return "'" . $value;
+        }
+        return $value;
+    }
+
+    /**
      * Export columns and rows.
      *
+     * The e-mail column is only included when the site shows e-mail as an identity field to the
+     * current user in this context (showuseridentity + moodle/site:viewuseridentity).
+     *
      * @param array[] $rows Rows from session_rows().
+     * @param \context|null $context Module context (null: no e-mail column).
      * @return array ['columns' => [...], 'rows' => [[...], ...]]
      */
-    public static function export_table(array $rows): array {
+    public static function export_table(array $rows, ?\context $context = null): array {
+        $showemail = $context && in_array('email', \core_user\fields::get_identity_fields($context), true);
         $columns = [
             'name' => get_string('attendance_col_student', 'googlemeet'),
             'email' => get_string('email'),
@@ -126,18 +144,25 @@ class report {
             'minutes' => get_string('attendance_col_minutes', 'googlemeet'),
             'sessions' => get_string('attendance_col_sessions', 'googlemeet'),
         ];
+        if (!$showemail) {
+            unset($columns['email']);
+        }
         $out = [];
         foreach ($rows as $row) {
-            $out[] = [
-                $row['name'],
-                $row['email'],
+            $line = [
+                self::safe_cell((string)$row['name']),
+                self::safe_cell((string)$row['email']),
                 get_string('attendance_kind_' . $row['kind'], 'googlemeet'),
-                $row['meetname'],
+                self::safe_cell((string)$row['meetname']),
                 $row['timejoined'] ? userdate($row['timejoined'], '%Y-%m-%d %H:%M') : '',
                 $row['timeleft'] ? userdate($row['timeleft'], '%Y-%m-%d %H:%M') : '',
                 (int)round($row['durationseconds'] / 60),
                 $row['sessions'],
             ];
+            if (!$showemail) {
+                unset($line[1]);
+            }
+            $out[] = array_values($line);
         }
         return ['columns' => $columns, 'rows' => $out];
     }

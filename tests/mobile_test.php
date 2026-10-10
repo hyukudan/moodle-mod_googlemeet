@@ -152,6 +152,8 @@ final class mobile_test extends \advanced_testcase {
             'topics' => json_encode(['Acto administrativo']),
             'chapters' => json_encode([['title' => 'Introducción', 'start' => '00:00'], ['title' => 'Eficacia', 'start' => '12:30']]),
             'status' => 'completed',
+            // Published by a teacher (IA-04): students see it.
+            'reviewed' => 1,
             'timecreated' => time(),
             'timemodified' => time(),
         ]);
@@ -190,18 +192,35 @@ final class mobile_test extends \advanced_testcase {
         $this->setUser($this->student);
 
         $this->assertFalse(mobile::ai_visible(false, $context));
-        $this->assertFalse(mobile::ai_visible((object)['status' => 'failed'], $context));
+        $this->assertFalse(mobile::ai_visible((object)['status' => 'failed', 'reviewed' => 1], $context));
+
+        // Review not required: any completed analysis is visible.
+        set_config('requireaireview', 0, 'googlemeet');
         $this->assertTrue(mobile::ai_visible($completed, $context));
 
+        // Required (the default): only reviewed content; an unset flag counts as not reviewed.
         set_config('requireaireview', 1, 'googlemeet');
-        // Without the "reviewed" column (feature not installed) nothing is hidden.
-        $hascolumn = $DB->get_manager()->field_exists('googlemeet_ai_analysis', 'reviewed');
-        $this->assertSame(!$hascolumn, mobile::ai_visible($completed, $context));
+        $this->assertFalse(mobile::ai_visible($completed, $context));
+        unset_config('requireaireview', 'googlemeet');
+        $this->assertFalse(mobile::ai_visible((object)['status' => 'completed', 'reviewed' => 0], $context));
+        set_config('requireaireview', 1, 'googlemeet');
         $this->assertFalse(mobile::ai_visible((object)['status' => 'completed', 'reviewed' => 0], $context));
         $this->assertTrue(mobile::ai_visible((object)['status' => 'completed', 'reviewed' => 1], $context));
 
         // Teachers always see it.
         $this->setAdminUser();
         $this->assertTrue(mobile::ai_visible((object)['status' => 'completed', 'reviewed' => 0], $context));
+    }
+
+    /**
+     * Server text never reaches the app template as an Angular binding.
+     */
+    public function test_no_bindings(): void {
+        $data = mobile::no_bindings(['title' => "Clase {{ googlemeetOpen('x') }}", 'list' => [(object)['t' => '{{a}}']], 'n' => 3]);
+        $this->assertStringNotContainsString('{{', $data['title']);
+        $this->assertStringNotContainsString('}}', $data['title']);
+        $this->assertStringContainsString("googlemeetOpen('x')", $data['title']);
+        $this->assertStringNotContainsString('{{', $data['list'][0]->t);
+        $this->assertSame(3, $data['n']);
     }
 }

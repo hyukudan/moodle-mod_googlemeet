@@ -106,8 +106,7 @@ class fetch_attendance extends \core\task\scheduled_task {
             return;
         }
 
-        $previoususer = $GLOBALS['USER'] ?? null;
-        \core\session\manager::set_user($organiser);
+        $impersonation = \mod_googlemeet\local\impersonation::begin($organiser);
         try {
             $source = $this->get_source();
             if (!$source) {
@@ -125,9 +124,7 @@ class fetch_attendance extends \core\task\scheduled_task {
                 }
             }
         } finally {
-            if ($previoususer) {
-                \core\session\manager::set_user($previoususer);
-            }
+            \mod_googlemeet\local\impersonation::end($impersonation);
         }
     }
 

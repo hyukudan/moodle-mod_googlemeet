@@ -71,7 +71,8 @@ class calendar_export {
         global $CFG;
 
         $host = parse_url($CFG->wwwroot, PHP_URL_HOST) ?: 'moodle';
-        $name = format_string($googlemeet->name, true, ['context' => \context_module::instance($cmid)]);
+        $name = format_string($googlemeet->name, true,
+            ['context' => \context_module::instance($cmid), 'escape' => false]);
         $description = self::description($googlemeet, $cmid);
         $activityurl = (new \moodle_url('/mod/googlemeet/view.php', ['id' => $cmid]))->out(false);
 
@@ -116,7 +117,8 @@ class calendar_export {
     public static function google_calendar_url(stdClass $googlemeet, int $cmid, stdClass $event): string {
         $params = [
             'action' => 'TEMPLATE',
-            'text' => format_string($googlemeet->name, true, ['context' => \context_module::instance($cmid)]),
+            'text' => format_string($googlemeet->name, true,
+                ['context' => \context_module::instance($cmid), 'escape' => false]),
             'dates' => self::utc((int)$event->eventdate) . '/' .
                 self::utc((int)$event->eventdate + max(0, (int)$event->duration)),
             'details' => self::description($googlemeet, $cmid),
@@ -207,7 +209,7 @@ class calendar_export {
         $out = [];
         $current = '';
         $limit = 75;
-        foreach (preg_split('//u', $line, -1, PREG_SPLIT_NO_EMPTY) as $char) {
+        foreach (preg_split('//u', $line, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $char) {
             if (strlen($current) + strlen($char) > $limit) {
                 $out[] = $current;
                 $current = '';

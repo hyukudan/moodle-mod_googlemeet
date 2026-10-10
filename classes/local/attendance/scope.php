@@ -80,11 +80,14 @@ class scope {
 
         $issuerid = (int)get_config('googlemeet', 'issuerid');
         if ($issuerid > 0) {
-            $ids = $DB->get_fieldset_select('oauth2_refresh_token', 'id', 'userid = ? AND issuerid = ?',
-                [$userid, $issuerid]);
-            if (count($ids) > 1) {
-                $keep = max(array_map('intval', $ids));
-                [$insql, $params] = $DB->get_in_or_equal(array_diff(array_map('intval', $ids), [$keep]));
+            // Core updates the row with the same scopehash in place, so the token just stored is the
+            // most recently modified one, not necessarily the highest id.
+            $rows = $DB->get_records_select('oauth2_refresh_token', 'userid = ? AND issuerid = ?',
+                [$userid, $issuerid], 'timemodified DESC, id DESC', 'id');
+            if (count($rows) > 1) {
+                $ids = array_map('intval', array_keys($rows));
+                array_shift($ids);
+                [$insql, $params] = $DB->get_in_or_equal($ids);
                 $DB->delete_records_select('oauth2_refresh_token', "id $insql", $params);
             }
         }
@@ -125,7 +128,25 @@ class scope {
     }
 
     /**
+     * Whether $user is the organiser of the activity (creatoremail).
+     *
+     * @param \stdClass $googlemeet Activity record.
+     * @param \stdClass $user User.
+     * @return bool
+     */
+    public static function is_organiser(\stdClass $googlemeet, \stdClass $user): bool {
+        if (empty($googlemeet->creatoremail) || empty($user->email)) {
+            return false;
+        }
+        return \core_text::strtolower(trim((string)$googlemeet->creatoremail))
+            === \core_text::strtolower(trim((string)$user->email));
+    }
+
+    /**
      * Whether the "link your Google account again" notice applies to this user and activity.
+     *
+     * Only the organiser can fix it (the fetch runs with the organiser's token), so only the
+     * organiser gets the notice with the action; other teachers get organiser_relink_pending().
      *
      * @param \stdClass $googlemeet Activity record.
      * @param \context_module $context Module context.
@@ -135,13 +156,29 @@ class scope {
     public static function needs_relink(\stdClass $googlemeet, \context_module $context, \stdClass $user): bool {
         global $DB;
 
-        if (!self::activity_enabled($googlemeet) || !has_capability('mod/googlemeet:viewreports', $context, $user)) {
+        if (!self::activity_enabled($googlemeet) || !has_capability('mod/googlemeet:viewreports', $context, $user)
+                || !self::is_organiser($googlemeet, $user)) {
             return false;
         }
-        $isorganiser = !empty($googlemeet->creatoremail)
-            && \core_text::strtolower(trim((string)$googlemeet->creatoremail)) === \core_text::strtolower(trim((string)$user->email));
-        if ($isorganiser && !self::granted((int)$user->id)) {
+        if (!self::granted((int)$user->id)) {
             return true;
+        }
+        return $DB->record_exists('googlemeet_attendance_sync', ['googlemeetid' => $googlemeet->id, 'status' => 'scope']);
+    }
+
+    /**
+     * Whether a non-organiser teacher should be told that the organiser must link Google again.
+     *
+     * @param \stdClass $googlemeet Activity record.
+     * @param \context_module $context Module context.
+     * @param \stdClass $user User.
+     * @return bool
+     */
+    public static function organiser_relink_pending(\stdClass $googlemeet, \context_module $context, \stdClass $user): bool {
+        global $DB;
+        if (!self::activity_enabled($googlemeet) || !has_capability('mod/googlemeet:viewreports', $context, $user)
+                || self::is_organiser($googlemeet, $user)) {
+            return false;
         }
         return $DB->record_exists('googlemeet_attendance_sync', ['googlemeetid' => $googlemeet->id, 'status' => 'scope']);
     }
@@ -157,6 +194,11 @@ class scope {
         global $OUTPUT, $USER;
 
         if (!self::needs_relink($googlemeet, $context, $USER)) {
+            if (self::organiser_relink_pending($googlemeet, $context, $USER)) {
+                // Informative only: unlinking this teacher's own account would not help.
+                return $OUTPUT->notification(get_string('attendance_relink_organiser', 'googlemeet',
+                    s((string)$googlemeet->creatoremail)), \core\output\notification::NOTIFY_INFO);
+            }
             return '';
         }
         $url = new \moodle_url('/mod/googlemeet/attendance.php', ['id' => $context->instanceid, 'action' => 'relink',

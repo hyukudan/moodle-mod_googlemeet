@@ -165,7 +165,7 @@ class process_video_analysis extends adhoc_task {
             // result, so no automatic retry, but the stored error explains it to the teacher.
             mtrace("Blocked by Gemini safety filters: " . ($e->debuginfo ?? ''));
             $aiservice = new ai_service();
-            $aiservice->record_permanent_failure($analysisid, $e->getMessage());
+            $aiservice->record_permanent_failure($analysisid, $e->get_user_message());
 
         } catch (\Exception $e) {
             mtrace("Error: " . $e->getMessage());

@@ -264,6 +264,30 @@ final class ai_review_test extends \advanced_testcase {
     }
 
     /**
+     * A regenerating, failed or pending row still holds its previous (possibly unreviewed) text:
+     * students only get the status from the web service.
+     */
+    public function test_get_ai_analysis_ws_non_completed_hides_content(): void {
+        foreach (['processing', 'failed', 'pending'] as $status) {
+            $recording = $this->create_recording(['status' => $status, 'error' => 'Bloqueado']);
+
+            $this->setUser($this->student);
+            $result = external_api::clean_returnvalue(\mod_googlemeet_external::get_ai_analysis_returns(),
+                \mod_googlemeet_external::get_ai_analysis($recording->id, $this->cm->id));
+            $this->assertSame($status, $result['status']);
+            $this->assertSame('', $result['summary'], $status);
+            $this->assertSame([], $result['keypoints'], $status);
+            $this->assertSame([], $result['topics'], $status);
+
+            // Teachers keep seeing what is there (to fix or publish it).
+            $this->setUser($this->teacher);
+            $result = external_api::clean_returnvalue(\mod_googlemeet_external::get_ai_analysis_returns(),
+                \mod_googlemeet_external::get_ai_analysis($recording->id, $this->cm->id));
+            $this->assertStringContainsString('Resumen secreto', $result['summary']);
+        }
+    }
+
+    /**
      * A manual edit by the teacher counts as reviewed.
      */
     public function test_manual_edit_marks_reviewed(): void {
@@ -320,6 +344,35 @@ final class ai_review_test extends \advanced_testcase {
         $othercm = get_coursemodule_from_instance('googlemeet', $other->id);
         $this->expectException(\moodle_exception::class);
         \mod_googlemeet\external\review_ai_analysis::execute($othercm->id, $one->id);
+    }
+
+    /**
+     * Publishing checks the version the teacher saw: a rewrite that finished meanwhile stays pending.
+     */
+    public function test_review_ws_version_check(): void {
+        global $DB;
+        $now = time();
+        $one = $this->create_recording(['timemodified' => $now - 100]);
+        $old = $this->create_recording(['timemodified' => $now - 100]);
+        $fresh = $this->create_recording(['timemodified' => $now + 100]);
+
+        $this->setUser($this->teacher);
+        // The teacher saw an older version than the one stored now.
+        $result = \mod_googlemeet\external\review_ai_analysis::execute($this->cm->id, $one->id, $now - 200);
+        $this->assertFalse($result['success']);
+        $this->assertTrue($result['changed']);
+        $this->assertEquals(0, $DB->get_field('googlemeet_ai_analysis', 'reviewed', ['id' => $one->analysisid]));
+
+        // Same version: published.
+        $result = \mod_googlemeet\external\review_ai_analysis::execute($this->cm->id, $one->id, $now - 100);
+        $this->assertTrue($result['success']);
+        $this->assertFalse($result['changed']);
+
+        // Publish all only takes what existed when the page was loaded.
+        $result = \mod_googlemeet\external\review_ai_analysis::execute($this->cm->id, 0, $now);
+        $this->assertEquals(1, $result['count']);
+        $this->assertEquals(1, $DB->get_field('googlemeet_ai_analysis', 'reviewed', ['id' => $old->analysisid]));
+        $this->assertEquals(0, $DB->get_field('googlemeet_ai_analysis', 'reviewed', ['id' => $fresh->analysisid]));
     }
 
     /**

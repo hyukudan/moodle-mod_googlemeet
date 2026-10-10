@@ -34,6 +34,12 @@ class service {
     public const STATUS_PENDING = 'pending';
     /** @var string Participants stored. */
     public const STATUS_DONE = 'done';
+
+    /** @var string matchedby of a participant a teacher linked by hand. */
+    public const MATCH_MANUAL = 'manual';
+
+    /** @var string matchedby of a participant a teacher unlinked: stays unmatched on re-fetch. */
+    public const MATCH_UNLINKED = 'unlinked';
     /** @var string Google returned no conference for the session (yet). */
     public const STATUS_NODATA = 'nodata';
     /** @var string The organiser's token lacks the Meet scope: the teacher must link Google again. */
@@ -370,18 +376,24 @@ class service {
                 trim($last . ' ' . $first),
                 self::normalise_name(fullname($user)),
             ]));
+            $names[(int)$user->id]['first'] = $first;
         }
 
-        // Google ids already linked (automatically or by a teacher) in any activity of the course.
+        // Google ids a teacher linked (or that matched by e-mail) in any activity of this course. Name
+        // matches are never remembered: a wrong guess must not become permanent.
         $googleids = array_values(array_unique(array_filter(array_column($participants, 'googleuserid'))));
         $byid = [];
         if ($googleids && $candidates) {
             [$gsql, $gparams] = $DB->get_in_or_equal($googleids, SQL_PARAMS_NAMED, 'g');
             [$usql, $uparams] = $DB->get_in_or_equal(array_keys($candidates), SQL_PARAMS_NAMED, 'u');
+            [$msql, $mparams] = $DB->get_in_or_equal([self::MATCH_MANUAL, 'email'], SQL_PARAMS_NAMED, 'm');
             $rows = $DB->get_records_sql("SELECT a.id, a.googleuserid, a.userid
                                              FROM {googlemeet_attendance} a
-                                            WHERE a.googleuserid $gsql AND a.userid $usql
-                                         ORDER BY a.timemodified DESC, a.id DESC", $gparams + $uparams);
+                                             JOIN {googlemeet} g ON g.id = a.googlemeetid
+                                            WHERE a.googleuserid $gsql AND a.userid $usql AND a.matchedby $msql
+                                                  AND g.course = :courseid
+                                         ORDER BY a.timemodified DESC, a.id DESC",
+                $gparams + $uparams + $mparams + ['courseid' => (int)$googlemeet->course]);
             foreach ($rows as $row) {
                 if (!isset($byid[$row->googleuserid])) {
                     $byid[$row->googleuserid] = (int)$row->userid;
@@ -418,11 +430,12 @@ class service {
     }
 
     /**
-     * Unique candidate whose name equals the display name, or starts with it (2+ words, e.g. one
-     * surname of two). 0 when none or ambiguous.
+     * Unique candidate whose name equals the display name, or whose "first name + surnames" starts
+     * with it covering the whole first name and at least one surname ("Ana Ruiz" for Ana Ruiz Pérez,
+     * never "María José" alone for María José Ruiz). 0 when none or ambiguous.
      *
      * @param string $displayname Meet display name.
-     * @param array $names userid => normalised name variants.
+     * @param array $names userid => normalised name variants (+ 'first' => normalised first name).
      * @return int
      */
     public static function match_name(string $displayname, array $names): int {
@@ -434,12 +447,21 @@ class service {
         $prefix = [];
         $words = count(explode(' ', $needle));
         foreach ($names as $userid => $variants) {
+            $first = (string)($variants['first'] ?? '');
+            unset($variants['first']);
             foreach ($variants as $variant) {
                 if ($variant === $needle) {
                     $exact[$userid] = true;
-                } else if ($words >= 2 && str_starts_with($variant . ' ', $needle . ' ')) {
-                    $prefix[$userid] = true;
                 }
+            }
+            if ($first === '' || $words < 2) {
+                continue;
+            }
+            $firstwords = count(explode(' ', $first));
+            $firstlast = reset($variants);
+            if ($words > $firstwords && str_starts_with($needle . ' ', $first . ' ')
+                    && str_starts_with($firstlast . ' ', $needle . ' ')) {
+                $prefix[$userid] = true;
             }
         }
         if (count($exact) === 1) {
@@ -465,17 +487,20 @@ class service {
     public static function store(\stdClass $googlemeet, int $eventid, array $participants, int $now): void {
         global $DB;
 
+        // Teacher decisions (manual link or unlink) win over automatic matching on every re-fetch.
         $manual = [];
-        foreach ($DB->get_records('googlemeet_attendance', ['eventid' => $eventid, 'matchedby' => 'manual']) as $old) {
+        [$msql, $mparams] = $DB->get_in_or_equal([self::MATCH_MANUAL, self::MATCH_UNLINKED], SQL_PARAMS_NAMED);
+        foreach ($DB->get_records_select('googlemeet_attendance', "eventid = :eventid AND matchedby $msql",
+                ['eventid' => $eventid] + $mparams) as $old) {
             $manual[self::person_key((array)$old)] = (int)$old->userid;
         }
 
         $rows = [];
         foreach ($participants as $p) {
             $key = self::person_key($p);
-            if (empty($p['userid']) && isset($manual[$key])) {
+            if (isset($manual[$key])) {
                 $p['userid'] = $manual[$key];
-                $p['matchedby'] = 'manual';
+                $p['matchedby'] = $manual[$key] ? self::MATCH_MANUAL : self::MATCH_UNLINKED;
             }
             $rowkey = !empty($p['userid']) ? 'u:' . $p['userid'] : 'p:' . $key;
             if (isset($rows[$rowkey])) {
@@ -550,7 +575,8 @@ class service {
             throw new \moodle_exception('attendance_link_duplicate', 'googlemeet');
         }
         $row->userid = $userid;
-        $row->matchedby = $userid ? 'manual' : '';
+        // 'unlinked' remembers the teacher's decision: later fetches keep it unmatched.
+        $row->matchedby = $userid ? self::MATCH_MANUAL : self::MATCH_UNLINKED;
         $row->timemodified = time();
         $DB->update_record('googlemeet_attendance', $row);
     }

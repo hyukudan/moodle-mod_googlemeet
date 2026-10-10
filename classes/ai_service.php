@@ -43,6 +43,9 @@ class ai_service {
     /** @var int Default minutes after which a 'processing' analysis counts as stuck (F-8). */
     const DEFAULT_STUCK_MINUTES = 60;
 
+    /** @var int Lower bound for aistuckminutes: a tier-3 (video) analysis can legitimately take over 15 min. */
+    const MIN_STUCK_MINUTES = 45;
+
     /** @var gemini_client The Gemini API client */
     private $client;
 
@@ -265,7 +268,7 @@ class ai_service {
 
         } catch (\Exception $e) {
             $analysis->status = 'failed';
-            $analysis->error = $e->getMessage();
+            $analysis->error = $e instanceof \mod_googlemeet\gemini_safety_exception ? $e->get_user_message() : $e->getMessage();
             $analysis->timemodified = time();
             $DB->update_record('googlemeet_ai_analysis', $analysis);
 
@@ -623,7 +626,7 @@ class ai_service {
     /**
      * Minutes after which a 'processing' analysis is considered stuck (F-8).
      *
-     * Config googlemeet/aistuckminutes; never below 15 so a healthy tier-3 (video) run is not cut short.
+     * Config googlemeet/aistuckminutes; never below 45 so a healthy tier-3 (video) run is not cut short.
      *
      * @return int Seconds.
      */
@@ -632,7 +635,7 @@ class ai_service {
         if ($minutes <= 0) {
             $minutes = self::DEFAULT_STUCK_MINUTES;
         }
-        return max(15, $minutes) * MINSECS;
+        return max(self::MIN_STUCK_MINUTES, $minutes) * MINSECS;
     }
 
     /**

@@ -84,6 +84,7 @@
         <FIELD NAME="visible" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="If the recording should be visible."/>
         <FIELD NAME="deleted" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Soft-delete flag. 1 means the recording is in the teacher trash."/>
         <FIELD NAME="timedeleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp when the recording was moved to trash."/>
+        <FIELD NAME="trashreason" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Why the recording is in the trash: manual (teacher, purged after the retention period) or sync (missing from Drive, never purged). Empty when not trashed."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Timestamp of when the instance was added to the course."/>
       </FIELDS>
       <KEYS>
@@ -261,7 +262,7 @@
         <FIELD NAME="displayname" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Display name shown in Meet."/>
         <FIELD NAME="googleuserid" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Meet signed-in user id (users/...), empty for anonymous and phone participants."/>
         <FIELD NAME="participanttype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="signedin" SEQUENCE="false" COMMENT="signedin, anonymous or phone."/>
-        <FIELD NAME="matchedby" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="" SEQUENCE="false" COMMENT="email, googleuser, name, manual or empty when unmatched."/>
+        <FIELD NAME="matchedby" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="email, googleuser, name, manual or empty when unmatched."/>
         <FIELD NAME="timejoined" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timeleft" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="durationseconds" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Sum of the participant sessions."/>

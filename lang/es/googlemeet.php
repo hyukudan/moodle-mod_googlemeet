@@ -423,7 +423,7 @@ $string['noeventswithperiod'] = 'Con los días seleccionados y el período de "R
 $string['privacy:metadata:core_oauth2'] = 'La actividad Google Meet utiliza el subsistema OAuth 2 para autenticar a los usuarios frente a los servicios de Google.';
 $string['privacy:metadata:googlemeet'] = 'Información sobre las instancias de la actividad Google Meet.';
 $string['privacy:metadata:googlemeet:creatoremail'] = 'La dirección de correo de la cuenta de Google usada para crear la sala de Meet. Identifica al creador pero se almacena como propiedad de la actividad, no vinculada a una cuenta de usuario de Moodle.';
-$string['privacy:metadata:googlemeet_ai_analysis'] = 'Análisis generado por IA de las grabaciones. La transcripción puede contener de forma incidental los nombres o las voces de los participantes de la sesión. Estos datos se asocian a una grabación, no a un usuario concreto de Moodle.';
+$string['privacy:metadata:googlemeet_ai_analysis'] = 'Análisis generado por IA de las grabaciones. La transcripción puede contener de forma incidental los nombres o las voces de los participantes de la sesión. El contenido se asocia a una grabación; el único usuario de Moodle que se guarda es el profesor que lo publicó para los alumnos (reviewedby).';
 $string['privacy:metadata:googlemeet_ai_analysis:summary'] = 'Un resumen del contenido de la grabación generado por IA.';
 $string['privacy:metadata:googlemeet_ai_analysis:keypoints'] = 'Puntos clave extraídos del contenido de la grabación generados por IA.';
 $string['privacy:metadata:googlemeet_ai_analysis:topics'] = 'Temas tratados en el contenido de la grabación generados por IA.';
@@ -691,10 +691,10 @@ $string['recordings_trash_purgeon'] = 'Se eliminará el {$a}';
 $string['recordings_trash_purgesoon'] = 'Se eliminará en breve';
 $string['trash_purge_dateformat'] = '%d/%m';
 $string['trashretentiondays'] = 'Días en la papelera';
-$string['trashretentiondays_desc'] = 'Las grabaciones que permanezcan en la papelera del profesor más de este número de días se eliminan definitivamente, junto con su análisis IA, progreso de visionado, intentos de práctica, materiales y preguntas de práctica (las preguntas usadas en otro sitio, p. ej. en un cuestionario, se ocultan en lugar de borrarse). 0 = no eliminar nunca automáticamente.';
+$string['trashretentiondays_desc'] = 'Las grabaciones que un profesor haya enviado a mano a la papelera y que permanezcan en ella más de este número de días se eliminan definitivamente, junto con su análisis IA, progreso de visionado, intentos de práctica, materiales y preguntas de práctica (las preguntas usadas en otro sitio, p. ej. en un cuestionario, se ocultan en lugar de borrarse). Las grabaciones que la sincronización con Drive envió a la papelera porque ya no estaban en Google Drive nunca se eliminan automáticamente. 0 = no eliminar nunca automáticamente.';
 $string['task_purge_trash'] = 'Vaciar las grabaciones caducadas de la papelera';
 $string['reset_userdata'] = 'Eliminar progreso de visionado, intentos de práctica y suscripciones';
-$string['reset_userdata_help'] = 'Elimina el progreso de visionado de los alumnos, sus respuestas de práctica, el estado de "Continuar en" y de la lista de puntos clave, y las suscripciones a nuevas grabaciones de todas las actividades Google Meet del curso. Las grabaciones, los resúmenes IA y las preguntas de práctica se conservan.';
+$string['reset_userdata_help'] = 'Elimina el progreso de visionado de los alumnos, sus respuestas de práctica, el estado de "Continuar en" y de la lista de puntos clave, las suscripciones a nuevas grabaciones y la asistencia leída de Google Meet de todas las actividades Google Meet del curso. Las grabaciones, los resúmenes IA y las preguntas de práctica se conservan.';
 $string['index_nextsession'] = 'Próxima sesión';
 $string['index_nextsession_none'] = 'Sin sesiones programadas';
 $string['index_nextsession_live'] = 'En directo ahora';
@@ -769,7 +769,7 @@ $string['aisafetythreshold_none'] = 'No bloquear (sujeto a la política de Googl
 $string['ai_error_safety'] = 'Gemini ha bloqueado este análisis con sus filtros de seguridad de contenido (ha considerado el contenido sensible). Revisa la transcripción, o baja el umbral de seguridad en la configuración del plugin, y regenéralo.';
 // F-8: análisis atascados.
 $string['aistuckminutes'] = 'Análisis atascado tras (minutos)';
-$string['aistuckminutes_desc'] = 'Un análisis IA que sigue «en curso» pasado este tiempo se muestra al profesor como atascado (con botón de reintento) y la tarea programada lo marca como fallido. Mínimo 15.';
+$string['aistuckminutes_desc'] = 'Un análisis IA que sigue «en curso» pasado este tiempo se muestra al profesor como atascado (con botón de reintento) y la tarea programada lo marca como fallido. Mínimo 45.';
 $string['ai_status_stuck'] = 'El análisis parece atascado: lleva más de {$a} minutos «en curso». Puedes reintentarlo.';
 $string['ai_status_stuck_panel'] = 'El análisis parece atascado (lleva demasiado tiempo en curso). Pulsa «Regenerar» para reintentarlo.';
 $string['ai_status_chip_stuck'] = 'Análisis atascado';
@@ -910,7 +910,7 @@ $string['privacy:metadata:googlemeet_attendance:googleuserid'] = 'El identificad
 $string['privacy:metadata:googlemeet_attendance:timejoined'] = 'Cuándo entró por primera vez.';
 $string['privacy:metadata:googlemeet_attendance:timeleft'] = 'Cuándo salió por última vez.';
 $string['privacy:metadata:googlemeet_attendance:durationseconds'] = 'Tiempo total en la sesión.';
-$string['privacy:metadata:googlemeet_meetapi'] = 'La asistencia se lee de la API REST de Google Meet con la cuenta del organizador; no se envían datos a Google.';
+$string['privacy:metadata:googlemeet_meetapi'] = 'La asistencia se lee de la API REST de Google Meet con la cuenta del organizador: se envían a Google el código de la reunión y la franja horaria de la sesión, y se reciben de Google los nombres y los identificadores de Google de los participantes.';
 $string['privacy:metadata:googlemeet_meetapi:displayname'] = 'Nombres e identificadores de Google de los participantes devueltos por Google Meet.';
 $string['privacy:metadata:preference:meetscope'] = 'Cuándo vinculó el usuario Google con acceso a la asistencia de Meet.';
 // UX-05: Moodle App.
@@ -922,3 +922,12 @@ $string['mobile_mark_watched'] = 'Marcar como vista';
 $string['mobile_keypoints'] = 'Puntos clave';
 $string['mobile_chapters'] = 'Capítulos';
 $string['mobile_materials'] = 'Materiales';
+
+// Integration 2.30.0 (wave 2 review fixes).
+$string['aireview_publish_changed'] = 'Este resumen ha cambiado desde que abriste la página (ha terminado una nueva ejecución de la IA). La página se recargará para que revises el texto nuevo antes de publicarlo.';
+$string['notifyhoursbefore_tooclose'] = 'El aviso anticipado debe enviarse antes que el aviso de «Minutos antes». Elige más horas o desactívalo.';
+$string['attendance_unlink'] = 'Desvincular';
+$string['attendance_unlink_title'] = 'Deshacer el emparejamiento de «{$a}» con este alumno';
+$string['attendance_unlinked'] = 'El participante ya no está emparejado con ningún alumno y seguirá sin emparejar en las próximas lecturas.';
+$string['attendance_matchedby_unlinked'] = 'desvinculado por un profesor';
+$string['attendance_relink_organiser'] = 'La asistencia no se podrá leer hasta que el organizador de la sala ({$a}) vuelva a vincular su cuenta de Google desde esta actividad.';

@@ -31,7 +31,7 @@ class ops_status {
     /** @var int Look-back window for failures. */
     public const WINDOW_DAYS = 7;
 
-    /** @var int A "processing" analysis older than this is considered stuck. */
+    /** @var int Legacy fallback; the page uses ai_service::get_stuck_threshold() (googlemeet/aistuckminutes). */
     public const STUCK_PROCESSING_SECONDS = HOURSECS;
 
     /** @var int A "pending" analysis older than this is considered stuck (cron runs every 10 min). */
@@ -190,7 +190,7 @@ class ops_status {
                   OR (a.status = :pending AND a.timemodified < :t2 AND a.retrycount < 99))
            ORDER BY a.timemodified ASC",
             ['modname' => 'googlemeet', 'processing' => 'processing', 'pending' => 'pending',
-                't1' => $now - self::STUCK_PROCESSING_SECONDS, 't2' => $now - self::STUCK_PENDING_SECONDS],
+                't1' => $now - \mod_googlemeet\ai_service::get_stuck_threshold(), 't2' => $now - self::STUCK_PENDING_SECONDS],
             0, 200);
     }
 

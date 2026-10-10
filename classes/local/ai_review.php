@@ -125,22 +125,41 @@ class ai_review {
     /**
      * Mark one analysis as reviewed (published to students).
      *
+     * When $seen is given (the timemodified of the content the teacher had on screen) the row is
+     * only published if it still holds that same content: a retry or regeneration that finished in
+     * between must be reviewed again.
+     *
      * @param int $analysisid Row id.
      * @param int $userid Reviewer.
+     * @param int $seen timemodified of the reviewed content, 0 = do not check.
      * @return bool True when the row was completed and is now reviewed.
      */
-    public static function mark_reviewed(int $analysisid, int $userid): bool {
+    public static function mark_reviewed(int $analysisid, int $userid, int $seen = 0): bool {
         global $DB;
 
-        $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, reviewed');
+        $row = $DB->get_record('googlemeet_ai_analysis', ['id' => $analysisid], 'id, status, reviewed, timemodified');
         if (!$row || $row->status !== 'completed') {
+            return false;
+        }
+        if ($seen > 0 && (int)$row->timemodified !== $seen) {
             return false;
         }
         if (!empty($row->reviewed)) {
             return true;
         }
-        $DB->update_record('googlemeet_ai_analysis', (object)(['id' => $analysisid] + self::reviewed_fields($userid)));
-        return true;
+        $fields = self::reviewed_fields($userid);
+        $params = ['id' => $analysisid, 'reviewed' => $fields['reviewed'], 'timereviewed' => $fields['timereviewed'],
+            'reviewedby' => $fields['reviewedby'], 'status' => 'completed'];
+        $where = 'id = :id AND status = :status';
+        if ($seen > 0) {
+            // Atomic with the check above: nothing may rewrite the row between reading and publishing.
+            $where .= ' AND timemodified = :seen';
+            $params['seen'] = $seen;
+        }
+        $DB->execute("UPDATE {googlemeet_ai_analysis}
+                         SET reviewed = :reviewed, timereviewed = :timereviewed, reviewedby = :reviewedby
+                       WHERE {$where}", $params);
+        return (bool)$DB->get_field('googlemeet_ai_analysis', 'reviewed', ['id' => $analysisid]);
     }
 
     /**
@@ -165,23 +184,37 @@ class ai_review {
     /**
      * Publish every reviewable (completed, unreviewed) analysis of an instance.
      *
+     * With $seenbefore (when the teacher loaded the page that offered "Publish all"), content
+     * written after that moment is left pending: the teacher confirmed what was there, not what a
+     * retry produced meanwhile.
+     *
      * @param int $googlemeetid Instance id.
      * @param int $userid Reviewer.
+     * @param int $seenbefore Only publish content last written at or before this time (0 = no limit).
      * @return int Number of analyses published.
      */
-    public static function mark_all_reviewed(int $googlemeetid, int $userid): int {
+    public static function mark_all_reviewed(int $googlemeetid, int $userid, int $seenbefore = 0): int {
         global $DB;
 
         $ids = self::get_pending_ids($googlemeetid);
         if (!$ids) {
             return 0;
         }
-        [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
-        $params += ['userid' => $userid, 'now' => time()];
-        $DB->execute("UPDATE {googlemeet_ai_analysis}
-                         SET reviewed = 1, timereviewed = :now, reviewedby = :userid
-                       WHERE id {$insql} AND reviewed = 0", $params);
-        return count($ids);
+        $published = 0;
+        foreach (array_chunk($ids, 500) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $params += ['userid' => $userid, 'now' => time(), 'completed' => 'completed'];
+            $where = "id {$insql} AND reviewed = 0 AND status = :completed";
+            if ($seenbefore > 0) {
+                $where .= ' AND timemodified <= :seenbefore';
+                $params['seenbefore'] = $seenbefore;
+            }
+            $published += $DB->count_records_select('googlemeet_ai_analysis', $where, $params);
+            $DB->execute("UPDATE {googlemeet_ai_analysis}
+                             SET reviewed = 1, timereviewed = :now, reviewedby = :userid
+                           WHERE {$where}", $params);
+        }
+        return $published;
     }
 
     /**
@@ -203,6 +236,8 @@ class ai_review {
             'aipendingreview' => $pending && $canreview,
             'aireviewcmid' => $cmid,
             'aireviewrecordingid' => $analysis ? (int)$analysis->recordingid : 0,
+            // IA-04: version of the content on screen, so publishing never approves a newer rewrite.
+            'aireviewseen' => $analysis ? (int)($analysis->timemodified ?? 0) : 0,
             'aistatusisstuck' => $stuck,
             'aistuckmessage' => $stuck ? get_string('ai_status_stuck', 'googlemeet',
                 (int)round(\mod_googlemeet\ai_service::get_stuck_threshold() / MINSECS)) : '',
@@ -230,6 +265,7 @@ class ai_review {
         return $OUTPUT->render_from_template('mod_googlemeet/ai_review_bulk', [
             'cmid' => $cm->id,
             'count' => $count,
+            'seen' => time(),
             'message' => get_string($count === 1 ? 'aireview_bulk_message_one' : 'aireview_bulk_message', 'googlemeet', $count),
         ]);
     }
